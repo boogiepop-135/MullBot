@@ -7,6 +7,7 @@ import { ContactModel } from '../models/contact.model';
 import { AuthService } from '../utils/auth.util';
 import { TemplateModel } from '../models/template.model';
 import { BotConfigModel } from '../models/bot-config.model';
+import { sendPaymentConfirmationMessage, sendAppointmentConfirmationMessage } from '../../utils/payment-detection.util';
 
 export const router = express.Router();
 
