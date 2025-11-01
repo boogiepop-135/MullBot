@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (contacts.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No se encontraron contactos</td>`;
+      tr.innerHTML = `<td colspan="6" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No se encontraron contactos</td>`;
       tbody.appendChild(tr);
       return;
     }
