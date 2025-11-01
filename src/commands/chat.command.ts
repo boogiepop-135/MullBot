@@ -38,8 +38,10 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
 
 ¡Espero tu respuesta para poder ayudarte mejor 😊!`;
         
-        // Delay de 10 segundos para simular tiempo de respuesta humano
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        // Delay configurable para simular tiempo de respuesta humano
+        const { getBotDelay } = await import('../utils/bot-config.util');
+        const delay = await getBotDelay();
+        await new Promise(resolve => setTimeout(resolve, delay));
         
         chat.sendMessage(AppConfig.instance.printMessage(opcionesIniciales));
         return;
@@ -135,8 +137,10 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
                 break;
         }
 
-        // Delay de 10 segundos para simular tiempo de respuesta humano
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        // Delay configurable para simular tiempo de respuesta humano
+        const { getBotDelay } = await import('../utils/bot-config.util');
+        const delay = await getBotDelay();
+        await new Promise(resolve => setTimeout(resolve, delay));
         
         const media = MessageMedia.fromFilePath(mediaPath);
         await message.reply(
@@ -157,8 +161,10 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
             errorMessage = "Los servicios de IA están temporalmente sobrecargados. Por favor intenta de nuevo en unos minutos. Mientras tanto, puedes usar los comandos específicos:\n\n*Comandos disponibles:*\n💰 *precios* - Información de precios\n💳 *pago* - Métodos de pago\n📦 *productos* - Información del producto\n\n¡Gracias por tu paciencia! 😊";
         }
         
-        // Delay de 10 segundos para simular tiempo de respuesta humano
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        // Delay configurable para simular tiempo de respuesta humano
+        const { getBotDelay } = await import('../utils/bot-config.util');
+        const delay = await getBotDelay();
+        await new Promise(resolve => setTimeout(resolve, delay));
         
         await message.reply(
             MessageMedia.fromFilePath("public/info.png"),

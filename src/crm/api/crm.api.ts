@@ -6,6 +6,7 @@ import { CampaignModel } from '../models/campaign.model';
 import { ContactModel } from '../models/contact.model';
 import { AuthService } from '../utils/auth.util';
 import { TemplateModel } from '../models/template.model';
+import { BotConfigModel } from '../models/bot-config.model';
 
 export const router = express.Router();
 
@@ -60,16 +61,39 @@ export default function (botManager: BotManager) {
             const { phoneNumber } = req.params;
             const { saleStatus, saleStatusNotes } = req.body;
 
-            if (!['interested', 'potential_buyer', 'paid', 'lead'].includes(saleStatus)) {
-                return res.status(400).json({ error: 'Invalid sale status' });
+            const validStatuses = ['lead', 'interested', 'info_requested', 'payment_pending', 'appointment_scheduled', 'appointment_confirmed', 'completed'];
+            if (!validStatuses.includes(saleStatus)) {
+                return res.status(400).json({ error: `Invalid sale status. Must be one of: ${validStatuses.join(', ')}` });
             }
 
             const updateData: any = { saleStatus };
-            if (saleStatusNotes) {
+            if (saleStatusNotes !== undefined) {
                 updateData.saleStatusNotes = saleStatusNotes;
             }
-            if (saleStatus === 'paid') {
-                updateData.paidAt = new Date();
+            
+            // Manejar estados específicos
+            if (saleStatus === 'payment_pending') {
+                if (!req.body.paidAt) {
+                    updateData.paidAt = new Date();
+                }
+            }
+            if (saleStatus === 'appointment_scheduled' && req.body.appointmentDate) {
+                updateData.appointmentDate = new Date(req.body.appointmentDate);
+            }
+            if (saleStatus === 'appointment_confirmed') {
+                updateData.appointmentConfirmed = true;
+                if (req.body.appointmentNotes) {
+                    updateData.appointmentNotes = req.body.appointmentNotes;
+                }
+            }
+            if (req.body.paymentConfirmedAt) {
+                updateData.paymentConfirmedAt = new Date(req.body.paymentConfirmedAt);
+            }
+            if (req.body.appointmentDate !== undefined) {
+                updateData.appointmentDate = req.body.appointmentDate ? new Date(req.body.appointmentDate) : null;
+            }
+            if (req.body.appointmentNotes !== undefined) {
+                updateData.appointmentNotes = req.body.appointmentNotes;
             }
 
             const contact = await ContactModel.findOneAndUpdate(
@@ -86,6 +110,87 @@ export default function (botManager: BotManager) {
         } catch (error) {
             logger.error('Failed to update contact status:', error);
             res.status(500).json({ error: 'Failed to update contact status' });
+        }
+    });
+
+    // Pausar/despausar contacto
+    router.put('/contacts/:phoneNumber/pause', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { phoneNumber } = req.params;
+            const { isPaused } = req.body;
+
+            const contact = await ContactModel.findOneAndUpdate(
+                { phoneNumber },
+                { $set: { isPaused: isPaused === true } },
+                { new: true }
+            );
+
+            if (!contact) {
+                return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            res.json({ message: `Contact ${isPaused ? 'paused' : 'unpaused'} successfully`, contact });
+        } catch (error) {
+            logger.error('Failed to pause/unpause contact:', error);
+            res.status(500).json({ error: 'Failed to pause/unpause contact' });
+        }
+    });
+
+    // Confirmar cita (por mullblue)
+    router.put('/contacts/:phoneNumber/appointment/confirm', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { phoneNumber } = req.params;
+            const { appointmentNotes } = req.body;
+
+            const updateData: any = {
+                appointmentConfirmed: true,
+                saleStatus: 'appointment_confirmed'
+            };
+            if (appointmentNotes) {
+                updateData.appointmentNotes = appointmentNotes;
+            }
+
+            const contact = await ContactModel.findOneAndUpdate(
+                { phoneNumber },
+                { $set: updateData },
+                { new: true }
+            );
+
+            if (!contact) {
+                return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            res.json({ message: 'Appointment confirmed successfully', contact });
+        } catch (error) {
+            logger.error('Failed to confirm appointment:', error);
+            res.status(500).json({ error: 'Failed to confirm appointment' });
+        }
+    });
+
+    // Confirmar pago
+    router.put('/contacts/:phoneNumber/payment/confirm', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { phoneNumber } = req.params;
+
+            const contact = await ContactModel.findOneAndUpdate(
+                { phoneNumber },
+                { 
+                    $set: { 
+                        paymentConfirmedAt: new Date(),
+                        saleStatus: 'appointment_scheduled'
+                    }
+                },
+                { new: true }
+            );
+
+            if (!contact) {
+                return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            res.json({ message: 'Payment confirmed successfully', contact });
+        } catch (error) {
+            logger.error('Failed to confirm payment:', error);
+            res.status(500).json({ error: 'Failed to confirm payment' });
         }
     });
 
@@ -311,10 +416,14 @@ export default function (botManager: BotManager) {
             });
 
             // Get contacts by sale status
-            const interestedContacts = await ContactModel.countDocuments({ saleStatus: 'interested' });
-            const potentialBuyers = await ContactModel.countDocuments({ saleStatus: 'potential_buyer' });
-            const paidCustomers = await ContactModel.countDocuments({ saleStatus: 'paid' });
             const leads = await ContactModel.countDocuments({ saleStatus: 'lead' });
+            const interestedContacts = await ContactModel.countDocuments({ saleStatus: 'interested' });
+            const infoRequested = await ContactModel.countDocuments({ saleStatus: 'info_requested' });
+            const paymentPending = await ContactModel.countDocuments({ saleStatus: 'payment_pending' });
+            const appointmentScheduled = await ContactModel.countDocuments({ saleStatus: 'appointment_scheduled' });
+            const appointmentConfirmed = await ContactModel.countDocuments({ saleStatus: 'appointment_confirmed' });
+            const completed = await ContactModel.countDocuments({ saleStatus: 'completed' });
+            const pausedContacts = await ContactModel.countDocuments({ isPaused: true });
             
             // Get campaign statistics
             const totalCampaigns = await CampaignModel.countDocuments();
@@ -338,10 +447,14 @@ export default function (botManager: BotManager) {
                     withTags: contactsWithTags,
                     recent: recentContacts,
                     byStatus: {
+                        leads: leads,
                         interested: interestedContacts,
-                        potentialBuyers: potentialBuyers,
-                        paid: paidCustomers,
-                        leads: leads
+                        infoRequested: infoRequested,
+                        paymentPending: paymentPending,
+                        appointmentScheduled: appointmentScheduled,
+                        appointmentConfirmed: appointmentConfirmed,
+                        completed: completed,
+                        paused: pausedContacts
                     }
                 },
                 campaigns: {
@@ -364,6 +477,40 @@ export default function (botManager: BotManager) {
         } catch (error) {
             logger.error('Failed to fetch statistics:', error);
             res.status(500).json({ error: 'Failed to fetch statistics' });
+        }
+    });
+
+    // Bot Configuration API
+    router.get('/bot-config', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const config = await BotConfigModel.findOne() || await BotConfigModel.create({ botDelay: 10000 });
+            res.json(config);
+        } catch (error) {
+            logger.error('Failed to fetch bot config:', error);
+            res.status(500).json({ error: 'Failed to fetch bot config' });
+        }
+    });
+
+    router.put('/bot-config', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { botDelay } = req.body;
+            
+            if (botDelay === undefined || botDelay < 0) {
+                return res.status(400).json({ error: 'botDelay is required and must be >= 0' });
+            }
+
+            let config = await BotConfigModel.findOne();
+            if (!config) {
+                config = await BotConfigModel.create({ botDelay });
+            } else {
+                config.botDelay = botDelay;
+                await config.save();
+            }
+
+            res.json({ message: 'Bot configuration updated successfully', config });
+        } catch (error) {
+            logger.error('Failed to update bot config:', error);
+            res.status(500).json({ error: 'Failed to update bot config' });
         }
     });
 

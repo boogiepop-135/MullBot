@@ -158,6 +158,13 @@ export class BotManager {
                 return;
             }
 
+            // Verificar si el usuario está pausado
+            const contact = await ContactModel.findOne({ phoneNumber: user.number });
+            if (contact && contact.isPaused) {
+                logger.info(`Message from paused user ${user.number} - ignoring`);
+                return; // No procesar mensajes de usuarios pausados
+            }
+
             userI18n = this.getUserI18n(user.number);
 
             if (!user.isMe) await this.trackContact(message, userI18n);
