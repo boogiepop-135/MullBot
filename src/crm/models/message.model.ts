@@ -12,6 +12,7 @@ export interface IMessage extends Document {
     timestamp: Date;
     hasMedia: boolean;
     mediaUrl?: string; // URL o path del archivo de media si existe
+    requiresAttention: boolean; // true si el mensaje requiere atención de un humano
     metadata?: any; // Información adicional del mensaje
 }
 
@@ -27,12 +28,14 @@ const MessageSchema = new Schema<IMessage>({
     timestamp: { type: Date, required: true, default: Date.now, index: true },
     hasMedia: { type: Boolean, default: false },
     mediaUrl: String,
+    requiresAttention: { type: Boolean, default: false, index: true }, // Índice para búsquedas rápidas
     metadata: Schema.Types.Mixed
 }, { timestamps: true });
 
 // Índices para búsquedas rápidas
 MessageSchema.index({ phoneNumber: 1, timestamp: -1 });
 MessageSchema.index({ contactId: 1, timestamp: -1 });
+MessageSchema.index({ requiresAttention: 1, timestamp: -1 }); // Para encontrar mensajes que requieren atención
 
 export const MessageModel = mongoose.model<IMessage>('Message', MessageSchema);
 

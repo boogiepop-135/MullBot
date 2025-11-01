@@ -653,13 +653,18 @@ export default function (botManager: BotManager) {
     router.get('/contacts/:phoneNumber/messages', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { phoneNumber } = req.params;
-            const { limit = 50, before } = req.query; // Paginación opcional
+            const { limit = 50, before, requiresAttention } = req.query; // Paginación opcional y filtro de atención
 
             const query: any = { phoneNumber };
             
             // Si hay un timestamp "before", obtener mensajes anteriores a esa fecha
             if (before) {
                 query.timestamp = { $lt: new Date(before) };
+            }
+
+            // Si se solicita solo mensajes que requieren atención
+            if (requiresAttention === 'true') {
+                query.requiresAttention = true;
             }
 
             const messages = await MessageModel.find(query)
@@ -673,6 +678,23 @@ export default function (botManager: BotManager) {
         } catch (error) {
             logger.error('Failed to fetch messages:', error);
             res.status(500).json({ error: 'Failed to fetch messages' });
+        }
+    });
+
+    // Obtener mensajes que requieren atención (todos los contactos)
+    router.get('/messages/requires-attention', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { limit = 50 } = req.query;
+
+            const messages = await MessageModel.find({ requiresAttention: true, isFromBot: false })
+                .sort({ timestamp: -1 })
+                .limit(Number(limit))
+                .populate('contactId', 'phoneNumber name pushName');
+
+            res.json({ messages });
+        } catch (error) {
+            logger.error('Failed to fetch messages requiring attention:', error);
+            res.status(500).json({ error: 'Failed to fetch messages requiring attention' });
         }
     });
 

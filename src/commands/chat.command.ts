@@ -96,6 +96,20 @@ Escribe el *número* de la opción que te interesa o pregunta lo que necesites �
     if (quickResponse) {
         logger.info(`✅ Using quick response for query: "${query}" - NO se usaron tokens de IA`);
         
+        // Detectar si es la opción 8 (hablar con agente)
+        // El bot ya se pausó automáticamente en handleMessage, pero enviamos la respuesta de todas formas
+        const normalizedQuery = query.toLowerCase().trim();
+        const isAgentRequest = normalizedQuery === '8' ||
+                               /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
+                               /^8[\s\.\)\-]/.test(normalizedQuery) ||
+                               (normalizedQuery.includes('agente') || 
+                                normalizedQuery.includes('humano') || 
+                                normalizedQuery.includes('persona') ||
+                                normalizedQuery.includes('representante') ||
+                                normalizedQuery.includes('atencion') ||
+                                normalizedQuery.includes('atención') ||
+                                normalizedQuery.includes('hablar con'));
+        
         // Detectar intención y hacer seguimiento
         const intent = SalesTracker.detectIntent(query);
         SalesTracker.trackInteraction(message, query, quickResponse.message, quickResponse.intent || intent);
@@ -115,6 +129,30 @@ Escribe el *número* de la opción que te interesa o pregunta lo que necesites �
                 caption: AppConfig.instance.printMessage(quickResponse.message) 
             },
         );
+        
+        // Si es solicitud de agente, enviar mensaje adicional
+        if (isAgentRequest) {
+            const agentMessage = `✅ *Solicitud Recibida*
+
+Tu solicitud para hablar con un agente ha sido registrada.
+
+📝 *Estado:* En cola para atención humana
+⏰ Horario de atención: Lunes a Viernes 9am - 7pm
+
+Nuestro equipo se pondrá en contacto contigo lo antes posible.
+
+Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            await message.reply(
+                MessageMedia.fromFilePath("public/info.png"),
+                null,
+                { 
+                    caption: AppConfig.instance.printMessage(agentMessage) 
+                },
+            );
+        }
+        
         return; // IMPORTANTE: salir aquí para no llamar a IA
     }
     

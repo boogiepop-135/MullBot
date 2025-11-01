@@ -463,6 +463,22 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 pushName = contact.pushName;
             }
 
+            // Detectar si el mensaje requiere atención (solicitud de agente humano)
+            let requiresAttention = false;
+            if (!isFromBot && message.body) {
+                const content = message.body.toLowerCase();
+                const agentKeywords = ['agente', 'humano', 'persona', 'representante', 'atencion', 'atención', 'hablar con', 'hablar con un', 'quiero hablar', 'necesito hablar'];
+                requiresAttention = agentKeywords.some(keyword => content.includes(keyword));
+                
+                // También detectar si es la opción 8 del menú
+                const cleanContent = content.trim();
+                const isOption8 = /^8[\s\.\)\-]*$/.test(cleanContent) || 
+                                 /^8[\s\.\)\-]/.test(cleanContent) ||
+                                 cleanContent === '8';
+                
+                requiresAttention = requiresAttention || isOption8;
+            }
+
             await MessageModel.findOneAndUpdate(
                 { messageId: message.id._serialized },
                 {
@@ -476,6 +492,7 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                     timestamp: new Date(message.timestamp * 1000), // WhatsApp timestamp en segundos
                     hasMedia: hasMedia,
                     mediaUrl: mediaUrl,
+                    requiresAttention: requiresAttention,
                     metadata: {
                         pushName: pushName,
                         isGroup: message.from.includes('@g.us') || message.to.includes('@g.us'),
@@ -485,6 +502,22 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 },
                 { upsert: true, new: true }
             );
+
+            // Si el mensaje requiere atención, pausar temporalmente al contacto
+            if (requiresAttention && contact && !isFromBot) {
+                try {
+                    await ContactModel.findOneAndUpdate(
+                        { phoneNumber: phoneNumber },
+                        { 
+                            $set: { isPaused: true },
+                            $push: { tags: 'requires_human_attention' }
+                        }
+                    );
+                    logger.info(`Contact ${phoneNumber} paused temporarily - requested human agent`);
+                } catch (error) {
+                    logger.error(`Error pausing contact ${phoneNumber}: ${error}`);
+                }
+            }
         } catch (error) {
             logger.error(`Error saving message: ${error}`);
             // No fallar el procesamiento del mensaje si no se puede guardar
@@ -509,7 +542,8 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 type: 'TEXT',
                 isFromBot: true,
                 timestamp: new Date(),
-                hasMedia: false
+                hasMedia: false,
+                requiresAttention: false // Los mensajes del admin no requieren atención
             });
         } catch (error) {
             logger.error(`Error saving sent message: ${error}`);

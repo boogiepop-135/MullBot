@@ -981,38 +981,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Función para abrir WhatsApp Web
   function openWhatsAppWeb() {
-    const whatsappWebBtn = document.getElementById('whatsapp-web-btn');
-    if (!whatsappWebBtn || whatsappWebBtn.disabled) {
-      alert('WhatsApp no está conectado aún. Por favor conecta primero.');
-      return;
-    }
-
-    // Intentar obtener el número del bot desde el botón o desde el health check
-    fetch('/health', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    }).then(res => res.json()).then(status => {
-      let phoneNumber = null;
-      
-      // Extraer número de botContact si está disponible
-      if (status.botContact) {
-        const phoneMatch = status.botContact.match(/wa\.me\/(\d+)/);
-        if (phoneMatch) {
-          phoneNumber = phoneMatch[1];
-        }
-      }
-      
-      if (phoneNumber) {
-        // Abrir WhatsApp Web con el número del bot
-        window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
-      } else {
-        // Si no hay número, abrir WhatsApp Web normalmente
-        window.open('https://web.whatsapp.com', '_blank');
-      }
-    }).catch(error => {
-      console.error('Error getting WhatsApp status:', error);
-      // Abrir WhatsApp Web normalmente como fallback
-      window.open('https://web.whatsapp.com', '_blank');
-    });
+    // Simplemente abrir WhatsApp Web - no necesitamos verificar estado
+    // WhatsApp Web se abrirá normalmente y el usuario puede iniciar sesión
+    window.open('https://web.whatsapp.com', '_blank');
   }
 
   async function loadQRCode() {
@@ -1244,14 +1215,28 @@ document.addEventListener('DOMContentLoaded', function () {
   
   // Función para abrir WhatsApp Web con un contacto específico
   function openWhatsAppWebForContact() {
-    const btn = document.getElementById('whatsapp-web-contact-btn');
-    if (!btn || btn.disabled || !currentChatPhoneNumber) {
-      alert('No hay un contacto seleccionado o WhatsApp no está conectado.');
+    if (!currentChatPhoneNumber) {
+      alert('No hay un contacto seleccionado.');
       return;
     }
     
     // Abrir WhatsApp Web con el número del contacto
-    const phoneNumber = currentChatPhoneNumber.replace(/[^0-9]/g, ''); // Solo números
+    // Limpiar número: quitar espacios, guiones, paréntesis, etc. y dejar solo números
+    let phoneNumber = currentChatPhoneNumber.replace(/[^0-9]/g, ''); // Solo números
+    
+    // Si el número tiene código de país, mantenerlo; si no, asumir código de México (52)
+    if (phoneNumber.length === 10) {
+      // Número local mexicano, agregar código de país
+      phoneNumber = '52' + phoneNumber;
+    } else if (phoneNumber.startsWith('52') && phoneNumber.length === 12) {
+      // Ya tiene código de país
+      phoneNumber = phoneNumber;
+    } else if (phoneNumber.length < 10) {
+      // Número muy corto, intentar con código de país
+      phoneNumber = '52' + phoneNumber;
+    }
+    
+    // Abrir WhatsApp Web con el número
     window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
   }
 
