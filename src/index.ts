@@ -16,9 +16,32 @@ const app = express();
 const port = EnvConfig.PORT || 3000;
 
 app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
+// Intentar múltiples rutas para las vistas con logging para diagnóstico
+const viewsPaths = [
+    path.join(__dirname, "views"),
+    path.join(__dirname, "../src/views"),
+    path.join(process.cwd(), "src/views"),
+    path.join(process.cwd(), "dist/views")
+];
+app.set("views", viewsPaths);
+// Log de diagnóstico para las rutas de vistas
+const fs = require('fs');
+logger.info("Views paths configured:");
+viewsPaths.forEach(viewPath => {
+    const exists = fs.existsSync(viewPath);
+    logger.info(`  - ${viewPath}: ${exists ? 'EXISTS' : 'NOT FOUND'}`);
+    if (exists) {
+        try {
+            const files = fs.readdirSync(viewPath);
+            logger.info(`    Files in directory: ${files.join(', ')}`);
+        } catch (e) {
+            logger.warn(`    Cannot read directory: ${e.message}`);
+        }
+    }
+});
 // Configurar archivos estáticos - intentar dist/public primero, luego public como fallback
 app.use("/public", express.static(path.join(__dirname, "../public")));
+app.use("/public", express.static(path.join(__dirname, "public")));
 app.use("/public", express.static("public"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
