@@ -74,28 +74,42 @@ class EnvConfig {
 
         // En Railway, intentar encontrar Chrome en rutas comunes
         // Railway puede instalar Chrome en diferentes ubicaciones
+        // Priorizar google-chrome sobre chromium para evitar problemas con snap
         const possiblePaths = [
             '/usr/bin/google-chrome',
             '/usr/bin/google-chrome-stable',
             '/usr/bin/google-chrome-beta',
             '/usr/bin/chromium',
-            '/usr/bin/chromium-browser',
             '/usr/bin/chrome',
-            '/usr/bin/chrome-browser',
-            // Rutas alternativas en Railway/Docker
             '/usr/local/bin/google-chrome',
             '/usr/local/bin/google-chrome-stable',
-            '/snap/bin/chromium',
             '/app/.apt/usr/bin/google-chrome-stable'
+            // NO incluir chromium-browser porque requiere snap y no funciona en Railway
         ];
 
-        // Verificar si algún archivo existe
+        // Verificar si algún archivo existe y es ejecutable
         for (const path of possiblePaths) {
             try {
                 if (fs.existsSync(path)) {
-                    this.PUPPETEER_EXECUTABLE_PATH = path;
-                    logger.info(`Found Chrome at: ${path}`);
-                    return;
+                    // Verificar si es un archivo ejecutable (no un script que requiere snap)
+                    const stats = fs.statSync(path);
+                    if (stats.isFile()) {
+                        // Verificar que no sea un script que requiere snap
+                        try {
+                            const content = fs.readFileSync(path, 'utf8', { flag: 'r' });
+                            // Si contiene 'snap' o 'chromium-browser', evitarlo
+                            if (content.includes('snap') || content.includes('chromium-browser')) {
+                                logger.warn(`Skipping ${path} - appears to require snap`);
+                                continue;
+                            }
+                        } catch (e) {
+                            // Si no podemos leer el archivo, asumir que es binario y está bien
+                        }
+                        
+                        this.PUPPETEER_EXECUTABLE_PATH = path;
+                        logger.info(`Found Chrome at: ${path}`);
+                        return;
+                    }
                 }
             } catch (error) {
                 // Continuar buscando
@@ -117,13 +131,16 @@ class EnvConfig {
                 // Continuar
             }
             
-            // Intentar con chromium
+            // Intentar con chromium (pero no chromium-browser que requiere snap)
             try {
                 const chromiumPath = execSync('which chromium', { encoding: 'utf8' }).trim();
                 if (chromiumPath && fs.existsSync(chromiumPath)) {
-                    this.PUPPETEER_EXECUTABLE_PATH = chromiumPath;
-                    logger.info(`Found Chromium via 'which' command: ${chromiumPath}`);
-                    return;
+                    // Verificar que no sea chromium-browser (que requiere snap)
+                    if (!chromiumPath.includes('chromium-browser')) {
+                        this.PUPPETEER_EXECUTABLE_PATH = chromiumPath;
+                        logger.info(`Found Chromium via 'which' command: ${chromiumPath}`);
+                        return;
+                    }
                 }
             } catch (error) {
                 // Continuar
@@ -132,10 +149,10 @@ class EnvConfig {
             // Ignorar errores de execSync
         }
         
-        // Si aún no se encuentra, dejar undefined - esto causará que Puppeteer falle
-        // pero el usuario puede configurar PUPPETEER_EXECUTABLE_PATH manualmente
-        logger.warn("Chrome executable not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH manually.");
-        logger.warn("In Railway, Chrome should be installed via apt packages. Verify that 'google-chrome-stable' is installed.");
+        // Si aún no se encuentra, dejar undefined - Puppeteer intentará usar su Chrome embebido
+        // o el usuario puede configurar PUPPETEER_EXECUTABLE_PATH manualmente
+        logger.warn("Chrome executable not found in system paths. Puppeteer will attempt to use its bundled Chrome.");
+        logger.warn("In Railway, if Chrome is not available, Puppeteer should download it automatically.");
         this.PUPPETEER_EXECUTABLE_PATH = undefined;
     }
 
