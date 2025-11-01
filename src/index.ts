@@ -17,6 +17,8 @@ const port = EnvConfig.PORT || 3000;
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+// Configurar archivos estáticos - intentar dist/public primero, luego public como fallback
+app.use("/public", express.static(path.join(__dirname, "../public")));
 app.use("/public", express.static("public"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
