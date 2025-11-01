@@ -38,7 +38,16 @@ async function sendCampaignMessages(botManager: BotManager, campaign: any) {
           ? phoneNumber 
           : `${phoneNumber}@c.us`;
 
-        await botManager.client.sendMessage(formattedNumber, campaign.message);
+        const sentMsg = await botManager.client.sendMessage(formattedNumber, campaign.message);
+        // Los mensajes enviados se guardan automáticamente por handleSentMessage
+        // Pero también podemos guardarlos explícitamente por si acaso
+        if (sentMsg) {
+          try {
+            await botManager.saveSentMessage(phoneNumber, campaign.message, sentMsg.id._serialized);
+          } catch (err) {
+            logger.warn(`Failed to save campaign message for ${phoneNumber}:`, err);
+          }
+        }
         sentCount++;
       } catch (error) {
         logger.error(`Failed to send message to ${phoneNumber}:`, error);

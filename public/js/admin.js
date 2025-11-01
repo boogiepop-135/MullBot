@@ -1221,7 +1221,38 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('chat-contact-name').textContent = contactName;
     document.getElementById('chat-contact-phone').textContent = phoneNumber;
     document.getElementById('chat-modal').classList.remove('hidden');
+    
+    // Habilitar botón de WhatsApp Web para el contacto si WhatsApp está conectado
+    const whatsappWebContactBtn = document.getElementById('whatsapp-web-contact-btn');
+    if (whatsappWebContactBtn) {
+      fetch('/health', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      }).then(res => res.json()).then(status => {
+        if (status.clientReady) {
+          whatsappWebContactBtn.disabled = false;
+          whatsappWebContactBtn.dataset.phone = phoneNumber;
+        } else {
+          whatsappWebContactBtn.disabled = true;
+        }
+      }).catch(() => {
+        if (whatsappWebContactBtn) whatsappWebContactBtn.disabled = true;
+      });
+    }
+    
     loadChatMessages();
+  }
+  
+  // Función para abrir WhatsApp Web con un contacto específico
+  function openWhatsAppWebForContact() {
+    const btn = document.getElementById('whatsapp-web-contact-btn');
+    if (!btn || btn.disabled || !currentChatPhoneNumber) {
+      alert('No hay un contacto seleccionado o WhatsApp no está conectado.');
+      return;
+    }
+    
+    // Abrir WhatsApp Web con el número del contacto
+    const phoneNumber = currentChatPhoneNumber.replace(/[^0-9]/g, ''); // Solo números
+    window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
   }
 
   function closeChatModal() {
@@ -1338,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.closeChatModal = closeChatModal;
   window.sendChatMessage = sendChatMessage;
   window.openWhatsAppWeb = openWhatsAppWeb;
+  window.openWhatsAppWebForContact = openWhatsAppWebForContact;
   window.openMessageModal = openMessageModal; // Mantener compatibilidad
 
   // Users Management Functions

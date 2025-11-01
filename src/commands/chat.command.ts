@@ -45,7 +45,13 @@ Escribe el *número* de la opción que te interesa o pregunta lo que necesites �
         const delay = await getBotDelay();
         await new Promise(resolve => setTimeout(resolve, delay));
         
-        chat.sendMessage(AppConfig.instance.printMessage(opcionesIniciales));
+        const sentMsg = await chat.sendMessage(AppConfig.instance.printMessage(opcionesIniciales));
+        // Guardar mensaje inicial en la base de datos
+        if (sentMsg) {
+            const { BotManager } = await import('../bot.manager');
+            const botManager = BotManager.getInstance();
+            await botManager.saveSentMessage(message.from.split('@')[0], AppConfig.instance.printMessage(opcionesIniciales), sentMsg.id._serialized);
+        }
         return;
     }
 
