@@ -1281,13 +1281,21 @@ document.addEventListener('DOMContentLoaded', function () {
         minute: '2-digit' 
       });
       
+      // Indicador visual si requiere atención
+      const attentionBadge = msg.requiresAttention && !msg.isFromBot 
+        ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 ml-2"><i class="fas fa-exclamation-circle mr-1"></i> Requiere Atención</span>'
+        : '';
+      
       messageElement.innerHTML = `
         <div class="max-w-[70%] px-4 py-2 rounded-lg shadow-sm ${
           msg.isFromBot 
             ? 'bg-green-200 text-gray-800 rounded-br-none' 
             : 'bg-white text-gray-800 rounded-bl-none'
-        }">
-          <p class="text-sm whitespace-pre-wrap">${msg.body || ''}</p>
+        } ${msg.requiresAttention && !msg.isFromBot ? 'border-2 border-red-300' : ''}">
+          <div class="flex items-start justify-between">
+            <p class="text-sm whitespace-pre-wrap flex-1">${msg.body || ''}</p>
+            ${attentionBadge}
+          </div>
           <span class="text-xs text-gray-500 mt-1 block">${time}</span>
         </div>
       `;
