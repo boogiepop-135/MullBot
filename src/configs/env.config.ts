@@ -9,7 +9,7 @@ class EnvConfig {
 
     static GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     static ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-    static PUPPETEER_EXECUTABLE_PATH = process.env.PUPPETEER_EXECUTABLE_PATH;
+    static PUPPETEER_EXECUTABLE_PATH: string | undefined = undefined;
     static OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
     static SPEECHIFY_API_KEY = process.env.SPEECHIFY_API_KEY;
     static ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
@@ -63,9 +63,49 @@ class EnvConfig {
         return undefined;
     }
 
+    // Método para inicializar la ruta de Puppeteer
+    private static initializePuppeteerPath(): void {
+        // Si está configurado manualmente, usarlo
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+            this.PUPPETEER_EXECUTABLE_PATH = process.env.PUPPETEER_EXECUTABLE_PATH;
+            logger.info(`Using PUPPETEER_EXECUTABLE_PATH from environment: ${this.PUPPETEER_EXECUTABLE_PATH}`);
+            return;
+        }
+
+        // En Railway, intentar encontrar Chrome en rutas comunes
+        const possiblePaths = [
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/chromium',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chrome',
+            '/usr/bin/chrome-browser'
+        ];
+
+        // Verificar si algún archivo existe
+        for (const path of possiblePaths) {
+            try {
+                if (fs.existsSync(path)) {
+                    this.PUPPETEER_EXECUTABLE_PATH = path;
+                    logger.info(`Found Chrome at: ${path}`);
+                    return;
+                }
+            } catch (error) {
+                // Continuar buscando
+            }
+        }
+
+        // Si no se encuentra, dejar undefined para que Puppeteer use su Chrome embebido
+        logger.warn("Chrome executable not found in common paths. Puppeteer will use its bundled Chrome.");
+        this.PUPPETEER_EXECUTABLE_PATH = undefined;
+    }
+
     static validate() {
         // Inicializar MONGODB_URI primero para que pueda usar múltiples fuentes
         this.initializeMongoUri();
+        
+        // Inicializar PUPPETEER_EXECUTABLE_PATH con detección automática
+        this.initializePuppeteerPath();
         
         // En producción (Railway), las variables de entorno vienen del entorno, no del archivo .env
         const isProduction = process.env.NODE_ENV === 'production' || process.env.ENV === 'production';
@@ -78,15 +118,8 @@ class EnvConfig {
         if (!this.GEMINI_API_KEY) {
             throw new Error("Environment variable GEMINI_API_KEY is missing. Please provide a valid Gemini API key.");
         }
-        if (!this.PUPPETEER_EXECUTABLE_PATH) {
-            // En Railway, Puppeteer puede usar el Chrome instalado automáticamente
-            // Usar el ejecutable por defecto si no está configurado
-            const defaultChromePath = '/usr/bin/google-chrome-stable';
-            logger.warn(`PUPPETEER_EXECUTABLE_PATH not set, using default: ${defaultChromePath}`);
-            // No lanzar error, usar el valor por defecto para Railway
-            process.env.PUPPETEER_EXECUTABLE_PATH = defaultChromePath;
-            this.PUPPETEER_EXECUTABLE_PATH = defaultChromePath;
-        }
+        // Inicializar PUPPETEER_EXECUTABLE_PATH con detección automática
+        this.initializePuppeteerPath();
         if (!this.ENV) {
             throw new Error("Environment variable ENV is missing. Please provide a valid ENV.");
         }
