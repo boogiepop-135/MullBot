@@ -139,35 +139,35 @@
           <a href="#" id="dashboard-tab"
             class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
             <i class="fas fa-tachometer-alt w-5 text-center"></i>
-            <span>Dashboard</span>
+            <span>Panel</span>
           </a>
         </li>
         <li>
           <a href="#" id="contacts-tab"
             class="nav-item active flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
             <i class="fas fa-users w-5 text-center"></i>
-            <span>Contacts</span>
+            <span>Contactos</span>
           </a>
         </li>
         <li>
           <a href="#" id="campaigns-tab"
             class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
             <i class="fas fa-bullhorn w-5 text-center"></i>
-            <span>Campaigns</span>
+            <span>Campañas</span>
           </a>
         </li>
         <li>
           <a href="#" id="new-campaign-tab"
             class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
             <i class="fas fa-plus-circle w-5 text-center"></i>
-            <span>New Campaign</span>
+            <span>Nueva Campaña</span>
           </a>
         </li>
         <li>
           <a href="#" id="templates-tab"
             class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
             <i class="fas fa-file-alt w-5 text-center"></i>
-            <span>Templates</span>
+            <span>Plantillas</span>
           </a>
         </li>
         <li>
@@ -336,7 +336,7 @@
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-500">Campaigns</p>
+              <p class="text-sm font-medium text-gray-500">Campañas</p>
               <h3 id="total-campaigns" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
               <p class="text-xs text-gray-400 mt-1" id="sent-campaigns-text">0 enviadas</p>
             </div>
@@ -350,7 +350,7 @@
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-500">Messages Sent</p>
+              <p class="text-sm font-medium text-gray-500">Mensajes Enviados</p>
               <h3 id="total-messages" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
               <p class="text-xs text-gray-400 mt-1">Total de mensajes</p>
             </div>
@@ -413,15 +413,15 @@
       <!-- Recent Contacts -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-5 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-800">Recent Contacts</h2>
+          <h2 class="text-lg font-medium text-gray-800">Contactos Recientes</h2>
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Interaction</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Última Interacción</th>
               </tr>
             </thead>
             <tbody id="recent-contacts" class="bg-white divide-y divide-gray-200">
@@ -437,7 +437,7 @@
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-5 border-b border-gray-200">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 class="text-lg font-medium text-gray-800">Contacts</h2>
+            <h2 class="text-lg font-medium text-gray-800">Contactos</h2>
             <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
               <!-- Sale Status Filter -->
               <select id="sale-status-filter" class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
@@ -501,24 +501,24 @@
     <div id="campaigns-section" class="section-content hidden p-6">
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-5 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-800">Campaigns</h2>
+          <h2 class="text-lg font-medium text-gray-800">Campañas</h2>
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name</th>
+                  Nombre</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status</th>
+                  Estado</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Scheduled</th>
+                  Programada</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sent</th>
+                  Enviados</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Failed</th>
+                  Fallidos</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions</th>
+                  Acciones</th>
               </tr>
             </thead>
             <tbody id="campaigns-table-body" class="bg-white divide-y divide-gray-200">
@@ -533,25 +533,25 @@
     <div id="new-campaign-section" class="section-content hidden p-6">
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-5 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-800">Create New Campaign</h2>
+          <h2 class="text-lg font-medium text-gray-800">Crear Nueva Campaña</h2>
         </div>
         <form id="campaign-form" class="p-5">
           <div class="space-y-5">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Campaña</label>
               <input type="text" name="name" required
                 class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-gray-300 transition-colors">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
                 <textarea name="message" id="campaign-message" rows="8" required
                   class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-gray-300 transition-colors"
                   oninput="updateWhatsAppPreview()"></textarea>
 
                 <div class="mt-4">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Available Variables</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Variables Disponibles</label>
                   <div class="flex flex-wrap gap-2">
                     <button type="button" onclick="insertVariable('{name}')"
                       class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">
@@ -630,10 +630,10 @@
     <div id="templates-section" class="section-content hidden p-6">
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-5 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-lg font-medium text-gray-800">Message Templates</h2>
+          <h2 class="text-lg font-medium text-gray-800">Plantillas de Mensajes</h2>
           <button onclick="openNewTemplateModal()"
             class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">
-            <i class="fas fa-plus mr-1"></i> New Template
+            <i class="fas fa-plus mr-1"></i> Nueva Plantilla
           </button>
         </div>
 
@@ -706,10 +706,16 @@
         <div class="p-5 space-y-4">
           <div>
             <p class="text-sm text-gray-700 mb-4">Desvincular la cuenta actual de WhatsApp y vincular una nueva.</p>
-            <button onclick="logoutWhatsApp()"
-              class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
-              <i class="fas fa-unlink mr-2"></i> Desvincular WhatsApp
-            </button>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <button onclick="logoutWhatsApp()"
+                class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+                <i class="fas fa-unlink mr-2"></i> Desvincular WhatsApp
+              </button>
+              <button onclick="openWhatsAppWeb()" id="whatsapp-web-btn" disabled
+                class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-external-link-alt mr-2"></i> Abrir WhatsApp Web
+              </button>
+            </div>
             <p class="text-xs text-gray-400 mt-2">Después de desvincular, se generará un nuevo código QR para escanear con otra cuenta.</p>
           </div>
           <div id="whatsapp-status" class="mt-4 p-4 bg-gray-50 rounded-lg">
@@ -790,7 +796,7 @@
               <i class="fas fa-user text-white"></i>
             </div>
             <div>
-              <h3 id="chat-contact-name" class="text-lg font-medium text-white">Contact</h3>
+              <h3 id="chat-contact-name" class="text-lg font-medium text-white">Contacto</h3>
               <p id="chat-contact-phone" class="text-sm text-green-100"></p>
             </div>
           </div>
@@ -974,15 +980,15 @@
       <div
         class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
         <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="template-modal-title">New Template</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="template-modal-title">Nueva Plantilla</h3>
           <div class="mt-2 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Plantilla</label>
               <input type="text" id="template-name"
                 class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contenido</label>
               <textarea id="template-content" rows="6"
                 class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
             </div>
@@ -991,11 +997,11 @@
         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
           <button type="button" onclick="saveTemplate()"
             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-            Save
+            Guardar
           </button>
           <button type="button" onclick="closeTemplateModal()"
             class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-            Cancel
+            Cancelar
           </button>
         </div>
       </div>
@@ -1023,17 +1029,23 @@
       updateWhatsAppPreview();
     }
 
-    // Message modal functions
+    // Message modal functions - DEPRECATED: usar openChatModal en su lugar
     let currentRecipient = null;
 
-    function openMessageModal(phoneNumber) {
-      currentRecipient = phoneNumber;
-      document.getElementById('message-modal').classList.remove('hidden');
+    function openMessageModal(phoneNumber, contactName) {
+      // Redirigir a openChatModal que es la función correcta
+      if (typeof openChatModal === 'function') {
+        openChatModal(phoneNumber, contactName || phoneNumber);
+      } else {
+        console.error('openChatModal no está disponible');
+      }
     }
 
     function closeMessageModal() {
-      document.getElementById('message-modal').classList.add('hidden');
-      currentRecipient = null;
+      // Redirigir a closeChatModal
+      if (typeof closeChatModal === 'function') {
+        closeChatModal();
+      }
     }
 
     async function sendPrivateMessage() {
@@ -1069,7 +1081,7 @@
 
     function openNewTemplateModal() {
       currentTemplateId = null;
-      document.getElementById('template-modal-title').textContent = 'New Template';
+      document.getElementById('template-modal-title').textContent = 'Nueva Plantilla';
       document.getElementById('template-name').value = '';
       document.getElementById('template-content').value = '';
       document.getElementById('template-modal').classList.remove('hidden');
@@ -1077,7 +1089,7 @@
 
     function openEditTemplateModal(id, name, content) {
       currentTemplateId = id;
-      document.getElementById('template-modal-title').textContent = 'Edit Template';
+      document.getElementById('template-modal-title').textContent = 'Editar Plantilla';
       document.getElementById('template-name').value = name;
       document.getElementById('template-content').value = content;
       document.getElementById('template-modal').classList.remove('hidden');
@@ -1093,7 +1105,7 @@
       const content = document.getElementById('template-content').value;
 
       if (!name || !content) {
-        alert('Please fill all fields');
+        alert('Por favor completa todos los campos');
         return;
       }
 
@@ -1117,15 +1129,15 @@
 
         closeTemplateModal();
         loadTemplates();
-        alert('Template saved successfully!');
+        alert('Plantilla guardada correctamente');
       } catch (error) {
         console.error('Error saving template:', error);
-        alert('Failed to save template');
+        alert('Error al guardar la plantilla');
       }
     }
 
     async function deleteTemplate(id) {
-      if (!confirm('Are you sure you want to delete this template?')) return;
+      if (!confirm('¿Estás seguro de que quieres eliminar esta plantilla?')) return;
 
       try {
         const response = await fetch(`/crm/templates/${id}`, {
@@ -1138,10 +1150,10 @@
         if (!response.ok) throw new Error('Failed to delete template');
 
         loadTemplates();
-        alert('Template deleted successfully!');
+        alert('Plantilla eliminada correctamente');
       } catch (error) {
         console.error('Error deleting template:', error);
-        alert('Failed to delete template');
+        alert('Error al eliminar la plantilla');
       }
     }
 

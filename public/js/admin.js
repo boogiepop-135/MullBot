@@ -138,24 +138,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const stats = await statsRes.json();
 
-      // Update main stats by sale status - nuevos estados
-      document.getElementById('leads-count').textContent = stats.contacts.byStatus.leads || 0;
-      document.getElementById('interested-contacts').textContent = stats.contacts.byStatus.interested || 0;
-      document.getElementById('info-requested-count').textContent = stats.contacts.byStatus.infoRequested || 0;
-      document.getElementById('payment-pending-count').textContent = stats.contacts.byStatus.paymentPending || 0;
-      document.getElementById('appointment-scheduled-count').textContent = stats.contacts.byStatus.appointmentScheduled || 0;
-      document.getElementById('appointment-confirmed-count').textContent = stats.contacts.byStatus.appointmentConfirmed || 0;
-      document.getElementById('completed-count').textContent = stats.contacts.byStatus.completed || 0;
-      document.getElementById('paused-contacts').textContent = stats.contacts.byStatus.paused || 0;
-      document.getElementById('total-contacts').textContent = stats.contacts.total;
-      document.getElementById('recent-contacts-text').textContent = `${stats.contacts.recent} nuevos esta semana`;
+      // Update main stats by sale status - nuevos estados (con verificación null-safe)
+      const updateElement = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.textContent = value || 0;
+        }
+      };
+
+      updateElement('leads-count', stats.contacts.byStatus.leads || 0);
+      updateElement('interested-contacts', stats.contacts.byStatus.interested || 0);
+      updateElement('info-requested-count', stats.contacts.byStatus.infoRequested || 0);
+      updateElement('payment-pending-count', stats.contacts.byStatus.paymentPending || 0);
+      updateElement('appointment-scheduled-count', stats.contacts.byStatus.appointmentScheduled || 0);
+      updateElement('appointment-confirmed-count', stats.contacts.byStatus.appointmentConfirmed || 0);
+      updateElement('completed-count', stats.contacts.byStatus.completed || 0);
+      updateElement('paused-contacts', stats.contacts.byStatus.paused || 0);
+      updateElement('total-contacts', stats.contacts.total);
+      
+      const recentContactsText = document.getElementById('recent-contacts-text');
+      if (recentContactsText) {
+        recentContactsText.textContent = `${stats.contacts.recent} nuevos esta semana`;
+      }
       
       // Update secondary stats
-      document.getElementById('total-campaigns').textContent = stats.campaigns.total;
-      document.getElementById('sent-campaigns-text').textContent = `${stats.campaigns.sent} enviadas`;
-      document.getElementById('total-messages').textContent = stats.campaigns.totalMessagesSent;
-      document.getElementById('total-interactions').textContent = stats.sales.totalInteractions;
-      document.getElementById('unique-users-text').textContent = `${stats.sales.uniqueUsers} usuarios únicos`;
+      updateElement('total-campaigns', stats.campaigns.total);
+      
+      const sentCampaignsText = document.getElementById('sent-campaigns-text');
+      if (sentCampaignsText) {
+        sentCampaignsText.textContent = `${stats.campaigns.sent} enviadas`;
+      }
+      
+      updateElement('total-messages', stats.campaigns.totalMessagesSent);
+      updateElement('total-interactions', stats.sales.totalInteractions);
+      
+      const uniqueUsersText = document.getElementById('unique-users-text');
+      if (uniqueUsersText) {
+        uniqueUsersText.textContent = `${stats.sales.uniqueUsers} usuarios únicos`;
+      }
 
       // Render intent stats
       renderIntentStats(stats.sales.intentCounts);
@@ -233,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${lead.interactionsCount || 0}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <button onclick="openMessageModal('${lead.phoneNumber}')" 
+          <button onclick="openChatModal('${lead.phoneNumber}', '${lead.name || lead.phoneNumber}')" 
             class="message-btn inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
             <i class="fas fa-paper-plane mr-1"></i> Contactar
           </button>
@@ -921,18 +941,78 @@ document.addEventListener('DOMContentLoaded', function () {
       const status = await response.json();
       
       const statusElement = document.getElementById('whatsapp-connected-status');
+      const qrDisplay = document.getElementById('qr-display');
+      const whatsappWebBtn = document.getElementById('whatsapp-web-btn');
+      
+      if (!statusElement) {
+        console.error('whatsapp-connected-status element not found');
+        return;
+      }
+      
       if (status.clientReady) {
         statusElement.innerHTML = `<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i> Conectado: ${status.botPushName || status.botContact || 'WhatsApp conectado'}</span>`;
-        document.getElementById('qr-display').classList.add('hidden');
+        if (qrDisplay) qrDisplay.classList.add('hidden');
+        
+        // Habilitar botón de WhatsApp Web si está conectado y hay información del bot
+        if (whatsappWebBtn && status.botContact) {
+          whatsappWebBtn.disabled = false;
+          // Extraer número del botContact si es un enlace
+          const phoneMatch = status.botContact.match(/wa\.me\/(\d+)/);
+          if (phoneMatch) {
+            whatsappWebBtn.dataset.phone = phoneMatch[1];
+          }
+        }
       } else {
         statusElement.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle mr-1"></i> Desconectado - Escanear QR</span>`;
-        document.getElementById('qr-display').classList.remove('hidden');
-        loadQRCode();
+        if (qrDisplay) {
+          qrDisplay.classList.remove('hidden');
+          loadQRCode();
+        }
+        if (whatsappWebBtn) whatsappWebBtn.disabled = true;
       }
     } catch (error) {
       console.error('Error loading WhatsApp status:', error);
-      document.getElementById('whatsapp-connected-status').innerHTML = '<span class="text-gray-600">Error al cargar estado</span>';
+      const statusElement = document.getElementById('whatsapp-connected-status');
+      if (statusElement) {
+        statusElement.innerHTML = '<span class="text-gray-600">Error al cargar estado</span>';
+      }
     }
+  }
+
+  // Función para abrir WhatsApp Web
+  function openWhatsAppWeb() {
+    const whatsappWebBtn = document.getElementById('whatsapp-web-btn');
+    if (!whatsappWebBtn || whatsappWebBtn.disabled) {
+      alert('WhatsApp no está conectado aún. Por favor conecta primero.');
+      return;
+    }
+
+    // Intentar obtener el número del bot desde el botón o desde el health check
+    fetch('/health', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    }).then(res => res.json()).then(status => {
+      let phoneNumber = null;
+      
+      // Extraer número de botContact si está disponible
+      if (status.botContact) {
+        const phoneMatch = status.botContact.match(/wa\.me\/(\d+)/);
+        if (phoneMatch) {
+          phoneNumber = phoneMatch[1];
+        }
+      }
+      
+      if (phoneNumber) {
+        // Abrir WhatsApp Web con el número del bot
+        window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
+      } else {
+        // Si no hay número, abrir WhatsApp Web normalmente
+        window.open('https://web.whatsapp.com', '_blank');
+      }
+    }).catch(error => {
+      console.error('Error getting WhatsApp status:', error);
+      // Abrir WhatsApp Web normalmente como fallback
+      window.open('https://web.whatsapp.com', '_blank');
+    });
   }
 
   async function loadQRCode() {
@@ -1257,6 +1337,8 @@ document.addEventListener('DOMContentLoaded', function () {
   window.openChatModal = openChatModal;
   window.closeChatModal = closeChatModal;
   window.sendChatMessage = sendChatMessage;
+  window.openWhatsAppWeb = openWhatsAppWeb;
+  window.openMessageModal = openMessageModal; // Mantener compatibilidad
 
   // Users Management Functions
   async function loadUsers() {
