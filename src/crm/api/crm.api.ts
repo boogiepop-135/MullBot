@@ -199,13 +199,83 @@ export default function (botManager: BotManager) {
     });
 
     // Auth API
-    router.post('/auth/register', async (req, res) => {
+    // Endpoint para crear usuario (requiere autenticación admin)
+    router.post('/auth/register', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { username, password } = req.body;
-            const user = await AuthService.register(username, password, 'admin');
-            res.status(201).json(user);
+            const { username, password, role = 'user' } = req.body;
+            
+            // Validación
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required' });
+            }
+            
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+            }
+            
+            if (!['admin', 'user'].includes(role)) {
+                return res.status(400).json({ error: 'Invalid role. Must be admin or user' });
+            }
+            
+            const user = await AuthService.register(username, password, role);
+            
+            // No devolver la contraseña
+            const userResponse = {
+                _id: user._id,
+                username: user.username,
+                role: user.role,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            };
+            
+            logger.info(`User created by ${req.user?.username}: ${username} (${role})`);
+            res.status(201).json({ 
+                message: 'User created successfully',
+                user: userResponse 
+            });
         } catch (error) {
             logger.error('Registration failed:', error);
+            res.status(400).json({ error: error.message });
+        }
+    });
+    
+    // Endpoint público para crear usuario (sin autenticación) - solo para desarrollo/uso personal
+    // IMPORTANTE: En producción, considera proteger este endpoint con una API key o deshabilitarlo
+    router.post('/auth/create-user', async (req, res) => {
+        try {
+            const { username, password, role = 'user' } = req.body;
+            
+            // Validación
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required' });
+            }
+            
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+            }
+            
+            if (!['admin', 'user'].includes(role)) {
+                return res.status(400).json({ error: 'Invalid role. Must be admin or user' });
+            }
+            
+            const user = await AuthService.register(username, password, role);
+            
+            // No devolver la contraseña
+            const userResponse = {
+                _id: user._id,
+                username: user.username,
+                role: user.role,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            };
+            
+            logger.info(`User created via public API: ${username} (${role})`);
+            res.status(201).json({ 
+                message: 'User created successfully',
+                user: userResponse 
+            });
+        } catch (error) {
+            logger.error('User creation failed:', error);
             res.status(400).json({ error: error.message });
         }
     });
