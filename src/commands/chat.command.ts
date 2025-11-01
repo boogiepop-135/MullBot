@@ -7,6 +7,7 @@ import { textToSpeech } from "../utils/text-to-speech.util";
 import { del_file } from "../utils/common.util";
 import { UserI18n } from "../utils/i18n.util";
 import SalesTracker from "../utils/sales-tracker.util";
+import { getQuickResponse } from "../utils/quick-responses.util";
 
 const fs = require('fs');
 const path = require('path');
@@ -82,6 +83,34 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
         }
     }
 
+    // Verificar si hay una respuesta rápida disponible (ahorra tokens)
+    const quickResponse = getQuickResponse(query);
+    if (quickResponse) {
+        logger.info(`Using quick response for query: ${query}`);
+        
+        // Detectar intención y hacer seguimiento
+        const intent = SalesTracker.detectIntent(query);
+        SalesTracker.trackInteraction(message, query, quickResponse.message, quickResponse.intent || intent);
+        
+        // Delay configurable
+        const { getBotDelay } = await import('../utils/bot-config.util');
+        const delay = await getBotDelay();
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Enviar respuesta rápida con media si está disponible
+        const mediaPath = quickResponse.mediaPath || "public/info.png";
+        const media = MessageMedia.fromFilePath(mediaPath);
+        await message.reply(
+            media,
+            null,
+            { 
+                caption: AppConfig.instance.printMessage(quickResponse.message) 
+            },
+        );
+        return;
+    }
+
+    // Si no hay respuesta rápida, usar IA
     try {
         const result = await aiCompletion(query);
         const chatReply = result.text;

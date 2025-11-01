@@ -1,0 +1,268 @@
+/**
+ * Respuestas rápidas predefinidas para opciones del menú
+ * Esto ahorra tokens evitando llamadas a APIs de IA para consultas simples
+ */
+
+export interface QuickResponse {
+    message: string;
+    mediaPath?: string;
+    intent?: 'info' | 'price' | 'payment' | 'product' | 'purchase';
+}
+
+export const getQuickResponse = (query: string): QuickResponse | null => {
+    const normalizedQuery = query.toLowerCase().trim();
+    
+    // Detectar números solos (1-8) o variaciones
+    const numberMatch = normalizedQuery.match(/^(\d+)[\s\.\)\-]*/);
+    if (numberMatch) {
+        const option = parseInt(numberMatch[1]);
+        return getOptionResponse(option);
+    }
+    
+    // Detectar palabras clave sin números
+    if (normalizedQuery === '1' || 
+        normalizedQuery.includes('proceso') && normalizedQuery.includes('compostaje')) {
+        return getOptionResponse(1);
+    }
+    
+    if (normalizedQuery === '2' || 
+        (normalizedQuery.includes('precio') || normalizedQuery.includes('costo') || normalizedQuery.includes('cuanto'))) {
+        return getOptionResponse(2);
+    }
+    
+    if (normalizedQuery === '3' || 
+        (normalizedQuery.includes('pago') && (normalizedQuery.includes('metodo') || normalizedQuery.includes('forma')))) {
+        return getOptionResponse(3);
+    }
+    
+    if (normalizedQuery === '4' || 
+        (normalizedQuery.includes('incluye') || normalizedQuery.includes('kit'))) {
+        return getOptionResponse(4);
+    }
+    
+    if (normalizedQuery === '5' || 
+        (normalizedQuery.includes('dimension') || normalizedQuery.includes('tamaño') || normalizedQuery.includes('espacio'))) {
+        return getOptionResponse(5);
+    }
+    
+    if (normalizedQuery === '6' || 
+        (normalizedQuery.includes('envio') || normalizedQuery.includes('entrega') || normalizedQuery.includes('shipping'))) {
+        return getOptionResponse(6);
+    }
+    
+    if (normalizedQuery === '7' || 
+        (normalizedQuery.includes('pregunta') || normalizedQuery.includes('frecuente') || normalizedQuery.includes('faq'))) {
+        return getOptionResponse(7);
+    }
+    
+    if (normalizedQuery === '8' || 
+        (normalizedQuery.includes('agente') || normalizedQuery.includes('humano') || normalizedQuery.includes('persona'))) {
+        return getOptionResponse(8);
+    }
+    
+    return null; // No hay respuesta rápida, usar IA
+};
+
+const getOptionResponse = (option: number): QuickResponse => {
+    switch (option) {
+        case 1:
+            return {
+                message: `🌱 *PROCESO DE COMPOSTAJE FERMENTATIVO MÜLLBLUE*
+
+*PASOS SIMPLES:*
+1️⃣ *Depositar* residuos orgánicos
+2️⃣ *Espolvorear* biocatalizador (50g por kg)
+3️⃣ *Compactar* para eliminar aire
+4️⃣ *Tapar* herméticamente
+5️⃣ *Repetir* hasta llenar
+
+*TIEMPO:*
+⏰ Llenado: 4-6 semanas
+⏰ Fermentación: 2 semanas adicionales
+⏰ Resultado: Tierra fértil lista
+
+*BENEFICIOS:*
+✅ Reduce residuos 2.5x
+✅ Sin olores ni plagas
+✅ Genera biofertilizante líquido
+
+¿Quieres más detalles sobre algún paso específico? 🌱`,
+                mediaPath: 'public/info.png',
+                intent: 'info'
+            };
+            
+        case 2:
+            return {
+                message: `💰 *PRECIO Y PROMOCIÓN MÜLLBLUE*
+
+*PRECIO ESPECIAL:*
+💵 *$1,490 MXN* (antes $1,890)
+🎁 *Ahorro: $400 MXN*
+
+*QUÉ INCLUYE:*
+📦 Compostero 15L
+🌿 Biocatalizador 1kg
+🚚 Envío gratis
+📞 Acompañamiento personalizado
+
+*PROMOCIÓN VIGENTE:*
+⏰ Precio promocional limitado
+✨ Solo quedan pocas unidades disponibles
+
+¿Te interesa aprovechar esta promoción? Puedo ayudarte con el proceso de compra 🌱`,
+                mediaPath: 'public/precio.png',
+                intent: 'price'
+            };
+            
+        case 3:
+            return {
+                message: `💳 *MÉTODOS DE PAGO MÜLLBLUE*
+
+*OPCIÓN 1 - TRANSFERENCIA:*
+🏦 Banco Azteca
+📝 Cuenta: 127180013756372173
+👤 Titular: Aldair Eduardo Rivera García
+💵 Monto: $1,490 MXN
+
+*OPCIÓN 2 - TARJETAS:*
+💳 Tarjetas de crédito/débito
+🔄 Hasta 3 meses sin intereses (3MSI)
+🔗 Link de pago: https://mpago.li/1W2JhS5
+
+*VENTAJAS:*
+✅ Pago seguro y rápido
+✅ Confirmación inmediata
+✅ Envío en 2-3 días hábiles
+
+¿Qué método de pago prefieres usar? 🌱`,
+                mediaPath: 'public/pago.png',
+                intent: 'payment'
+            };
+            
+        case 4:
+            return {
+                message: `📦 *CONTENIDO DEL KIT MÜLLBLUE*
+
+*INCLUYE:*
+✅ Compostero fermentador 15L
+✅ Biocatalizador 1kg (equivalente a 2-3 meses)
+✅ Envío gratis a toda la República
+✅ Guía de uso digital
+✅ Acompañamiento personalizado por WhatsApp
+✅ Soporte post-venta
+
+*ESPECIFICACIONES:*
+📏 Dimensiones: 30x30x40 cm
+💧 Capacidad: 15 litros máximo
+🌿 Material: Plástico de alta calidad
+🔒 Tapa hermética anti-olores
+
+¿Tienes alguna pregunta sobre el kit o el proceso de instalación? 🌱`,
+                mediaPath: 'public/info.png',
+                intent: 'product'
+            };
+            
+        case 5:
+            return {
+                message: `📏 *DIMENSIONES Y ESPACIO MÜLLBLUE*
+
+*ESPECIFICACIONES:*
+📐 Dimensiones: 30 x 30 x 40 cm (alto)
+💧 Capacidad: 15 litros máximo
+📦 Peso: ~2.5 kg (vacío)
+✨ Material: Plástico reciclable
+
+*ESPACIO NECESARIO:*
+🏠 Ideal para patios, jardines o terrazas
+🏢 También funciona en interiores (cocina/balcón)
+📍 Área mínima: 30x30 cm
+📌 Superficie: Debe estar nivelada
+
+*VENTAJAS:*
+✅ Compacto y práctico
+✅ No requiere mucho espacio
+✅ Fácil de mover si es necesario
+
+¿Tienes un espacio adecuado para ubicarlo? 🌱`,
+                mediaPath: 'public/info.png',
+                intent: 'info'
+            };
+            
+        case 6:
+            return {
+                message: `🚚 *ENVÍO Y ENTREGA MÜLLBLUE*
+
+*ENVÍO GRATIS:*
+🚚 A toda la República Mexicana
+📦 Empaque seguro y protegido
+⏰ Entrega en 2-3 días hábiles
+📍 Llega a tu domicilio
+
+*PROCESO:*
+1️⃣ Realizas el pago
+2️⃣ Confirmamos tu compra
+3️⃣ Preparamos tu kit
+4️⃣ Te enviamos guía de rastreo
+5️⃣ Recibes en tu domicilio
+
+*SEGUIMIENTO:*
+📱 Te notificamos cada paso
+📧 Recibes número de rastreo
+✅ Confirmación de entrega
+
+¿Tienes alguna pregunta sobre el proceso de envío? 🌱`,
+                mediaPath: 'public/info.png',
+                intent: 'info'
+            };
+            
+        case 7:
+            return {
+                message: `❓ *PREGUNTAS FRECUENTES MÜLLBLUE*
+
+*P: ¿Qué puedo agregar?*
+R: Cáscaras, restos de comida, carnes, lácteos (poca cantidad), pan, arroz, café molido.
+
+*P: ¿Qué NO puedo agregar?*
+R: Estampas de frutas, huesos grandes, semillas grandes, aceite, líquidos excesivos, plásticos, metales.
+
+*P: ¿Cuánto biocatalizador usar?*
+R: 50g por cada kg de residuos (equivale a 2 palas por cubeta de 5 litros).
+
+*P: ¿Genera mal olor?*
+R: No, el proceso anaeróbico y el biocatalizador eliminan olores completamente.
+
+*P: ¿Atrae plagas?*
+R: No, al estar herméticamente cerrado no atrae insectos ni animales.
+
+¿Tienes alguna otra pregunta específica? 🌱`,
+                mediaPath: 'public/info.png',
+                intent: 'info'
+            };
+            
+        case 8:
+            return {
+                message: `👤 *HABLAR CON UN AGENTE*
+
+Para hablar directamente con un agente de Müllblue:
+
+📞 Puedes escribir "agente" o "humano" en cualquier momento
+⏰ Horario de atención: Lunes a Viernes 9am - 7pm
+📱 También puedes llamarnos directamente
+
+*MIENTRAS TANTO:*
+Puedo ayudarte con:
+✅ Información del producto
+✅ Proceso de compra
+✅ Métodos de pago
+✅ Preguntas técnicas
+
+¿En qué más puedo ayudarte mientras esperas al agente? 🌱`,
+                mediaPath: 'public/info.png',
+                intent: 'info'
+            };
+            
+        default:
+            return null;
+    }
+};
+
