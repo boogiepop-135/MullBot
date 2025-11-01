@@ -36,7 +36,8 @@
         "whatsapp-web.js": "1.33.2",
         "winston": "^3.13.0",
         "wwebjs-mongo": "^1.1.0",
-        "yt-dlp-wrap": "^2.3.12"
+        "yt-dlp-wrap": "^2.3.12",
+        "copyfiles": "^2.4.1"
     },
     "scripts": {
         "start": "node dist/index.js",
@@ -79,7 +80,6 @@
     "homepage": "https://github.com/mullblue/bot#readme",
     "devDependencies": {
         "@types/cron": "^2.0.1",
-        "copyfiles": "^2.4.1",
         "cross-env": "^7.0.3",
         "rimraf": "^6.0.1"
     }
