@@ -90,11 +90,32 @@ export async function handlePaymentReceipt(message: Message): Promise<void> {
             updateData.saleStatusNotes = `${contact.saleStatusNotes || ''}\nComprobante adicional recibido el ${new Date().toLocaleString('es-ES')}`;
         }
 
-        await ContactModel.findOneAndUpdate(
+        const updatedContact = await ContactModel.findOneAndUpdate(
             { phoneNumber: user.number },
             { $set: updateData },
             { new: true }
         );
+
+        // Crear notificación para el admin
+        try {
+            const { NotificationModel } = await import('../crm/models/notification.model');
+            if (updatedContact) {
+                await NotificationModel.create({
+                    type: 'payment_receipt',
+                    contactId: updatedContact._id.toString(),
+                    phoneNumber: updatedContact.phoneNumber,
+                    contactName: updatedContact.name || updatedContact.pushName || 'Unknown',
+                    message: message.body || 'Comprobante de pago recibido',
+                    metadata: {
+                        receivedAt: new Date()
+                    },
+                    read: false
+                });
+            }
+        } catch (notifError) {
+            logger.error(`Error creating payment notification: ${notifError}`);
+            // No fallar si la notificación no se crea
+        }
 
         logger.info(`Payment receipt detected for ${user.number}, status updated to: ${newStatus || contact.saleStatus}`);
     } catch (error) {

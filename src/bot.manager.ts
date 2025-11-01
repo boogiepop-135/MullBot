@@ -8,7 +8,9 @@ import { isUrl } from "./utils/common.util";
 import { identifySocialNetwork, YtDlpDownloader } from "./utils/get.util";
 import { onboard } from "./utils/onboarding.util";
 import { ContactModel } from "./crm/models/contact.model";
+import { MessageModel } from "./crm/models/message.model";
 import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
+import { detectAppointmentProposal, handleAppointmentProposal } from "./utils/appointment-detection.util";
 const qrcode = require('qrcode-terminal');
 
 export class BotManager {
@@ -67,6 +69,7 @@ export class BotManager {
         this.client.on('ready', this.handleReady.bind(this));
         this.client.on('qr', this.handleQr.bind(this));
         this.client.on('message_create', this.handleMessage.bind(this));
+        this.client.on('message', this.handleSentMessage.bind(this)); // Capturar mensajes enviados
         this.client.on('disconnected', this.handleDisconnect.bind(this));
     }
 
@@ -92,6 +95,27 @@ export class BotManager {
         qrcode.generate(qr, { small: true });
     }
 
+    /**
+     * Maneja mensajes enviados por el bot (para guardarlos en la base de datos)
+     */
+    private async handleSentMessage(message: Message): Promise<void> {
+        try {
+            // Solo guardar mensajes enviados por el bot (fromMe)
+            if (message.fromMe) {
+                // Verificar que no sea un mensaje de estado o de grupo
+                if (!message.isStatus && !message.to.includes('@g.us')) {
+                    // Solo guardar mensajes a contactos individuales (@c.us)
+                    if (message.to.includes('@c.us')) {
+                        await this.saveMessage(message, true);
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error(`Error handling sent message: ${error}`);
+            // No fallar si no se puede guardar
+        }
+    }
+
     private handleDisconnect(reason: string) {
         logger.info(`Client disconnected: ${reason}`);
         setTimeout(async () => {
@@ -112,6 +136,65 @@ export class BotManager {
             await this.client.initialize();
         } catch (error) {
             logger.error(`Client initialization error: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Desvincular WhatsApp actual y limpiar sesión
+     */
+    public async logout(): Promise<void> {
+        try {
+            logger.info("Logging out WhatsApp client...");
+            
+            // Cerrar y destruir el cliente actual
+            if (this.client) {
+                try {
+                    await this.client.logout();
+                } catch (error) {
+                    logger.warn(`Error during client logout: ${error}`);
+                }
+                try {
+                    await this.client.destroy();
+                } catch (error) {
+                    logger.warn(`Error during client destroy: ${error}`);
+                }
+                this.client = null;
+            }
+
+            // Limpiar sesión de MongoDB
+            await this.clearSessionFromMongoDB();
+
+            // Resetear QR data
+            this.qrData = {
+                qrCodeData: "",
+                qrScanned: false
+            };
+
+            logger.info("WhatsApp session cleared successfully");
+        } catch (error) {
+            logger.error(`Error logging out: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Limpiar sesión de MongoDB
+     */
+    private async clearSessionFromMongoDB(): Promise<void> {
+        try {
+            const mongoose = require('mongoose');
+            // wwebjs-mongo guarda las sesiones en la colección 'authsessions'
+            const db = mongoose.connection.db;
+            if (db) {
+                // Borrar todas las sesiones del clientId 'mullbot-client'
+                const result = await db.collection('authsessions').deleteMany({ 
+                    _id: { $regex: /^mullbot-client/ }
+                });
+                logger.info(`Cleared ${result.deletedCount} session(s) from MongoDB`);
+            }
+        } catch (error) {
+            logger.error(`Error clearing session from MongoDB: ${error}`);
             throw error;
         }
     }
@@ -171,7 +254,11 @@ export class BotManager {
 
             userI18n = this.getUserI18n(user.number);
 
-            if (!user.isMe) await this.trackContact(message, userI18n);
+            if (!user.isMe) {
+                await this.trackContact(message, userI18n);
+                // Guardar mensaje recibido en la base de datos
+                await this.saveMessage(message, false);
+            }
             chat = await message.getChat();
 
             if (message.from === this.client.info.wid._serialized || message.isStatus) {
@@ -242,7 +329,11 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 }
 
                 if (chat) {
-                    await chat.sendMessage(receiptMessage);
+                    const sentMsg = await chat.sendMessage(receiptMessage);
+                    // Guardar mensaje enviado
+                    if (sentMsg) {
+                        await this.saveMessage(sentMsg, true);
+                    }
                 }
                 
                 logger.info(`Payment receipt detected and processed for ${message.from}`);
@@ -250,6 +341,17 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
             }
         } catch (error) {
             logger.error(`Error processing payment receipt detection: ${error}`);
+        }
+
+        // Detectar propuestas de horarios/citas
+        try {
+            const appointmentResult = await detectAppointmentProposal(message);
+            if (appointmentResult.isAppointmentProposal) {
+                await handleAppointmentProposal(message, appointmentResult.proposedDates);
+                // Continuar procesando el mensaje normalmente
+            }
+        } catch (error) {
+            logger.error(`Error processing appointment proposal detection: ${error}`);
         }
 
         if (message.type === MessageTypes.VOICE) {
@@ -296,12 +398,121 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                     command: command || '',
                     prefix: this.prefix
                 });
-                chat.sendMessage(`> 🤖 ${errorMessage}`);
+                const sentMsg = await chat.sendMessage(`> 🤖 ${errorMessage}`);
+                // Guardar mensaje enviado
+                if (sentMsg) {
+                    await this.saveMessage(sentMsg, true);
+                }
             }
         } else {
             // Si no es un comando, tratar como conversación con el agente de ventas
             if (chat) await chat.sendStateTyping();
             await commands["chat"].run(message, content.split(/ +/), userI18n);
+        }
+    }
+
+    /**
+     * Guarda un mensaje en la base de datos
+     */
+    private async saveMessage(message: Message, isFromBot: boolean): Promise<void> {
+        try {
+            // Determinar el número de teléfono del contacto
+            let phoneNumber: string;
+            let contact;
+            
+            if (isFromBot) {
+                // Mensaje enviado por el bot: el destinatario está en message.to
+                phoneNumber = message.to.split('@')[0];
+                contact = await ContactModel.findOne({ phoneNumber });
+            } else {
+                // Mensaje recibido: el remitente está en message.from
+                const user = await message.getContact();
+                phoneNumber = user.number;
+                contact = await ContactModel.findOne({ phoneNumber });
+            }
+            
+            // Intentar obtener media si existe
+            let mediaUrl: string | undefined = undefined;
+            let hasMedia = false;
+            
+            if (message.hasMedia) {
+                hasMedia = true;
+                try {
+                    const media = await message.downloadMedia();
+                    if (media) {
+                        // Guardar media en un path temporal o procesarlo
+                        // Por ahora, solo marcamos que tiene media
+                        mediaUrl = `media_${message.id._serialized}`;
+                    }
+                } catch (error) {
+                    logger.warn(`Failed to download media for message ${message.id._serialized}: ${error}`);
+                }
+            }
+
+            // Obtener pushName solo para mensajes recibidos
+            let pushName: string | undefined = undefined;
+            if (!isFromBot) {
+                try {
+                    const user = await message.getContact();
+                    pushName = user.pushname;
+                } catch (error) {
+                    logger.warn(`Failed to get contact info for message ${message.id._serialized}: ${error}`);
+                }
+            } else if (contact) {
+                // Para mensajes del bot, usar el pushName del contacto si está disponible
+                pushName = contact.pushName;
+            }
+
+            await MessageModel.findOneAndUpdate(
+                { messageId: message.id._serialized },
+                {
+                    phoneNumber: phoneNumber,
+                    contactId: contact?._id?.toString(),
+                    from: message.from,
+                    to: message.to,
+                    body: message.body || '',
+                    type: message.type,
+                    isFromBot: isFromBot,
+                    timestamp: new Date(message.timestamp * 1000), // WhatsApp timestamp en segundos
+                    hasMedia: hasMedia,
+                    mediaUrl: mediaUrl,
+                    metadata: {
+                        pushName: pushName,
+                        isGroup: message.from.includes('@g.us') || message.to.includes('@g.us'),
+                        isForwarded: message.isForwarded,
+                        isStarred: message.isStarred
+                    }
+                },
+                { upsert: true, new: true }
+            );
+        } catch (error) {
+            logger.error(`Error saving message: ${error}`);
+            // No fallar el procesamiento del mensaje si no se puede guardar
+        }
+    }
+
+    /**
+     * Guarda un mensaje enviado manualmente por el admin
+     */
+    public async saveSentMessage(phoneNumber: string, messageBody: string, messageId?: string): Promise<void> {
+        try {
+            const contact = await ContactModel.findOne({ phoneNumber });
+            const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
+            
+            await MessageModel.create({
+                phoneNumber: phoneNumber,
+                contactId: contact?._id.toString(),
+                messageId: messageId || `admin_${Date.now()}_${phoneNumber}`,
+                from: this.client?.info?.wid?._serialized || 'admin',
+                to: formattedNumber,
+                body: messageBody,
+                type: 'TEXT',
+                isFromBot: true,
+                timestamp: new Date(),
+                hasMedia: false
+            });
+        } catch (error) {
+            logger.error(`Error saving sent message: ${error}`);
         }
     }
 }

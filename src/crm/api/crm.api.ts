@@ -8,6 +8,9 @@ import { AuthService } from '../utils/auth.util';
 import { TemplateModel } from '../models/template.model';
 import { BotConfigModel } from '../models/bot-config.model';
 import { sendPaymentConfirmationMessage, sendAppointmentConfirmationMessage } from '../../utils/payment-detection.util';
+import { NotificationModel } from '../models/notification.model';
+import { MessageModel } from '../models/message.model';
+import { UserModel } from '../models/user.model';
 
 export const router = express.Router();
 
@@ -372,6 +375,82 @@ export default function (botManager: BotManager) {
             res.status(400).json({ error: error.message });
         }
     });
+
+    // Cambiar contraseña propia
+    router.post('/auth/change-password', authenticate, async (req, res) => {
+        try {
+            const { currentPassword, newPassword } = req.body;
+            
+            // Validación
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({ error: 'Current password and new password are required' });
+            }
+            
+            if (newPassword.length < 6) {
+                return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+            }
+            
+            await AuthService.changePassword(req.user.userId, currentPassword, newPassword);
+            
+            logger.info(`Password changed by user: ${req.user.username}`);
+            res.json({ message: 'Password changed successfully' });
+        } catch (error) {
+            logger.error('Password change failed:', error);
+            res.status(400).json({ error: error.message });
+        }
+    });
+
+    // Cambiar contraseña de otro usuario (admin only)
+    router.post('/auth/change-password/:userId', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const { newPassword } = req.body;
+            
+            // Validación
+            if (!newPassword) {
+                return res.status(400).json({ error: 'New password is required' });
+            }
+            
+            if (newPassword.length < 6) {
+                return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+            }
+            
+            await AuthService.changePasswordByAdmin(userId, newPassword);
+            
+            logger.info(`Password changed by admin ${req.user.username} for user: ${userId}`);
+            res.json({ message: 'Password changed successfully' });
+        } catch (error) {
+            logger.error('Password change failed:', error);
+            res.status(400).json({ error: error.message });
+        }
+    });
+
+    // Listar usuarios (admin only)
+    router.get('/auth/users', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const users = await UserModel.find().select('-password').sort({ createdAt: -1 });
+            
+            res.json({ users });
+        } catch (error) {
+            logger.error('Failed to fetch users:', error);
+            res.status(500).json({ error: 'Failed to fetch users' });
+        }
+    });
+
+    // Obtener usuario actual
+    router.get('/auth/me', authenticate, async (req, res) => {
+        try {
+            const user = await UserModel.findById(req.user.userId).select('-password');
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            
+            res.json({ user });
+        } catch (error) {
+            logger.error('Failed to fetch user:', error);
+            res.status(500).json({ error: 'Failed to fetch user' });
+        }
+    });
     
     // Endpoint público para crear usuario (sin autenticación) - solo para desarrollo/uso personal
     // IMPORTANTE: En producción, considera proteger este endpoint con una API key o deshabilitarlo
@@ -556,7 +635,13 @@ export default function (botManager: BotManager) {
                 ? phoneNumber
                 : `${phoneNumber}@c.us`;
 
-            await botManager.client.sendMessage(formattedNumber, message);
+            const sentMessage = await botManager.client.sendMessage(formattedNumber, message);
+            
+            // Guardar mensaje enviado en la base de datos
+            if (sentMessage) {
+                await botManager.saveSentMessage(phoneNumber, message, sentMessage.id._serialized);
+            }
+
             res.json({ success: true });
         } catch (error) {
             logger.error('Failed to send message:', error);
@@ -564,10 +649,159 @@ export default function (botManager: BotManager) {
         }
     });
 
-    return router;
-}
+    // Obtener mensajes de un contacto
+    router.get('/contacts/:phoneNumber/messages', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { phoneNumber } = req.params;
+            const { limit = 50, before } = req.query; // Paginación opcional
 
-async function sendCampaignMessages(botManager: BotManager, campaign: any) {
+            const query: any = { phoneNumber };
+            
+            // Si hay un timestamp "before", obtener mensajes anteriores a esa fecha
+            if (before) {
+                query.timestamp = { $lt: new Date(before) };
+            }
+
+            const messages = await MessageModel.find(query)
+                .sort({ timestamp: -1 })
+                .limit(Number(limit));
+
+            // Ordenar por timestamp ascendente para mostrar en orden cronológico
+            messages.reverse();
+
+            res.json({ messages });
+        } catch (error) {
+            logger.error('Failed to fetch messages:', error);
+            res.status(500).json({ error: 'Failed to fetch messages' });
+        }
+    });
+
+            // WhatsApp logout endpoint
+            router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
+                try {
+                    await botManager.logout();
+                    res.json({ message: 'WhatsApp session disconnected successfully. You can now scan a new QR code.' });
+                } catch (error) {
+                    logger.error('Failed to logout WhatsApp:', error);
+                    res.status(500).json({ error: 'Failed to logout WhatsApp' });
+                }
+            });
+
+            // Notifications API
+            router.get('/notifications', authenticate, authorizeAdmin, async (req, res) => {
+                try {
+                    const { unreadOnly = 'true', limit = 50 } = req.query;
+                    
+                    const query: any = {};
+                    if (unreadOnly === 'true') {
+                        query.read = false;
+                    }
+
+                    const notifications = await NotificationModel.find(query)
+                        .sort({ createdAt: -1 })
+                        .limit(Number(limit));
+
+                    const unreadCount = await NotificationModel.countDocuments({ read: false });
+
+                    res.json({
+                        notifications,
+                        unreadCount
+                    });
+                } catch (error) {
+                    logger.error('Failed to fetch notifications:', error);
+                    res.status(500).json({ error: 'Failed to fetch notifications' });
+                }
+            });
+
+            router.put('/notifications/:id/read', authenticate, authorizeAdmin, async (req, res) => {
+                try {
+                    const { id } = req.params;
+                    
+                    const notification = await NotificationModel.findByIdAndUpdate(
+                        id,
+                        { $set: { read: true } },
+                        { new: true }
+                    );
+
+                    if (!notification) {
+                        return res.status(404).json({ error: 'Notification not found' });
+                    }
+
+                    res.json(notification);
+                } catch (error) {
+                    logger.error('Failed to mark notification as read:', error);
+                    res.status(500).json({ error: 'Failed to mark notification as read' });
+                }
+            });
+
+            router.put('/notifications/read-all', authenticate, authorizeAdmin, async (req, res) => {
+                try {
+                    await NotificationModel.updateMany(
+                        { read: false },
+                        { $set: { read: true } }
+                    );
+
+                    res.json({ message: 'All notifications marked as read' });
+                } catch (error) {
+                    logger.error('Failed to mark all notifications as read:', error);
+                    res.status(500).json({ error: 'Failed to mark all notifications as read' });
+                }
+            });
+
+            // Server-Sent Events para notificaciones en tiempo real
+            router.get('/notifications/stream', authenticate, authorizeAdmin, (req, res) => {
+                // Configurar SSE
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.setHeader('X-Accel-Buffering', 'no'); // Deshabilitar buffering en nginx
+
+                // Enviar ping inicial
+                res.write(': ping\n\n');
+
+                // Polling cada 2 segundos para notificaciones nuevas
+                const interval = setInterval(async () => {
+                    try {
+                        // Verificar si la conexión sigue activa
+                        if (req.closed || res.destroyed) {
+                            clearInterval(interval);
+                            return;
+                        }
+
+                        const unreadCount = await NotificationModel.countDocuments({ read: false });
+                        const latestNotifications = await NotificationModel.find({ read: false })
+                            .sort({ createdAt: -1 })
+                            .limit(5);
+
+                        res.write(`data: ${JSON.stringify({ unreadCount, notifications: latestNotifications })}\n\n`);
+                    } catch (error) {
+                        logger.error('Error in notification stream:', error);
+                        if (!res.destroyed) {
+                            res.write(`event: error\ndata: ${JSON.stringify({ error: 'Failed to fetch notifications' })}\n\n`);
+                        }
+                    }
+                }, 2000);
+
+                // Limpiar cuando el cliente se desconecta
+                req.on('close', () => {
+                    clearInterval(interval);
+                    if (!res.destroyed) {
+                        res.end();
+                    }
+                });
+
+                req.on('error', () => {
+                    clearInterval(interval);
+                    if (!res.destroyed) {
+                        res.end();
+                    }
+                });
+            });
+
+            return router;
+        }
+
+        async function sendCampaignMessages(botManager: BotManager, campaign: any) {
     try {
         // Asegurar que el cliente esté inicializado
         if (!botManager.client) {

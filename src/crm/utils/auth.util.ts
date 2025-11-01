@@ -46,4 +46,56 @@ export class AuthService {
       return null;
     }
   }
+
+  /**
+   * Cambiar contraseña de un usuario
+   */
+  static async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verificar contraseña actual
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Validar nueva contraseña
+    if (newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long');
+    }
+
+    // Hashear nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    logger.info(`Password changed for user: ${user.username}`);
+    return user;
+  }
+
+  /**
+   * Cambiar contraseña de un usuario por admin (sin verificar contraseña actual)
+   */
+  static async changePasswordByAdmin(userId: string, newPassword: string) {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Validar nueva contraseña
+    if (newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long');
+    }
+
+    // Hashear nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    logger.info(`Password changed by admin for user: ${user.username}`);
+    return user;
+  }
 }

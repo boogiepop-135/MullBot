@@ -53,6 +53,18 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('settings-section').classList.remove('hidden');
         currentPage = 'settings';
         loadBotConfig();
+        loadWhatsAppStatus();
+      } else if (this.id === 'notifications-tab') {
+        document.getElementById('notifications-section').classList.remove('hidden');
+        currentPage = 'notifications';
+        loadNotifications();
+      } else if (this.id === 'users-tab') {
+        hideAllSections();
+        document.getElementById('users-section').classList.remove('hidden');
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        this.classList.add('active');
+        currentPage = 'users';
+        loadUsers();
       }
     });
   });
@@ -355,10 +367,10 @@ document.addEventListener('DOMContentLoaded', function () {
               class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
               <i class="fas fa-calendar-check mr-1"></i> Confirmar Cita
             </button>` : ''}
-            <button onclick="openMessageModal('${contact.phoneNumber}')" 
-              class="message-btn inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-              <i class="fas fa-paper-plane mr-1"></i> Mensaje
-            </button>
+                                <button onclick="openMessageModal('${contact.phoneNumber}', '${contact.name || contact.pushName || contact.phoneNumber}')" 
+                                class="message-btn inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                                <i class="fas fa-comments mr-1"></i> Chat
+                                </button>
           </div>
         </td>
       `;
@@ -871,6 +883,364 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // WhatsApp Management
+  async function logoutWhatsApp() {
+    if (!confirm('¿Estás seguro de que deseas desvincular el WhatsApp actual? Se generará un nuevo código QR.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/crm/whatsapp/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to logout WhatsApp');
+
+      alert('WhatsApp desvinculado correctamente. Reiniciando cliente...');
+      
+      // Recargar la página después de un momento para que se reinicie el cliente
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Error logging out WhatsApp:', error);
+      alert('Error al desvincular WhatsApp');
+    }
+  }
+
+  async function loadWhatsAppStatus() {
+    try {
+      const response = await fetch('/health', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to load status');
+      const status = await response.json();
+      
+      const statusElement = document.getElementById('whatsapp-connected-status');
+      if (status.clientReady) {
+        statusElement.innerHTML = `<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i> Conectado: ${status.botPushName || status.botContact || 'WhatsApp conectado'}</span>`;
+        document.getElementById('qr-display').classList.add('hidden');
+      } else {
+        statusElement.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle mr-1"></i> Desconectado - Escanear QR</span>`;
+        document.getElementById('qr-display').classList.remove('hidden');
+        loadQRCode();
+      }
+    } catch (error) {
+      console.error('Error loading WhatsApp status:', error);
+      document.getElementById('whatsapp-connected-status').innerHTML = '<span class="text-gray-600">Error al cargar estado</span>';
+    }
+  }
+
+  async function loadQRCode() {
+    try {
+      const response = await fetch('/qr', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to load QR');
+      const data = await response.json();
+      
+      if (data.qr) {
+        const container = document.getElementById('qr-code-container');
+        container.innerHTML = `<img src="data:image/png;base64,${data.qr}" alt="QR Code" class="mx-auto" />`;
+      }
+    } catch (error) {
+      console.error('Error loading QR code:', error);
+    }
+  }
+
+  // Notifications Management
+  let notificationStream = null;
+
+  async function loadNotifications() {
+    try {
+      const response = await fetch('/crm/notifications?unreadOnly=false&limit=50', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to load notifications');
+      const data = await response.json();
+      
+      updateNotificationBadge(data.unreadCount);
+      renderNotifications(data.notifications);
+      
+      // Iniciar stream de notificaciones si no está activo
+      if (!notificationStream) {
+        startNotificationStream();
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  }
+
+  function startNotificationStream() {
+    const eventSource = new EventSource('/crm/notifications/stream?token=' + encodeURIComponent(localStorage.getItem('token')));
+    
+    eventSource.onmessage = function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        updateNotificationBadge(data.unreadCount);
+        
+        // Si estamos en la sección de notificaciones, actualizar la lista
+        if (currentPage === 'notifications') {
+          renderNotifications(data.notifications);
+        }
+      } catch (error) {
+        console.error('Error parsing notification stream data:', error);
+      }
+    };
+
+    eventSource.onerror = function(error) {
+      console.error('Notification stream error:', error);
+      eventSource.close();
+      notificationStream = null;
+      // Reintentar después de 5 segundos
+      setTimeout(() => {
+        if (currentPage === 'notifications' || currentPage === 'dashboard') {
+          startNotificationStream();
+        }
+      }, 5000);
+    };
+
+    notificationStream = eventSource;
+  }
+
+  function updateNotificationBadge(count) {
+    const badge = document.getElementById('notification-badge');
+    const unreadBadge = document.getElementById('unread-count-badge');
+    
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+    
+    if (unreadBadge) {
+      unreadBadge.textContent = count || 0;
+    }
+  }
+
+  function renderNotifications(notifications) {
+    const container = document.getElementById('notifications-list');
+    if (!container) return;
+
+    if (notifications.length === 0) {
+      container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay notificaciones</p>';
+      return;
+    }
+
+    const typeLabels = {
+      'payment_receipt': { label: 'Comprobante de Pago', icon: '💳', color: 'yellow' },
+      'appointment_proposed': { label: 'Horario Propuesto', icon: '📅', color: 'blue' },
+      'appointment_request': { label: 'Solicitud de Cita', icon: '📆', color: 'green' }
+    };
+
+    container.innerHTML = notifications.map(notif => {
+      const type = typeLabels[notif.type] || { label: notif.type, icon: '📢', color: 'gray' };
+      const readClass = notif.read ? 'opacity-60' : 'bg-blue-50 border-blue-200';
+      
+      return `
+        <div class="notification-item p-4 border border-gray-200 rounded-lg ${readClass} cursor-pointer hover:bg-gray-50 transition-colors" 
+             onclick="viewNotification('${notif._id}', '${notif.phoneNumber}')" 
+             data-notification-id="${notif._id}">
+          <div class="flex items-start justify-between">
+            <div class="flex items-start space-x-3 flex-grow">
+              <div class="text-2xl">${type.icon}</div>
+              <div class="flex-grow">
+                <div class="flex items-center space-x-2 mb-1">
+                  <span class="text-sm font-medium text-gray-800">${type.label}</span>
+                  ${!notif.read ? '<span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">Nuevo</span>' : ''}
+                </div>
+                <p class="text-sm text-gray-600 font-medium">${notif.contactName || 'Cliente'}</p>
+                <p class="text-xs text-gray-500">${notif.phoneNumber}</p>
+                ${notif.message ? `<p class="text-sm text-gray-700 mt-2">${notif.message.substring(0, 100)}${notif.message.length > 100 ? '...' : ''}</p>` : ''}
+                ${notif.metadata && notif.metadata.proposedDates && notif.metadata.proposedDates.length > 0 ? 
+                  `<p class="text-sm text-blue-600 mt-1"><i class="fas fa-clock mr-1"></i> Horarios: ${notif.metadata.proposedDates.join(', ')}</p>` : ''}
+                <p class="text-xs text-gray-400 mt-2">${formatDate(notif.createdAt)}</p>
+              </div>
+            </div>
+            <button onclick="event.stopPropagation(); markNotificationAsRead('${notif._id}')" 
+                    class="text-gray-400 hover:text-gray-600">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function markNotificationAsRead(id) {
+    try {
+      const response = await fetch(`/crm/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to mark notification as read');
+      
+      // Remover el elemento de la lista
+      const item = document.querySelector(`[data-notification-id="${id}"]`);
+      if (item) {
+        item.remove();
+      }
+      
+      // Actualizar contador
+      const unreadCount = document.querySelectorAll('.notification-item:not(.opacity-60)').length;
+      updateNotificationBadge(unreadCount);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }
+
+  async function markAllNotificationsAsRead() {
+    if (!confirm('¿Marcar todas las notificaciones como leídas?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/crm/notifications/read-all', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to mark all notifications as read');
+      
+      loadNotifications();
+      updateNotificationBadge(0);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      alert('Error al marcar todas las notificaciones como leídas');
+    }
+  }
+
+    function viewNotification(id, phoneNumber) {
+    // Marcar como leída
+    markNotificationAsRead(id);
+    
+    // Abrir chat directamente
+    openChatModal(phoneNumber, phoneNumber);
+  }
+
+  // WhatsApp Chat Modal functions
+  let currentChatPhoneNumber = null;
+  let currentChatContactName = null;
+  let chatMessages = []; // Cache de mensajes del chat actual
+
+  function openChatModal(phoneNumber, contactName) {
+    currentChatPhoneNumber = phoneNumber;
+    currentChatContactName = contactName;
+    document.getElementById('chat-contact-name').textContent = contactName;
+    document.getElementById('chat-contact-phone').textContent = phoneNumber;
+    document.getElementById('chat-modal').classList.remove('hidden');
+    loadChatMessages();
+  }
+
+  function closeChatModal() {
+    document.getElementById('chat-modal').classList.add('hidden');
+    currentChatPhoneNumber = null;
+    currentChatContactName = null;
+    chatMessages = [];
+    document.getElementById('messages-container').innerHTML = '';
+  }
+
+  async function loadChatMessages() {
+    try {
+      const response = await fetch(`/crm/contacts/${currentChatPhoneNumber}/messages`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to load chat messages');
+      const data = await response.json();
+      chatMessages = data.messages;
+      renderChatMessages();
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+      alert('Error al cargar mensajes del chat');
+    }
+  }
+
+  function renderChatMessages() {
+    const container = document.getElementById('messages-container');
+    container.innerHTML = ''; // Limpiar mensajes existentes
+    
+    if (chatMessages.length === 0) {
+      container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay mensajes</p>';
+      return;
+    }
+    
+    chatMessages.forEach(msg => {
+      const messageElement = document.createElement('div');
+      messageElement.className = `flex ${msg.isFromBot ? 'justify-end' : 'justify-start'} mb-2`;
+      
+      const time = new Date(msg.timestamp).toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
+      messageElement.innerHTML = `
+        <div class="max-w-[70%] px-4 py-2 rounded-lg shadow-sm ${
+          msg.isFromBot 
+            ? 'bg-green-200 text-gray-800 rounded-br-none' 
+            : 'bg-white text-gray-800 rounded-bl-none'
+        }">
+          <p class="text-sm whitespace-pre-wrap">${msg.body || ''}</p>
+          <span class="text-xs text-gray-500 mt-1 block">${time}</span>
+        </div>
+      `;
+      container.appendChild(messageElement);
+    });
+    
+    // Scroll al final
+    container.scrollTop = container.scrollHeight;
+  }
+
+  async function sendChatMessage() {
+    const messageInput = document.getElementById('chat-message-input');
+    const messageText = messageInput.value.trim();
+
+    if (!messageText || !currentChatPhoneNumber) return;
+
+    try {
+      const response = await fetch('/crm/send-message', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phoneNumber: currentChatPhoneNumber,
+          message: messageText
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to send message');
+
+      // Después de enviar, recargar mensajes para ver el nuevo
+      messageInput.value = ''; // Limpiar input
+      loadChatMessages();
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      alert('Error al enviar mensaje');
+    }
+  }
+
+  // Iniciar stream de notificaciones al cargar
+  document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem('token')) {
+      startNotificationStream();
+      // Cargar notificaciones iniciales
+      loadNotifications().catch(err => console.error('Error loading initial notifications:', err));
+    }
+  });
+
   window.openStatusModal = openStatusModal;
   window.closeStatusModal = closeStatusModal;
   window.saveStatusChange = saveStatusChange;
@@ -879,4 +1249,225 @@ document.addEventListener('DOMContentLoaded', function () {
   window.confirmAppointment = confirmAppointment;
   window.loadBotConfig = loadBotConfig;
   window.saveBotConfig = saveBotConfig;
+  window.logoutWhatsApp = logoutWhatsApp;
+  window.loadWhatsAppStatus = loadWhatsAppStatus;
+  window.markNotificationAsRead = markNotificationAsRead;
+  window.markAllNotificationsAsRead = markAllNotificationsAsRead;
+  window.viewNotification = viewNotification;
+  window.openChatModal = openChatModal;
+  window.closeChatModal = closeChatModal;
+  window.sendChatMessage = sendChatMessage;
+
+  // Users Management Functions
+  async function loadUsers() {
+    try {
+      const response = await fetch('/crm/auth/users', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to load users');
+      const data = await response.json();
+      renderUsers(data.users);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      alert('Error al cargar usuarios');
+    }
+  }
+
+  function renderUsers(users) {
+    const tbody = document.getElementById('users-table-body');
+    tbody.innerHTML = '';
+    
+    if (users.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No hay usuarios</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    users.forEach(user => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-50';
+      tr.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${user.username}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+            ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(user.createdAt)}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          <button onclick="openChangeUserPasswordModal('${user._id}', '${user.username}')" 
+            class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+            <i class="fas fa-key mr-1"></i> Cambiar Contraseña
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Create User Modal Functions
+  function openCreateUserModal() {
+    document.getElementById('create-user-modal').classList.remove('hidden');
+    document.getElementById('create-username-input').value = '';
+    document.getElementById('create-password-input').value = '';
+    document.getElementById('create-role-select').value = 'user';
+  }
+
+  function closeCreateUserModal() {
+    document.getElementById('create-user-modal').classList.add('hidden');
+  }
+
+  async function saveCreateUser() {
+    const username = document.getElementById('create-username-input').value.trim();
+    const password = document.getElementById('create-password-input').value;
+    const role = document.getElementById('create-role-select').value;
+
+    if (!username || !password) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    if (password.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    try {
+      const response = await fetch('/crm/auth/register', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password, role })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al crear usuario');
+      }
+
+      closeCreateUserModal();
+      loadUsers();
+      alert('Usuario creado correctamente');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert(error.message || 'Error al crear usuario');
+    }
+  }
+
+  // Change User Password Modal Functions
+  let currentChangePasswordUserId = null;
+
+  function openChangeUserPasswordModal(userId, username) {
+    currentChangePasswordUserId = userId;
+    document.getElementById('change-password-username-input').value = username;
+    document.getElementById('change-password-new-input').value = '';
+    document.getElementById('change-password-confirm-input').value = '';
+    document.getElementById('change-user-password-modal').classList.remove('hidden');
+  }
+
+  function closeChangeUserPasswordModal() {
+    document.getElementById('change-user-password-modal').classList.add('hidden');
+    currentChangePasswordUserId = null;
+  }
+
+  async function saveChangeUserPassword() {
+    const newPassword = document.getElementById('change-password-new-input').value;
+    const confirmPassword = document.getElementById('change-password-confirm-input').value;
+
+    if (!newPassword) {
+      alert('Por favor ingresa la nueva contraseña');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/crm/auth/change-password/${currentChangePasswordUserId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ newPassword })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al cambiar contraseña');
+      }
+
+      closeChangeUserPasswordModal();
+      alert('Contraseña cambiada correctamente');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert(error.message || 'Error al cambiar contraseña');
+    }
+  }
+
+  // Change Own Password Function
+  async function changeOwnPassword() {
+    const currentPassword = document.getElementById('current-password-input').value;
+    const newPassword = document.getElementById('new-password-input').value;
+    const confirmPassword = document.getElementById('confirm-password-input').value;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      const response = await fetch('/crm/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al cambiar contraseña');
+      }
+
+      // Clear inputs
+      document.getElementById('current-password-input').value = '';
+      document.getElementById('new-password-input').value = '';
+      document.getElementById('confirm-password-input').value = '';
+      
+      alert('Contraseña cambiada correctamente');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert(error.message || 'Error al cambiar contraseña');
+    }
+  }
+
+  window.openCreateUserModal = openCreateUserModal;
+  window.closeCreateUserModal = closeCreateUserModal;
+  window.saveCreateUser = saveCreateUser;
+  window.openChangeUserPasswordModal = openChangeUserPasswordModal;
+  window.closeChangeUserPasswordModal = closeChangeUserPasswordModal;
+  window.saveChangeUserPassword = saveChangeUserPassword;
+  window.changePassword = changeOwnPassword;
 });
