@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('templates-section').classList.remove('hidden');
         currentPage = 'templates';
         loadTemplates();
+      } else if (this.id === 'settings-tab') {
+        document.getElementById('settings-section').classList.remove('hidden');
+        currentPage = 'settings';
+        loadBotConfig();
       }
     });
   });
@@ -122,10 +126,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const stats = await statsRes.json();
 
-      // Update main stats by sale status
+      // Update main stats by sale status - nuevos estados
+      document.getElementById('leads-count').textContent = stats.contacts.byStatus.leads || 0;
       document.getElementById('interested-contacts').textContent = stats.contacts.byStatus.interested || 0;
-      document.getElementById('potential-buyers').textContent = stats.contacts.byStatus.potentialBuyers || 0;
-      document.getElementById('paid-customers').textContent = stats.contacts.byStatus.paid || 0;
+      document.getElementById('info-requested-count').textContent = stats.contacts.byStatus.infoRequested || 0;
+      document.getElementById('payment-pending-count').textContent = stats.contacts.byStatus.paymentPending || 0;
+      document.getElementById('appointment-scheduled-count').textContent = stats.contacts.byStatus.appointmentScheduled || 0;
+      document.getElementById('appointment-confirmed-count').textContent = stats.contacts.byStatus.appointmentConfirmed || 0;
+      document.getElementById('completed-count').textContent = stats.contacts.byStatus.completed || 0;
+      document.getElementById('paused-contacts').textContent = stats.contacts.byStatus.paused || 0;
       document.getElementById('total-contacts').textContent = stats.contacts.total;
       document.getElementById('recent-contacts-text').textContent = `${stats.contacts.recent} nuevos esta semana`;
       
@@ -254,7 +263,12 @@ document.addEventListener('DOMContentLoaded', function () {
       });
       
       if (currentSaleStatusFilter) {
-        params.append('saleStatus', currentSaleStatusFilter);
+        if (currentSaleStatusFilter === 'paused') {
+          // Para pausados, usar un filtro diferente
+          // Los pausados se manejarán en el frontend
+        } else {
+          params.append('saleStatus', currentSaleStatusFilter);
+        }
       }
 
       const response = await fetch(`/crm/contacts?${params.toString()}`, {
@@ -263,7 +277,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (!response.ok) throw new Error('Failed to load contacts');
 
-      const { data, meta } = await response.json();
+      let { data, meta } = await response.json();
+      
+      // Filtrar pausados si es necesario
+      if (currentSaleStatusFilter === 'paused') {
+        data = data.filter(contact => contact.isPaused === true);
+        meta.total = data.length;
+        meta.pages = Math.ceil(meta.total / Number(meta.limit));
+      }
+      
       renderContacts(data);
       renderContactsPagination(meta);
       updateContactsPaginationInfo(meta);
@@ -287,12 +309,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const statusLabels = {
       'lead': { label: 'Lead', color: 'gray', bg: 'bg-gray-100 text-gray-800' },
       'interested': { label: 'Interesado', color: 'blue', bg: 'bg-blue-100 text-blue-800' },
-      'potential_buyer': { label: 'Potencial', color: 'yellow', bg: 'bg-yellow-100 text-yellow-800' },
-      'paid': { label: 'Cliente', color: 'green', bg: 'bg-green-100 text-green-800' }
+      'info_requested': { label: 'Info Solicitada', color: 'indigo', bg: 'bg-indigo-100 text-indigo-800' },
+      'payment_pending': { label: 'Pago Pendiente', color: 'yellow', bg: 'bg-yellow-100 text-yellow-800' },
+      'appointment_scheduled': { label: 'Cita Agendada', color: 'orange', bg: 'bg-orange-100 text-orange-800' },
+      'appointment_confirmed': { label: 'Cita Confirmada', color: 'green', bg: 'bg-green-100 text-green-800' },
+      'completed': { label: 'Completado', color: 'green', bg: 'bg-green-100 text-green-800' }
     };
 
     contacts.forEach(contact => {
       const status = statusLabels[contact.saleStatus || 'lead'] || statusLabels['lead'];
+      const isPaused = contact.isPaused || false;
       const tr = document.createElement('tr');
       tr.className = 'table-row';
       tr.innerHTML = `
@@ -304,12 +330,31 @@ document.addEventListener('DOMContentLoaded', function () {
           </span>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(contact.lastInteraction)}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full ${isPaused ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+            ${isPaused ? 'Pausado' : 'Activo'}
+          </span>
+        </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <div class="flex space-x-2">
-            <button onclick="openStatusModal('${contact.phoneNumber}', '${contact.saleStatus || 'lead'}')" 
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openStatusModal('${contact.phoneNumber}', '${contact.saleStatus || 'lead'}', '${contact.appointmentDate || ''}')" 
               class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
               <i class="fas fa-edit mr-1"></i> Estado
             </button>
+            <button onclick="togglePauseContact('${contact.phoneNumber}', ${isPaused})" 
+              class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white ${isPaused ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${isPaused ? 'green' : 'orange'}-500 transition-colors">
+              <i class="fas fa-${isPaused ? 'play' : 'pause'} mr-1"></i> ${isPaused ? 'Reanudar' : 'Pausar'}
+            </button>
+            ${contact.saleStatus === 'payment_pending' ? `
+            <button onclick="confirmPayment('${contact.phoneNumber}')" 
+              class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+              <i class="fas fa-check mr-1"></i> Confirmar Pago
+            </button>` : ''}
+            ${contact.saleStatus === 'appointment_scheduled' ? `
+            <button onclick="confirmAppointment('${contact.phoneNumber}')" 
+              class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
+              <i class="fas fa-calendar-check mr-1"></i> Confirmar Cita
+            </button>` : ''}
             <button onclick="openMessageModal('${contact.phoneNumber}')" 
               class="message-btn inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
               <i class="fas fa-paper-plane mr-1"></i> Mensaje
@@ -653,10 +698,17 @@ document.addEventListener('DOMContentLoaded', function () {
   // Status change modal functions
   let currentStatusPhone = null;
 
-  function openStatusModal(phoneNumber, currentStatus) {
+  function openStatusModal(phoneNumber, currentStatus, appointmentDate) {
     currentStatusPhone = phoneNumber;
     document.getElementById('status-select').value = currentStatus || 'lead';
     document.getElementById('status-notes').value = '';
+    if (appointmentDate) {
+      const date = new Date(appointmentDate);
+      const formattedDate = date.toISOString().slice(0, 16);
+      document.getElementById('appointment-date').value = formattedDate;
+    } else {
+      document.getElementById('appointment-date').value = '';
+    }
     document.getElementById('status-modal').classList.remove('hidden');
   }
 
@@ -670,6 +722,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const saleStatus = document.getElementById('status-select').value;
     const saleStatusNotes = document.getElementById('status-notes').value;
+    const appointmentDate = document.getElementById('appointment-date').value;
+
+    const body = { saleStatus, saleStatusNotes };
+    if (appointmentDate && (saleStatus === 'appointment_scheduled' || saleStatus === 'appointment_confirmed')) {
+      body.appointmentDate = appointmentDate;
+    }
 
     try {
       const response = await fetch(`/crm/contacts/${currentStatusPhone}/status`, {
@@ -678,13 +736,14 @@ document.addEventListener('DOMContentLoaded', function () {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ saleStatus, saleStatusNotes })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) throw new Error('Failed to update status');
 
       closeStatusModal();
       loadContacts(contactsPage);
+      loadDashboardData();
       alert('Estado actualizado correctamente');
     } catch (error) {
       console.error('Error updating status:', error);
@@ -692,7 +751,132 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  async function togglePauseContact(phoneNumber, isCurrentlyPaused) {
+    if (!confirm(`¿Estás seguro de que deseas ${isCurrentlyPaused ? 'reanudar' : 'pausar'} este contacto?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/crm/contacts/${phoneNumber}/pause`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isPaused: !isCurrentlyPaused })
+      });
+
+      if (!response.ok) throw new Error('Failed to pause/unpause contact');
+
+      loadContacts(contactsPage);
+      loadDashboardData();
+      alert(`Contacto ${isCurrentlyPaused ? 'reanudado' : 'pausado'} correctamente`);
+    } catch (error) {
+      console.error('Error pausing/unpausing contact:', error);
+      alert('Error al pausar/reanudar contacto');
+    }
+  }
+
+  async function confirmPayment(phoneNumber) {
+    if (!confirm('¿Confirmar que este cliente ya pagó?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/crm/contacts/${phoneNumber}/payment/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to confirm payment');
+
+      loadContacts(contactsPage);
+      loadDashboardData();
+      alert('Pago confirmado correctamente');
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      alert('Error al confirmar pago');
+    }
+  }
+
+  async function confirmAppointment(phoneNumber) {
+    const notes = prompt('Agregar notas sobre la confirmación de la cita (opcional):');
+    
+    try {
+      const response = await fetch(`/crm/contacts/${phoneNumber}/appointment/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ appointmentNotes: notes || '' })
+      });
+
+      if (!response.ok) throw new Error('Failed to confirm appointment');
+
+      loadContacts(contactsPage);
+      loadDashboardData();
+      alert('Cita confirmada correctamente');
+    } catch (error) {
+      console.error('Error confirming appointment:', error);
+      alert('Error al confirmar cita');
+    }
+  }
+
+  async function loadBotConfig() {
+    try {
+      const response = await fetch('/crm/bot-config', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (!response.ok) throw new Error('Failed to load bot config');
+
+      const config = await response.json();
+      document.getElementById('bot-delay-input').value = config.botDelay || 10000;
+      document.getElementById('current-delay-text').textContent = `Actual: ${config.botDelay || 10000}ms (${(config.botDelay || 10000) / 1000}s)`;
+    } catch (error) {
+      console.error('Error loading bot config:', error);
+      document.getElementById('current-delay-text').textContent = 'Error al cargar';
+    }
+  }
+
+  async function saveBotConfig() {
+    const delay = parseInt(document.getElementById('bot-delay-input').value);
+    
+    if (isNaN(delay) || delay < 0) {
+      alert('Por favor ingresa un delay válido (número >= 0)');
+      return;
+    }
+
+    try {
+      const response = await fetch('/crm/bot-config', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ botDelay: delay })
+      });
+
+      if (!response.ok) throw new Error('Failed to update bot config');
+
+      document.getElementById('current-delay-text').textContent = `Actual: ${delay}ms (${delay / 1000}s)`;
+      alert('Configuración del bot guardada correctamente');
+    } catch (error) {
+      console.error('Error saving bot config:', error);
+      alert('Error al guardar configuración');
+    }
+  }
+
   window.openStatusModal = openStatusModal;
   window.closeStatusModal = closeStatusModal;
   window.saveStatusChange = saveStatusChange;
+  window.togglePauseContact = togglePauseContact;
+  window.confirmPayment = confirmPayment;
+  window.confirmAppointment = confirmAppointment;
+  window.loadBotConfig = loadBotConfig;
+  window.saveBotConfig = saveBotConfig;
 });
