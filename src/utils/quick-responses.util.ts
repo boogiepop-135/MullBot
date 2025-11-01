@@ -11,6 +11,13 @@ export interface QuickResponse {
     intent?: 'info' | 'price' | 'payment' | 'product' | 'purchase';
 }
 
+/**
+ * Exportar función para obtener el menú principal
+ */
+export const getMainMenu = (): QuickResponse => {
+    return getMainMenuResponse();
+};
+
 export const getQuickResponse = (query: string): QuickResponse | null => {
     if (!query) return null;
     
@@ -99,6 +106,13 @@ export const getQuickResponse = (query: string): QuickResponse | null => {
         return getOptionResponse(8);
     }
     
+    // Opción especial: Volver al menú / Menu / Inicio
+    if (keywords.some(k => k === 'menu' || k === 'menú' || k === 'volver' || 
+        k === 'regresar' || k === 'inicio' || k === 'opciones' || 
+        (k === 'ver' && keywords.some(k2 => k2 === 'menu' || k2 === 'menú')))) {
+        return getMainMenuResponse();
+    }
+    
     return null; // No hay respuesta rápida, usar IA
 };
 
@@ -106,7 +120,7 @@ const getOptionResponse = (option: number): QuickResponse => {
     switch (option) {
         case 1:
             return {
-                message: `🌱 *PROCESO DE COMPOSTAJE FERMENTATIVO MÜLLBLUE*
+                message: addMenuFooter(`🌱 *PROCESO DE COMPOSTAJE FERMENTATIVO MÜLLBLUE*
 
 *PASOS SIMPLES:*
 1️⃣ *Depositar* residuos orgánicos
@@ -125,14 +139,14 @@ const getOptionResponse = (option: number): QuickResponse => {
 ✅ Sin olores ni plagas
 ✅ Genera biofertilizante líquido
 
-¿Quieres más detalles sobre algún paso específico? 🌱`,
+¿Quieres más detalles sobre algún paso específico o te gustaría conocer otra opción? 🌱`),
                 mediaPath: 'public/info.png',
                 intent: 'info'
             };
             
         case 2:
             return {
-                message: `💰 *PRECIO Y PROMOCIÓN MÜLLBLUE*
+                message: addMenuFooter(`💰 *PRECIO Y PROMOCIÓN MÜLLBLUE*
 
 *PRECIO ESPECIAL:*
 💵 *$1,490 MXN* (antes $1,890)
@@ -146,16 +160,16 @@ const getOptionResponse = (option: number): QuickResponse => {
 
 *PROMOCIÓN VIGENTE:*
 ⏰ Precio promocional limitado
-✨ Solo quedan pocas unidades disponibles
+✨ Disponibilidad limitada
 
-¿Te interesa aprovechar esta promoción? Puedo ayudarte con el proceso de compra 🌱`,
+¿Te gustaría conocer más sobre los métodos de pago disponibles o tienes alguna pregunta sobre el producto? 🌱`),
                 mediaPath: 'public/precio.png',
                 intent: 'price'
             };
             
         case 3:
             return {
-                message: `💳 *MÉTODOS DE PAGO MÜLLBLUE*
+                message: addMenuFooter(`💳 *MÉTODOS DE PAGO MÜLLBLUE*
 
 *OPCIÓN 1 - TRANSFERENCIA:*
 🏦 Banco Azteca
@@ -173,14 +187,14 @@ const getOptionResponse = (option: number): QuickResponse => {
 ✅ Confirmación inmediata
 ✅ Envío en 2-3 días hábiles
 
-¿Qué método de pago prefieres usar? 🌱`,
+¿Prefieres transferencia o tarjeta? Si tienes más dudas sobre el producto, puedo ayudarte 🌱`),
                 mediaPath: 'public/pago.png',
                 intent: 'payment'
             };
             
         case 4:
             return {
-                message: `📦 *CONTENIDO DEL KIT MÜLLBLUE*
+                message: addMenuFooter(`📦 *CONTENIDO DEL KIT MÜLLBLUE*
 
 *INCLUYE:*
 ✅ Compostero fermentador 15L
@@ -196,14 +210,14 @@ const getOptionResponse = (option: number): QuickResponse => {
 🌿 Material: Plástico de alta calidad
 🔒 Tapa hermética anti-olores
 
-¿Tienes alguna pregunta sobre el kit o el proceso de instalación? 🌱`,
+¿Tienes alguna pregunta sobre el kit o te gustaría conocer más sobre dimensiones, envío u otra opción? 🌱`),
                 mediaPath: 'public/info.png',
                 intent: 'product'
             };
             
         case 5:
             return {
-                message: `📏 *DIMENSIONES Y ESPACIO MÜLLBLUE*
+                message: addMenuFooter(`📏 *DIMENSIONES Y ESPACIO MÜLLBLUE*
 
 *ESPECIFICACIONES:*
 📐 Dimensiones: 30 x 30 x 40 cm (alto)
@@ -222,14 +236,14 @@ const getOptionResponse = (option: number): QuickResponse => {
 ✅ No requiere mucho espacio
 ✅ Fácil de mover si es necesario
 
-¿Tienes un espacio adecuado para ubicarlo? 🌱`,
+¿Tienes un espacio adecuado o te gustaría conocer más sobre el proceso de uso? 🌱`),
                 mediaPath: 'public/info.png',
                 intent: 'info'
             };
             
         case 6:
             return {
-                message: `🚚 *ENVÍO Y ENTREGA MÜLLBLUE*
+                message: addMenuFooter(`🚚 *ENVÍO Y ENTREGA MÜLLBLUE*
 
 *ENVÍO GRATIS:*
 🚚 A toda la República Mexicana
@@ -249,14 +263,14 @@ const getOptionResponse = (option: number): QuickResponse => {
 📧 Recibes número de rastreo
 ✅ Confirmación de entrega
 
-¿Tienes alguna pregunta sobre el proceso de envío? 🌱`,
+¿Tienes alguna pregunta sobre el proceso de envío o quieres conocer más sobre métodos de pago? 🌱`),
                 mediaPath: 'public/info.png',
                 intent: 'info'
             };
             
         case 7:
             return {
-                message: `❓ *PREGUNTAS FRECUENTES MÜLLBLUE*
+                message: addMenuFooter(`❓ *PREGUNTAS FRECUENTES MÜLLBLUE*
 
 *P: ¿Qué puedo agregar?*
 R: Cáscaras, restos de comida, carnes, lácteos (poca cantidad), pan, arroz, café molido.
@@ -273,14 +287,14 @@ R: No, el proceso anaeróbico y el biocatalizador eliminan olores completamente.
 *P: ¿Atrae plagas?*
 R: No, al estar herméticamente cerrado no atrae insectos ni animales.
 
-¿Tienes alguna otra pregunta específica? 🌱`,
+¿Tienes alguna otra pregunta específica o te gustaría conocer más sobre precios o métodos de pago? 🌱`),
                 mediaPath: 'public/info.png',
                 intent: 'info'
             };
             
         case 8:
             return {
-                message: `👤 *HABLAR CON UN AGENTE*
+                message: addMenuFooter(`👤 *HABLAR CON UN AGENTE*
 
 Para hablar directamente con un agente de Müllblue:
 
@@ -295,7 +309,7 @@ Puedo ayudarte con:
 ✅ Métodos de pago
 ✅ Preguntas técnicas
 
-¿En qué más puedo ayudarte mientras esperas al agente? 🌱`,
+¿En qué más puedo ayudarte? Puedo resolver la mayoría de tus dudas aquí mismo 🌱`),
                 mediaPath: 'public/info.png',
                 intent: 'info'
             };
@@ -303,5 +317,43 @@ Puedo ayudarte con:
         default:
             return null;
     }
+};
+
+/**
+ * Respuesta del menú principal
+ */
+const getMainMenuResponse = (): QuickResponse => {
+    return {
+        message: `👋 *MENÚ PRINCIPAL MÜLLBLUE*
+
+¡Hola! ¿En qué puedo ayudarte hoy? 🤔
+
+*Opciones disponibles:*
+
+*1.* Conocer el proceso de compostaje fermentativo
+*2.* Dudas sobre precios y promociones
+*3.* Métodos de pago disponibles
+*4.* ¿Qué incluye el kit?
+*5.* Dimensiones y espacio necesario
+*6.* Información sobre envío y entrega
+*7.* Preguntas frecuentes
+*8.* Hablar con un agente
+
+Escribe el *número* de la opción que te interesa o pregunta lo que necesites 🌱
+
+*💡 Tip:* Puedes escribir *menú* o *volver* en cualquier momento para ver estas opciones nuevamente`,
+        mediaPath: 'public/info.png',
+        intent: 'info'
+    };
+};
+
+/**
+ * Función para agregar footer de volver al menú a las respuestas
+ */
+export const addMenuFooter = (message: string): string => {
+    return `${message}
+
+---
+*💡 Tip:* Escribe *menú* o *volver* para ver todas las opciones disponibles 🌱`;
 };
 

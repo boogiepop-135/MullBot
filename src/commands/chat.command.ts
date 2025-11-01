@@ -21,12 +21,11 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const esSaludoSimple = saludosSimples.includes(query.toLowerCase().trim());
 
     if ((!query || esSaludoSimple) && message.type !== MessageTypes.VOICE) {
-        const opcionesIniciales = `
-¡Hola 👋! ¡Qué bueno que te pusiste en contacto con Müllblue 🤩!
+        const opcionesIniciales = `👋 *MENÚ PRINCIPAL MÜLLBLUE*
 
-Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso valioso para tu hogar y el planeta 🌎. Nuestro compostero fermentador es la solución perfecta para reducir residuos, eliminar malos olores y obtener biofertilizante de alta calidad.
+¡Hola! ¿En qué puedo ayudarte hoy? 🤔
 
-¿Qué te gustaría saber sobre nuestro compostero fermentador Müllblue 🤔? Tenemos varias opciones:
+*Opciones disponibles:*
 
 *1.* Conocer el proceso de compostaje fermentativo
 *2.* Dudas sobre precios y promociones
@@ -37,7 +36,9 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
 *7.* Preguntas frecuentes
 *8.* Hablar con un agente
 
-¡Espero tu respuesta para poder ayudarte mejor 😊!`;
+Escribe el *número* de la opción que te interesa o pregunta lo que necesites 🌱
+
+*💡 Tip:* Puedes escribir *menú* o *volver* en cualquier momento para ver estas opciones nuevamente`;
         
         // Delay configurable para simular tiempo de respuesta humano
         const { getBotDelay } = await import('../utils/bot-config.util');
