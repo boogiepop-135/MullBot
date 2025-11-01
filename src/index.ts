@@ -1,3 +1,6 @@
+// Importar polyfills primero para Node.js 18
+import "./polyfills";
+
 import express from "express";
 import bodyParser from 'body-parser';
 import logger from "./configs/logger.config";

@@ -3,6 +3,10 @@
     "version": "1.0.0",
     "description": "Mullbot - Chatbot inteligente para compostaje y sostenibilidad",
     "main": "src/index.ts",
+    "engines": {
+        "node": ">=20.0.0",
+        "npm": ">=10.0.0"
+    },
     "dependencies": {
         "@ffmpeg-installer/ffmpeg": "^1.1.0",
         "@google/generative-ai": "^0.12.0",
