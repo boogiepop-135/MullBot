@@ -8,6 +8,9 @@ export interface IContact extends Document {
     lastInteraction: Date;
     interactionsCount: number;
     tags: string[];
+    saleStatus: 'interested' | 'potential_buyer' | 'paid' | 'lead';
+    saleStatusNotes?: string;
+    paidAt?: Date;
 }
 
 const ContactSchema = new Schema<IContact>({
@@ -17,7 +20,14 @@ const ContactSchema = new Schema<IContact>({
     language: String,
     lastInteraction: { type: Date, default: Date.now },
     interactionsCount: { type: Number, default: 1 },
-    tags: [{ type: String }]
+    tags: [{ type: String }],
+    saleStatus: { 
+        type: String, 
+        enum: ['interested', 'potential_buyer', 'paid', 'lead'],
+        default: 'lead'
+    },
+    saleStatusNotes: String,
+    paidAt: Date
 }, { timestamps: true });
 
 export const ContactModel = mongoose.model<IContact>('Contact', ContactSchema);

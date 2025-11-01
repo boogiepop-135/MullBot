@@ -189,28 +189,75 @@
 
   <!-- Main Content -->
   <main class="main-content flex-grow">
-    <!-- Dashboard Section -->
+      <!-- Dashboard Section -->
     <div id="dashboard-section" class="section-content hidden p-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <!-- Stat 1 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Stat 1 - Interesados -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-500">Total Contacts</p>
-              <h3 id="total-contacts" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-sm font-medium text-gray-500">Interesados</p>
+              <h3 id="interested-contacts" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1">Gente interesada</p>
             </div>
             <div class="p-3 rounded-full bg-blue-50 text-blue-600">
-              <i class="fas fa-users text-xl"></i>
+              <i class="fas fa-eye text-xl"></i>
             </div>
           </div>
         </div>
 
-        <!-- Stat 2 -->
+        <!-- Stat 2 - Potenciales Compradores -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-500">Campaigns Sent</p>
+              <p class="text-sm font-medium text-gray-500">Potenciales</p>
+              <h3 id="potential-buyers" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1">Quieren pagar</p>
+            </div>
+            <div class="p-3 rounded-full bg-yellow-50 text-yellow-600">
+              <i class="fas fa-shopping-cart text-xl"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stat 3 - Clientes Pagados -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Clientes</p>
+              <h3 id="paid-customers" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1">Ya pagaron</p>
+            </div>
+            <div class="p-3 rounded-full bg-green-50 text-green-600">
+              <i class="fas fa-check-circle text-xl"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stat 4 - Leads -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Total Leads</p>
+              <h3 id="total-contacts" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1" id="recent-contacts-text">0 nuevos esta semana</p>
+            </div>
+            <div class="p-3 rounded-full bg-purple-50 text-purple-600">
+              <i class="fas fa-users text-xl"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Stats -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <!-- Campaigns -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Campaigns</p>
               <h3 id="total-campaigns" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1" id="sent-campaigns-text">0 enviadas</p>
             </div>
             <div class="p-3 rounded-full bg-green-50 text-green-600">
               <i class="fas fa-bullhorn text-xl"></i>
@@ -218,16 +265,66 @@
           </div>
         </div>
 
-        <!-- Stat 3 -->
+        <!-- Messages Sent -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-500">Messages Sent</p>
               <h3 id="total-messages" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1">Total de mensajes</p>
             </div>
             <div class="p-3 rounded-full bg-purple-50 text-purple-600">
               <i class="fas fa-paper-plane text-xl"></i>
             </div>
+          </div>
+        </div>
+
+        <!-- Sales Interactions -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Interacciones</p>
+              <h3 id="total-interactions" class="text-2xl font-semibold text-gray-800 mt-1">0</h3>
+              <p class="text-xs text-gray-400 mt-1" id="unique-users-text">0 usuarios únicos</p>
+            </div>
+            <div class="p-3 rounded-full bg-yellow-50 text-yellow-600">
+              <i class="fas fa-chart-line text-xl"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sales Intent Stats -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Intent Breakdown -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="p-5 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-800">Intentos de Venta Detectados</h2>
+          </div>
+          <div class="p-5" id="intent-stats">
+            <!-- Will be filled by JavaScript -->
+          </div>
+        </div>
+
+        <!-- Top Leads -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="p-5 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-800">Top Leads</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Interacciones</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="top-leads-table" class="bg-white divide-y divide-gray-200">
+                <!-- Will be filled by JavaScript -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -258,14 +355,25 @@
     <div id="contacts-section" class="section-content p-6">
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-5 border-b border-gray-200">
-          <div class="flex justify-between items-center">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 class="text-lg font-medium text-gray-800">Contacts</h2>
-            <div class="relative w-64">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i class="fas fa-search text-gray-400"></i>
+            <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+              <!-- Sale Status Filter -->
+              <select id="sale-status-filter" class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
+                <option value="">Todos los estados</option>
+                <option value="lead">Leads</option>
+                <option value="interested">Interesados</option>
+                <option value="potential_buyer">Potenciales Compradores</option>
+                <option value="paid">Clientes (Ya pagaron)</option>
+              </select>
+              <!-- Search -->
+              <div class="relative w-full md:w-64">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text" id="contact-search" placeholder="Buscar contactos..."
+                  class="pl-10 w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
               </div>
-              <input type="text" id="contact-search" placeholder="Search contacts..."
-                class="pl-10 w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
             </div>
           </div>
         </div>
@@ -274,15 +382,15 @@
             <thead class="bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone</th>
+                  Teléfono</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name</th>
+                  Nombre</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Language</th>
+                  Estado</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Interaction</th>
+                  Última Interacción</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions</th>
+                  Acciones</th>
               </tr>
             </thead>
             <tbody id="contacts-table-body" class="bg-white divide-y divide-gray-200">
@@ -292,8 +400,8 @@
         </div>
         <div class="px-5 py-3 border-t border-gray-200 flex items-center justify-between">
           <div class="text-sm text-gray-500" id="contacts-pagination-info">
-            Showing <span id="contacts-start">0</span> to <span id="contacts-end">0</span> of <span
-              id="contacts-total">0</span> contacts
+            Mostrando <span id="contacts-start">0</span> a <span id="contacts-end">0</span> de <span
+              id="contacts-total">0</span> contactos
           </div>
           <div id="contacts-pagination" class="flex space-x-1">
             <!-- Pagination will be loaded here -->
@@ -474,7 +582,50 @@
           </button>
           <button type="button" onclick="closeMessageModal()"
             class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-            Cancel
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Change Modal -->
+  <div id="status-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <div
+        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Cambiar Estado de Venta</h3>
+          <div class="mt-2 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <select id="status-select"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="lead">Lead</option>
+                <option value="interested">Interesado</option>
+                <option value="potential_buyer">Potencial Comprador</option>
+                <option value="paid">Cliente (Ya pagó)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+              <textarea id="status-notes" rows="3"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Agregar notas sobre el cambio de estado..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" onclick="saveStatusChange()"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Guardar
+          </button>
+          <button type="button" onclick="closeStatusModal()"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancelar
           </button>
         </div>
       </div>

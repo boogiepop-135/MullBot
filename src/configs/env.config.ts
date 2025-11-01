@@ -17,10 +17,13 @@ class EnvConfig {
     static PORT = process.env.PORT;
     static MONGODB_URI = process.env.MONGODB_URI;
     static JWT_SECRET = process.env.JWT_SECRET;
+    static API_BASE_URL = process.env.API_BASE_URL || "https://mullbot-production.up.railway.app";
 
     static validate() {
-
-        if (!fs.existsSync(".env")) {
+        // En producción (Railway), las variables de entorno vienen del entorno, no del archivo .env
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.ENV === 'production';
+        
+        if (!isProduction && !fs.existsSync(".env")) {
             throw new Error(".env file is missing. Please create a .env file at the root directory out of the env.example file.");
         }
 
@@ -29,7 +32,13 @@ class EnvConfig {
             throw new Error("Environment variable GEMINI_API_KEY is missing. Please provide a valid Gemini API key.");
         }
         if (!this.PUPPETEER_EXECUTABLE_PATH) {
-            throw new Error("Environment variable PUPPETEER_EXECUTABLE_PATH is missing. Please provide a valid Chrome path.");
+            // En Railway, Puppeteer puede usar el Chrome instalado automáticamente
+            // Usar el ejecutable por defecto si no está configurado
+            const defaultChromePath = '/usr/bin/google-chrome-stable';
+            logger.warn(`PUPPETEER_EXECUTABLE_PATH not set, using default: ${defaultChromePath}`);
+            // No lanzar error, usar el valor por defecto para Railway
+            process.env.PUPPETEER_EXECUTABLE_PATH = defaultChromePath;
+            this.PUPPETEER_EXECUTABLE_PATH = defaultChromePath;
         }
         if (!this.ENV) {
             throw new Error("Environment variable ENV is missing. Please provide a valid ENV.");

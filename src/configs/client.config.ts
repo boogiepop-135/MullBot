@@ -14,7 +14,7 @@ export async function getClientConfig() {
         }),
         puppeteer: {
             headless: true,
-            executablePath: EnvConfig.PUPPETEER_EXECUTABLE_PATH,
+            executablePath: EnvConfig.PUPPETEER_EXECUTABLE_PATH || undefined,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',

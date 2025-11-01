@@ -13,18 +13,24 @@ export default function (botManager: BotManager) {
     // Contacts API
     router.get('/contacts', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { page = 1, limit = 20, search = '', sort = '-lastInteraction' } = req.query;
+            const { page = 1, limit = 20, search = '', sort = '-lastInteraction', saleStatus } = req.query;
             const skip = (Number(page) - 1) * Number(limit);
 
-            const query = search
-                ? {
-                    $or: [
-                        { phoneNumber: { $regex: search, $options: 'i' } },
-                        { name: { $regex: search, $options: 'i' } },
-                        { pushName: { $regex: search, $options: 'i' } }
-                    ]
-                }
-                : {};
+            const query: any = {};
+
+            // Search filter
+            if (search) {
+                query.$or = [
+                    { phoneNumber: { $regex: search, $options: 'i' } },
+                    { name: { $regex: search, $options: 'i' } },
+                    { pushName: { $regex: search, $options: 'i' } }
+                ];
+            }
+
+            // Sale status filter
+            if (saleStatus) {
+                query.saleStatus = saleStatus;
+            }
 
             const contacts = await ContactModel.find(query)
                 .sort(sort)
@@ -45,6 +51,41 @@ export default function (botManager: BotManager) {
         } catch (error) {
             logger.error('Failed to fetch contacts:', error);
             res.status(500).json({ error: 'Failed to fetch contacts' });
+        }
+    });
+
+    // Update contact sale status
+    router.put('/contacts/:phoneNumber/status', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { phoneNumber } = req.params;
+            const { saleStatus, saleStatusNotes } = req.body;
+
+            if (!['interested', 'potential_buyer', 'paid', 'lead'].includes(saleStatus)) {
+                return res.status(400).json({ error: 'Invalid sale status' });
+            }
+
+            const updateData: any = { saleStatus };
+            if (saleStatusNotes) {
+                updateData.saleStatusNotes = saleStatusNotes;
+            }
+            if (saleStatus === 'paid') {
+                updateData.paidAt = new Date();
+            }
+
+            const contact = await ContactModel.findOneAndUpdate(
+                { phoneNumber },
+                { $set: updateData },
+                { new: true }
+            );
+
+            if (!contact) {
+                return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            res.json(contact);
+        } catch (error) {
+            logger.error('Failed to update contact status:', error);
+            res.status(500).json({ error: 'Failed to update contact status' });
         }
     });
 
@@ -182,6 +223,78 @@ export default function (botManager: BotManager) {
 
     router.get('/auth/check', authenticate, (req, res) => {
         res.json({ user: req.user });
+    });
+
+    // Sales Statistics API
+    router.get('/statistics', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const SalesTracker = (await import('../../utils/sales-tracker.util')).default;
+            
+            // Get sales statistics
+            const salesStats = SalesTracker.getSalesStats();
+            
+            // Get contact statistics
+            const totalContacts = await ContactModel.countDocuments();
+            const contactsWithTags = await ContactModel.countDocuments({ tags: { $exists: true, $ne: [] } });
+            const recentContacts = await ContactModel.countDocuments({
+                lastInteraction: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+            });
+
+            // Get contacts by sale status
+            const interestedContacts = await ContactModel.countDocuments({ saleStatus: 'interested' });
+            const potentialBuyers = await ContactModel.countDocuments({ saleStatus: 'potential_buyer' });
+            const paidCustomers = await ContactModel.countDocuments({ saleStatus: 'paid' });
+            const leads = await ContactModel.countDocuments({ saleStatus: 'lead' });
+            
+            // Get campaign statistics
+            const totalCampaigns = await CampaignModel.countDocuments();
+            const sentCampaigns = await CampaignModel.countDocuments({ status: 'sent' });
+            const scheduledCampaigns = await CampaignModel.countDocuments({ status: 'scheduled' });
+            
+            // Calculate total messages sent
+            const campaigns = await CampaignModel.find({ status: 'sent' });
+            const totalMessagesSent = campaigns.reduce((sum, campaign) => sum + (campaign.sentCount || 0), 0);
+            
+            // Get top leads from contacts based on interactions
+            const topLeadsContacts = await ContactModel.find()
+                .sort({ interactionsCount: -1 })
+                .limit(10)
+                .select('phoneNumber name pushName interactionsCount lastInteraction');
+            
+            res.json({
+                sales: salesStats,
+                contacts: {
+                    total: totalContacts,
+                    withTags: contactsWithTags,
+                    recent: recentContacts,
+                    byStatus: {
+                        interested: interestedContacts,
+                        potentialBuyers: potentialBuyers,
+                        paid: paidCustomers,
+                        leads: leads
+                    }
+                },
+                campaigns: {
+                    total: totalCampaigns,
+                    sent: sentCampaigns,
+                    scheduled: scheduledCampaigns,
+                    totalMessagesSent: totalMessagesSent
+                },
+                topLeads: topLeadsContacts.map(contact => {
+                    const score = SalesTracker.getLeadScore(contact.phoneNumber + '@c.us');
+                    return {
+                        phoneNumber: contact.phoneNumber,
+                        name: contact.name || contact.pushName || 'Unknown',
+                        interactionsCount: contact.interactionsCount,
+                        lastInteraction: contact.lastInteraction,
+                        score: score
+                    };
+                })
+            });
+        } catch (error) {
+            logger.error('Failed to fetch statistics:', error);
+            res.status(500).json({ error: 'Failed to fetch statistics' });
+        }
     });
 
     // Send message route

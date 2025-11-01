@@ -2,7 +2,7 @@ import { MongoStore } from "wwebjs-mongo";
 import mongoose from "mongoose";
 import logger from "./logger.config";
 
-export async function getMongoStore(): Promise<MongoStore> {
+export async function getMongoStore(): Promise<InstanceType<typeof MongoStore>> {
     try {
         // Verificar que mongoose esté conectado
         if (mongoose.connection.readyState !== 1) {

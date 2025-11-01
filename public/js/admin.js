@@ -53,9 +53,17 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  let currentSaleStatusFilter = '';
+
   // Search contacts
   document.getElementById('contact-search')?.addEventListener('input', function () {
     contactsSearch = this.value;
+    loadContacts();
+  });
+
+  // Sale status filter
+  document.getElementById('sale-status-filter')?.addEventListener('change', function () {
+    currentSaleStatusFilter = this.value;
     loadContacts();
   });
 
@@ -105,29 +113,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadDashboardData() {
     try {
-      const [contactsRes, campaignsRes] = await Promise.all([
-        fetch('/crm/contacts?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch('/crm/campaigns', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
-      ]);
+      // Load statistics from new endpoint
+      const statsRes = await fetch('/crm/statistics', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
 
-      if (!contactsRes.ok || !campaignsRes.ok) throw new Error('Failed to load data');
+      if (!statsRes.ok) throw new Error('Failed to load statistics');
 
-      const contactsData = await contactsRes.json();
-      const campaigns = await campaignsRes.json();
+      const stats = await statsRes.json();
 
-      // Update stats
-      document.getElementById('total-contacts').textContent = contactsData.meta.total;
-      document.getElementById('total-campaigns').textContent = campaigns.length;
+      // Update main stats by sale status
+      document.getElementById('interested-contacts').textContent = stats.contacts.byStatus.interested || 0;
+      document.getElementById('potential-buyers').textContent = stats.contacts.byStatus.potentialBuyers || 0;
+      document.getElementById('paid-customers').textContent = stats.contacts.byStatus.paid || 0;
+      document.getElementById('total-contacts').textContent = stats.contacts.total;
+      document.getElementById('recent-contacts-text').textContent = `${stats.contacts.recent} nuevos esta semana`;
+      
+      // Update secondary stats
+      document.getElementById('total-campaigns').textContent = stats.campaigns.total;
+      document.getElementById('sent-campaigns-text').textContent = `${stats.campaigns.sent} enviadas`;
+      document.getElementById('total-messages').textContent = stats.campaigns.totalMessagesSent;
+      document.getElementById('total-interactions').textContent = stats.sales.totalInteractions;
+      document.getElementById('unique-users-text').textContent = `${stats.sales.uniqueUsers} usuarios únicos`;
 
-      // Calculate total messages sent
-      const totalMessages = campaigns.reduce((sum, campaign) => sum + (campaign.sentCount || 0), 0);
-      document.getElementById('total-messages').textContent = totalMessages;
+      // Render intent stats
+      renderIntentStats(stats.sales.intentCounts);
 
-      // Load recent contacts
+      // Render top leads
+      renderTopLeads(stats.topLeads);
+
+      // Load recent contacts for the table
       const recentContacts = await fetch('/crm/contacts?limit=5&sort=-lastInteraction', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       }).then(res => res.json());
@@ -136,6 +151,75 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
+  }
+
+  function renderIntentStats(intentCounts) {
+    const container = document.getElementById('intent-stats');
+    container.innerHTML = '';
+
+    const intentLabels = {
+      'info': { label: 'Información', emoji: 'ℹ️', color: 'blue' },
+      'price': { label: 'Precio', emoji: '💰', color: 'green' },
+      'product': { label: 'Producto', emoji: '📦', color: 'purple' },
+      'payment': { label: 'Pago', emoji: '💳', color: 'yellow' },
+      'purchase': { label: 'Compra', emoji: '🛒', color: 'red' },
+      'objection': { label: 'Objeción', emoji: '❓', color: 'orange' },
+      'other': { label: 'Otro', emoji: '💬', color: 'gray' }
+    };
+
+    Object.entries(intentCounts).forEach(([intent, count]) => {
+      const intentData = intentLabels[intent] || { label: intent, emoji: '💬', color: 'gray' };
+      const div = document.createElement('div');
+      div.className = 'flex items-center justify-between mb-4';
+      div.innerHTML = `
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">${intentData.emoji}</span>
+          <span class="text-sm font-medium text-gray-700">${intentData.label}</span>
+        </div>
+        <span class="text-lg font-semibold text-gray-800">${count}</span>
+      `;
+      container.appendChild(div);
+    });
+
+    if (Object.keys(intentCounts).length === 0) {
+      container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay datos aún</p>';
+    }
+  }
+
+  function renderTopLeads(leads) {
+    const tbody = document.getElementById('top-leads-table');
+    tbody.innerHTML = '';
+
+    if (leads.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No hay leads aún</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    leads.forEach((lead, index) => {
+      const tr = document.createElement('tr');
+      tr.className = 'table-row';
+      tr.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-800 font-medium">${lead.name}</div>
+          <div class="text-xs text-gray-500">${lead.phoneNumber}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full ${lead.score >= 10 ? 'bg-green-100 text-green-800' : lead.score >= 5 ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
+            ${lead.score || 0}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${lead.interactionsCount || 0}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          <button onclick="openMessageModal('${lead.phoneNumber}')" 
+            class="message-btn inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+            <i class="fas fa-paper-plane mr-1"></i> Contactar
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   function renderRecentContacts(contacts) {
@@ -163,7 +247,17 @@ document.addEventListener('DOMContentLoaded', function () {
   async function loadContacts(page = 1) {
     contactsPage = page;
     try {
-      const response = await fetch(`/crm/contacts?page=${page}&limit=20&search=${encodeURIComponent(contactsSearch)}`, {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20',
+        search: contactsSearch
+      });
+      
+      if (currentSaleStatusFilter) {
+        params.append('saleStatus', currentSaleStatusFilter);
+      }
+
+      const response = await fetch(`/crm/contacts?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
 
@@ -175,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
       updateContactsPaginationInfo(meta);
     } catch (error) {
       console.error('Error loading contacts:', error);
-      alert('Failed to load contacts');
+      alert('Error al cargar contactos');
     }
   }
 
@@ -185,24 +279,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (contacts.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No contacts found</td>`;
+      tr.innerHTML = `<td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No se encontraron contactos</td>`;
       tbody.appendChild(tr);
       return;
     }
 
+    const statusLabels = {
+      'lead': { label: 'Lead', color: 'gray', bg: 'bg-gray-100 text-gray-800' },
+      'interested': { label: 'Interesado', color: 'blue', bg: 'bg-blue-100 text-blue-800' },
+      'potential_buyer': { label: 'Potencial', color: 'yellow', bg: 'bg-yellow-100 text-yellow-800' },
+      'paid': { label: 'Cliente', color: 'green', bg: 'bg-green-100 text-green-800' }
+    };
+
     contacts.forEach(contact => {
+      const status = statusLabels[contact.saleStatus || 'lead'] || statusLabels['lead'];
       const tr = document.createElement('tr');
       tr.className = 'table-row';
       tr.innerHTML = `
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${contact.phoneNumber}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${contact.name || contact.pushName || '-'}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${contact.language || '-'}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full ${status.bg}">
+            ${status.label}
+          </span>
+        </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(contact.lastInteraction)}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <button onclick="openMessageModal('${contact.phoneNumber}')" 
-            class="message-btn inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-            <i class="fas fa-paper-plane mr-1"></i> Send
-          </button>
+          <div class="flex space-x-2">
+            <button onclick="openStatusModal('${contact.phoneNumber}', '${contact.saleStatus || 'lead'}')" 
+              class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <i class="fas fa-edit mr-1"></i> Estado
+            </button>
+            <button onclick="openMessageModal('${contact.phoneNumber}')" 
+              class="message-btn inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+              <i class="fas fa-paper-plane mr-1"></i> Mensaje
+            </button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
@@ -537,4 +649,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
   window.addContactToCampaign = addContactToCampaign;
   window.removeContactFromCampaign = removeContactFromCampaign;
+
+  // Status change modal functions
+  let currentStatusPhone = null;
+
+  function openStatusModal(phoneNumber, currentStatus) {
+    currentStatusPhone = phoneNumber;
+    document.getElementById('status-select').value = currentStatus || 'lead';
+    document.getElementById('status-notes').value = '';
+    document.getElementById('status-modal').classList.remove('hidden');
+  }
+
+  function closeStatusModal() {
+    document.getElementById('status-modal').classList.add('hidden');
+    currentStatusPhone = null;
+  }
+
+  async function saveStatusChange() {
+    if (!currentStatusPhone) return;
+
+    const saleStatus = document.getElementById('status-select').value;
+    const saleStatusNotes = document.getElementById('status-notes').value;
+
+    try {
+      const response = await fetch(`/crm/contacts/${currentStatusPhone}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ saleStatus, saleStatusNotes })
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      closeStatusModal();
+      loadContacts(contactsPage);
+      alert('Estado actualizado correctamente');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error al actualizar el estado');
+    }
+  }
+
+  window.openStatusModal = openStatusModal;
+  window.closeStatusModal = closeStatusModal;
+  window.saveStatusChange = saveStatusChange;
 });
