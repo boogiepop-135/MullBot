@@ -73,6 +73,8 @@ export class BotManager {
     private async handleReady() {
         this.qrData.qrScanned = true;
         logger.info("Client is ready!");
+        logger.info("WhatsApp session is now authenticated and saved in MongoDB");
+        logger.info("Session will persist across Railway deployments");
 
         try {
             await YtDlpDownloader.getInstance().initialize();
@@ -144,7 +146,8 @@ export class BotManager {
         let chat = null;
         let userI18n: UserI18n;
 
-        const content = message.body.trim();
+        // Permitir mensajes con media aunque no tengan texto
+        const content = message.body?.trim() || '';
 
         if (AppConfig.instance.getSupportedMessageTypes().indexOf(message.type) === -1) {
             return;
@@ -203,8 +206,62 @@ export class BotManager {
     }
 
     private async processMessageContent(message: Message, content: string, userI18n: UserI18n, chat: any) {
+        // Detectar comprobantes de pago primero
+        const { detectPaymentReceipt, handlePaymentReceipt } = await import('../utils/payment-detection.util');
+        
+        try {
+            const isPaymentReceipt = await detectPaymentReceipt(message);
+            if (isPaymentReceipt) {
+                const user = await message.getContact();
+                const contact = await ContactModel.findOne({ phoneNumber: user.number });
+                
+                await handlePaymentReceipt(message);
+                
+                // Mensaje personalizado según el estado del contacto
+                let receiptMessage = '';
+                
+                if (contact && contact.saleStatus === 'appointment_confirmed') {
+                    receiptMessage = `✅ *Comprobante Recibido*
+
+Gracias por enviar tu comprobante de pago. Lo hemos recibido.
+
+📝 *Nota:* Ya tienes una cita confirmada para la instalación. Este comprobante adicional será revisado por nuestro equipo.
+
+Te confirmaremos cualquier actualización si es necesario.
+
+¿Tienes alguna pregunta?`;
+                } else {
+                    receiptMessage = `✅ *Comprobante Recibido*
+
+Gracias por enviar tu comprobante de pago. Lo hemos recibido y lo estamos revisando.
+
+⏳ *Estado:* Esperando confirmación
+
+Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha para la instalación de tu compostero Müllblue.
+
+¿Tienes alguna pregunta mientras tanto?`;
+                }
+
+                if (chat) {
+                    await chat.sendMessage(receiptMessage);
+                }
+                
+                logger.info(`Payment receipt detected and processed for ${message.from}`);
+                return;
+            }
+        } catch (error) {
+            logger.error(`Error processing payment receipt detection: ${error}`);
+        }
+
         if (message.type === MessageTypes.VOICE) {
             await this.handleVoiceMessage(message, userI18n);
+            return;
+        }
+
+        // Manejar mensajes con media que no sean comprobantes de pago
+        if (message.hasMedia && (message.type === MessageTypes.IMAGE || message.type === MessageTypes.DOCUMENT)) {
+            // Si es media pero no es comprobante, tratarlo como mensaje de texto normal
+            await this.handleTextMessage(message, content, userI18n, chat);
             return;
         }
 

@@ -140,7 +140,7 @@ export default function (botManager: BotManager) {
     router.put('/contacts/:phoneNumber/appointment/confirm', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { phoneNumber } = req.params;
-            const { appointmentNotes } = req.body;
+            const { appointmentNotes, appointmentDate } = req.body;
 
             const updateData: any = {
                 appointmentConfirmed: true,
@@ -148,6 +148,9 @@ export default function (botManager: BotManager) {
             };
             if (appointmentNotes) {
                 updateData.appointmentNotes = appointmentNotes;
+            }
+            if (appointmentDate) {
+                updateData.appointmentDate = new Date(appointmentDate);
             }
 
             const contact = await ContactModel.findOneAndUpdate(
@@ -158,6 +161,22 @@ export default function (botManager: BotManager) {
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            // Enviar mensaje automático de confirmación de cita
+            try {
+                const { sendAppointmentConfirmationMessage } = await import('../../utils/payment-detection.util');
+                if (botManager.client) {
+                    await sendAppointmentConfirmationMessage(
+                        botManager.client, 
+                        phoneNumber, 
+                        contact.appointmentDate ? new Date(contact.appointmentDate) : undefined,
+                        contact.appointmentNotes
+                    );
+                }
+            } catch (msgError) {
+                logger.error('Error sending appointment confirmation message:', msgError);
+                // No fallar la confirmación si el mensaje falla
             }
 
             res.json({ message: 'Appointment confirmed successfully', contact });
@@ -185,6 +204,17 @@ export default function (botManager: BotManager) {
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            // Enviar mensaje automático de confirmación de pago
+            try {
+                const { sendPaymentConfirmationMessage } = await import('../../utils/payment-detection.util');
+                if (botManager.client) {
+                    await sendPaymentConfirmationMessage(botManager.client, phoneNumber);
+                }
+            } catch (msgError) {
+                logger.error('Error sending payment confirmation message:', msgError);
+                // No fallar la confirmación si el mensaje falla
             }
 
             res.json({ message: 'Payment confirmed successfully', contact });

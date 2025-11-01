@@ -10,7 +10,9 @@ export async function getClientConfig() {
         authStrategy: new RemoteAuth({
             clientId: "mullbot-client",
             store: store,
-            backupSyncIntervalMs: 300000
+            backupSyncIntervalMs: 300000 // Sincronizar cada 5 minutos
+            // La sesión se guarda automáticamente en MongoDB en la colección 'auth_sessions'
+            // wwebjs-mongo maneja automáticamente el guardado y restauración de sesiones
         }),
         puppeteer: {
             headless: true,
