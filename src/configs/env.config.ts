@@ -73,13 +73,20 @@ class EnvConfig {
         }
 
         // En Railway, intentar encontrar Chrome en rutas comunes
+        // Railway puede instalar Chrome en diferentes ubicaciones
         const possiblePaths = [
             '/usr/bin/google-chrome',
             '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome-beta',
             '/usr/bin/chromium',
             '/usr/bin/chromium-browser',
             '/usr/bin/chrome',
-            '/usr/bin/chrome-browser'
+            '/usr/bin/chrome-browser',
+            // Rutas alternativas en Railway/Docker
+            '/usr/local/bin/google-chrome',
+            '/usr/local/bin/google-chrome-stable',
+            '/snap/bin/chromium',
+            '/app/.apt/usr/bin/google-chrome-stable'
         ];
 
         // Verificar si algún archivo existe
@@ -95,8 +102,40 @@ class EnvConfig {
             }
         }
 
-        // Si no se encuentra, dejar undefined para que Puppeteer use su Chrome embebido
-        logger.warn("Chrome executable not found in common paths. Puppeteer will use its bundled Chrome.");
+        // Si no se encuentra, intentar usar el Chrome que Puppeteer puede tener descargado
+        // o intentar ejecutar 'which google-chrome' para encontrarlo
+        try {
+            const { execSync } = require('child_process');
+            try {
+                const chromePath = execSync('which google-chrome', { encoding: 'utf8' }).trim();
+                if (chromePath && fs.existsSync(chromePath)) {
+                    this.PUPPETEER_EXECUTABLE_PATH = chromePath;
+                    logger.info(`Found Chrome via 'which' command: ${chromePath}`);
+                    return;
+                }
+            } catch (error) {
+                // Continuar
+            }
+            
+            // Intentar con chromium
+            try {
+                const chromiumPath = execSync('which chromium', { encoding: 'utf8' }).trim();
+                if (chromiumPath && fs.existsSync(chromiumPath)) {
+                    this.PUPPETEER_EXECUTABLE_PATH = chromiumPath;
+                    logger.info(`Found Chromium via 'which' command: ${chromiumPath}`);
+                    return;
+                }
+            } catch (error) {
+                // Continuar
+            }
+        } catch (error) {
+            // Ignorar errores de execSync
+        }
+        
+        // Si aún no se encuentra, dejar undefined - esto causará que Puppeteer falle
+        // pero el usuario puede configurar PUPPETEER_EXECUTABLE_PATH manualmente
+        logger.warn("Chrome executable not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH manually.");
+        logger.warn("In Railway, Chrome should be installed via apt packages. Verify that 'google-chrome-stable' is installed.");
         this.PUPPETEER_EXECUTABLE_PATH = undefined;
     }
 
@@ -118,8 +157,6 @@ class EnvConfig {
         if (!this.GEMINI_API_KEY) {
             throw new Error("Environment variable GEMINI_API_KEY is missing. Please provide a valid Gemini API key.");
         }
-        // Inicializar PUPPETEER_EXECUTABLE_PATH con detección automática
-        this.initializePuppeteerPath();
         if (!this.ENV) {
             throw new Error("Environment variable ENV is missing. Please provide a valid ENV.");
         }

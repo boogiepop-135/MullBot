@@ -14,7 +14,12 @@ export async function getClientConfig() {
         }),
         puppeteer: {
             headless: true,
-            executablePath: EnvConfig.PUPPETEER_EXECUTABLE_PATH || undefined,
+            // Solo especificar executablePath si está definido
+            // Si no está definido, whatsapp-web.js/puppeteer-core intentará encontrarlo automáticamente
+            // pero puede fallar si Chrome no está instalado en el sistema
+            ...(EnvConfig.PUPPETEER_EXECUTABLE_PATH ? {
+                executablePath: EnvConfig.PUPPETEER_EXECUTABLE_PATH
+            } : {}),
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
