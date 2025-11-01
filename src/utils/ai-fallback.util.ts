@@ -19,35 +19,45 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
     // Intentar primero con Gemini
     try {
         if (EnvConfig.GEMINI_API_KEY) {
+            logger.info(`🤖 Intentando Gemini para query: "${cleanQuery.substring(0, 50)}..."`);
             const geminiResponse = await tryGemini(cleanQuery);
             if (geminiResponse && geminiResponse.trim().length > 0) {
+                logger.info(`✅ Gemini respondió exitosamente (${geminiResponse.length} caracteres)`);
                 return {
                     text: geminiResponse,
                     provider: "gemini"
                 };
             }
+        } else {
+            logger.warn("GEMINI_API_KEY no configurada, saltando a Claude");
         }
     } catch (error) {
-        logger.error(`Gemini falló: ${error.message}`);
+        logger.error(`❌ Gemini falló: ${error.message}`);
+        logger.info(`🔄 Intentando Claude como fallback...`);
         // Continuar con Claude si Gemini falla
     }
 
-    // Si Gemini falla, intentar con Claude
+    // Si Gemini falla o no está configurada, intentar con Claude
     try {
         if (EnvConfig.ANTHROPIC_API_KEY) {
+            logger.info(`🤖 Intentando Claude (Haiku) para query: "${cleanQuery.substring(0, 50)}..."`);
             const claudeResponse = await tryClaude(cleanQuery);
             if (claudeResponse && claudeResponse.trim().length > 0) {
+                logger.info(`✅ Claude respondió exitosamente (${claudeResponse.length} caracteres)`);
                 return {
                     text: claudeResponse,
                     provider: "claude"
                 };
             }
+        } else {
+            logger.warn("ANTHROPIC_API_KEY no configurada - Claude fallback no disponible");
         }
     } catch (error) {
-        logger.error(`Claude falló: ${error.message}`);
+        logger.error(`❌ Claude falló: ${error.message}`);
     }
 
     // Si ambas fallan, lanzar error específico
+    logger.error("❌ Todas las APIs de IA fallaron");
     throw new Error("Todas las APIs de IA están temporalmente no disponibles. Por favor intenta de nuevo más tarde.");
 };
 
@@ -91,7 +101,11 @@ TÉCNICAS: Escasez, urgencia, beneficios emocionales. Siempre pregunta "¿Te int
 };
 
 const tryClaude = async (query: string): Promise<string> => {
-    // Prompt más corto para ahorrar tokens
+    if (!EnvConfig.ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY no configurada");
+    }
+    
+    // Prompt más corto para ahorrar tokens (optimizado para Claude Haiku)
     const systemPrompt = `Eres agente de ventas Müllblue. Responde en español con emojis.
 
 PRODUCTO: Compostero 15L - Reduce 2.5x, sin olores/plagas.
@@ -112,8 +126,9 @@ TÉCNICAS: Escasez, urgencia, beneficios emocionales. Siempre pregunta "¿Te int
             'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-            model: 'claude-3-haiku-20240307', // Modelo más económico
-            max_tokens: 200, // Reducido para ahorrar tokens
+            model: 'claude-3-haiku-20240307', // Modelo más económico de Claude (muy bajo costo)
+            max_tokens: 200, // Reducido para ahorrar tokens (~$0.00025 por 1K tokens output)
+            temperature: 0.6, // Mismo que Gemini para consistencia
             messages: [
                 {
                     role: 'user',
