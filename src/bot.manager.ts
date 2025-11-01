@@ -8,6 +8,7 @@ import { isUrl } from "./utils/common.util";
 import { identifySocialNetwork, YtDlpDownloader } from "./utils/get.util";
 import { onboard } from "./utils/onboarding.util";
 import { ContactModel } from "./crm/models/contact.model";
+import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
 const qrcode = require('qrcode-terminal');
 
 export class BotManager {
@@ -207,8 +208,6 @@ export class BotManager {
 
     private async processMessageContent(message: Message, content: string, userI18n: UserI18n, chat: any) {
         // Detectar comprobantes de pago primero
-        const { detectPaymentReceipt, handlePaymentReceipt } = await import('../utils/payment-detection.util');
-        
         try {
             const isPaymentReceipt = await detectPaymentReceipt(message);
             if (isPaymentReceipt) {

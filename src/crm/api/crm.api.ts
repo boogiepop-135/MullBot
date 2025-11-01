@@ -165,7 +165,6 @@ export default function (botManager: BotManager) {
 
             // Enviar mensaje automático de confirmación de cita
             try {
-                const { sendAppointmentConfirmationMessage } = await import('../../utils/payment-detection.util');
                 if (botManager.client) {
                     await sendAppointmentConfirmationMessage(
                         botManager.client, 
@@ -208,7 +207,6 @@ export default function (botManager: BotManager) {
 
             // Enviar mensaje automático de confirmación de pago
             try {
-                const { sendPaymentConfirmationMessage } = await import('../../utils/payment-detection.util');
                 if (botManager.client) {
                     await sendPaymentConfirmationMessage(botManager.client, phoneNumber);
                 }
