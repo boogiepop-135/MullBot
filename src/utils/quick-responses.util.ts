@@ -3,6 +3,8 @@
  * Esto ahorra tokens evitando llamadas a APIs de IA para consultas simples
  */
 
+import logger from "../configs/logger.config";
+
 export interface QuickResponse {
     message: string;
     mediaPath?: string;
@@ -10,53 +12,90 @@ export interface QuickResponse {
 }
 
 export const getQuickResponse = (query: string): QuickResponse | null => {
+    if (!query) return null;
+    
     const normalizedQuery = query.toLowerCase().trim();
     
-    // Detectar números solos (1-8) o variaciones
-    const numberMatch = normalizedQuery.match(/^(\d+)[\s\.\)\-]*/);
+    // PRIORIDAD 1: Detectar números exactos (1-8) - más específico
+    // Captura: "1", "1.", "1)", "1 ", "1-", etc.
+    const exactNumberMatch = normalizedQuery.match(/^(\d{1,2})[\s\.\)\-]*$/);
+    if (exactNumberMatch) {
+        const option = parseInt(exactNumberMatch[1]);
+        if (option >= 1 && option <= 8) {
+            logger.info(`✅ Quick response match: número "${option}" para query "${query}"`);
+            return getOptionResponse(option);
+        }
+    }
+    
+    // PRIORIDAD 2: Detectar números al inicio con posibles caracteres después
+    const numberMatch = normalizedQuery.match(/^(\d{1,2})[\s\.\)\-]/);
     if (numberMatch) {
         const option = parseInt(numberMatch[1]);
+        if (option >= 1 && option <= 8) {
+            logger.info(`✅ Quick response match: número "${option}" para query "${query}"`);
+            return getOptionResponse(option);
+        }
+    }
+    
+    // PRIORIDAD 3: Si el query es solo dígitos (limpio), usarlo directamente
+    const cleanNumber = normalizedQuery.replace(/[^\d]/g, '');
+    if (cleanNumber && /^[1-8]$/.test(cleanNumber)) {
+        const option = parseInt(cleanNumber);
+        logger.info(`✅ Quick response match: número limpio "${option}" para query "${query}"`);
         return getOptionResponse(option);
     }
     
-    // Detectar palabras clave sin números
-    if (normalizedQuery === '1' || 
-        normalizedQuery.includes('proceso') && normalizedQuery.includes('compostaje')) {
+    // Tercero: detectar palabras clave (solo si es muy específico para evitar falsos positivos)
+    const keywords = normalizedQuery.split(/\s+/);
+    
+    // Opción 1: proceso de compostaje
+    if (keywords.some(k => k === 'proceso') || 
+        (keywords.some(k => k.includes('compost')) && keywords.some(k => k.includes('ferment')))) {
         return getOptionResponse(1);
     }
     
-    if (normalizedQuery === '2' || 
-        (normalizedQuery.includes('precio') || normalizedQuery.includes('costo') || normalizedQuery.includes('cuanto'))) {
+    // Opción 2: precios
+    if (keywords.some(k => k === 'precio' || k === 'precios' || k === 'costo' || k === 'costos' || 
+        k === 'cuanto' || k === 'cuánto' || k.includes('vale') || k.includes('cuesta'))) {
         return getOptionResponse(2);
     }
     
-    if (normalizedQuery === '3' || 
-        (normalizedQuery.includes('pago') && (normalizedQuery.includes('metodo') || normalizedQuery.includes('forma')))) {
+    // Opción 3: métodos de pago
+    if ((keywords.some(k => k === 'pago' || k === 'pagos')) && 
+        (keywords.some(k => k === 'metodo' || k === 'método' || k === 'forma'))) {
+        return getOptionResponse(3);
+    }
+    if (keywords.some(k => k === 'transferencia' || k === 'tarjeta' || k === 'tarjetas')) {
         return getOptionResponse(3);
     }
     
-    if (normalizedQuery === '4' || 
-        (normalizedQuery.includes('incluye') || normalizedQuery.includes('kit'))) {
+    // Opción 4: qué incluye / kit
+    if (keywords.some(k => k === 'incluye' || k === 'incluye' || k === 'kit' || 
+        (k.includes('contiene') && keywords.some(k2 => k2 === 'kit')))) {
         return getOptionResponse(4);
     }
     
-    if (normalizedQuery === '5' || 
-        (normalizedQuery.includes('dimension') || normalizedQuery.includes('tamaño') || normalizedQuery.includes('espacio'))) {
+    // Opción 5: dimensiones
+    if (keywords.some(k => k === 'dimension' || k === 'dimensión' || k === 'dimensiones' || 
+        k === 'tamaño' || k === 'tamaños' || k === 'espacio' || k === 'medidas')) {
         return getOptionResponse(5);
     }
     
-    if (normalizedQuery === '6' || 
-        (normalizedQuery.includes('envio') || normalizedQuery.includes('entrega') || normalizedQuery.includes('shipping'))) {
+    // Opción 6: envío
+    if (keywords.some(k => k === 'envio' || k === 'envío' || k === 'entrega' || 
+        k === 'shipping' || k === 'delivery')) {
         return getOptionResponse(6);
     }
     
-    if (normalizedQuery === '7' || 
-        (normalizedQuery.includes('pregunta') || normalizedQuery.includes('frecuente') || normalizedQuery.includes('faq'))) {
+    // Opción 7: preguntas frecuentes
+    if (keywords.some(k => k === 'pregunta' || k === 'preguntas' || k === 'frecuente' || 
+        k === 'faq' || k === 'frecuentes')) {
         return getOptionResponse(7);
     }
     
-    if (normalizedQuery === '8' || 
-        (normalizedQuery.includes('agente') || normalizedQuery.includes('humano') || normalizedQuery.includes('persona'))) {
+    // Opción 8: agente humano
+    if (keywords.some(k => k === 'agente' || k === 'humano' || k === 'persona' || 
+        k === 'representante' || k === 'atencion' || k === 'atención')) {
         return getOptionResponse(8);
     }
     

@@ -83,10 +83,11 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
         }
     }
 
-    // Verificar si hay una respuesta rápida disponible (ahorra tokens)
+    // SIEMPRE verificar primero si hay una respuesta rápida disponible (ahorra tokens)
+    // Esto debe hacerse ANTES de cualquier llamada a IA
     const quickResponse = getQuickResponse(query);
     if (quickResponse) {
-        logger.info(`Using quick response for query: ${query}`);
+        logger.info(`✅ Using quick response for query: "${query}" - NO se usaron tokens de IA`);
         
         // Detectar intención y hacer seguimiento
         const intent = SalesTracker.detectIntent(query);
@@ -107,8 +108,11 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
                 caption: AppConfig.instance.printMessage(quickResponse.message) 
             },
         );
-        return;
+        return; // IMPORTANTE: salir aquí para no llamar a IA
     }
+    
+    // Log cuando se va a usar IA (para debugging)
+    logger.info(`🤖 Using AI for query: "${query}" (no quick response found)`);
 
     // Si no hay respuesta rápida, usar IA
     try {
@@ -181,14 +185,42 @@ Estoy aquí para ayudarte a transformar tus residuos orgánicos en un recurso va
         );
 
     } catch (err) {
-        logger.error(err);
+        logger.error(`Error en chat.command para query "${query}":`, err);
         
-        // Manejar errores específicos de APIs de IA
-        let errorMessage = "Error comunicándose con Mullbot. Por favor intenta de nuevo o contacta a nuestro equipo de soporte.";
-        
-        if (err.message && (err.message.includes("503 Service Unavailable") || err.message.includes("Todas las APIs de IA están temporalmente no disponibles"))) {
-            errorMessage = "Los servicios de IA están temporalmente sobrecargados. Por favor intenta de nuevo en unos minutos. Mientras tanto, puedes usar los comandos específicos:\n\n*Comandos disponibles:*\n💰 *precios* - Información de precios\n💳 *pago* - Métodos de pago\n📦 *productos* - Información del producto\n\n¡Gracias por tu paciencia! 😊";
+        // Intentar una última vez con respuesta rápida (por si acaso la query cambió)
+        const fallbackQuickResponse = getQuickResponse(query);
+        if (fallbackQuickResponse) {
+            logger.info(`✅ Fallback: usando respuesta rápida para query: "${query}"`);
+            const { getBotDelay } = await import('../utils/bot-config.util');
+            const delay = await getBotDelay();
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            const mediaPath = fallbackQuickResponse.mediaPath || "public/info.png";
+            const media = MessageMedia.fromFilePath(mediaPath);
+            await message.reply(
+                media,
+                null,
+                { 
+                    caption: AppConfig.instance.printMessage(fallbackQuickResponse.message) 
+                },
+            );
+            return;
         }
+        
+        // Si no hay respuesta rápida de fallback, enviar mensaje de error más amigable
+        const errorMessage = `Lo siento, no pude procesar tu consulta en este momento 😔
+
+Para obtener información rápida, puedes usar:
+*1* - Proceso de compostaje
+*2* - Precios y promociones  
+*3* - Métodos de pago
+*4* - Qué incluye el kit
+*5* - Dimensiones y espacio
+*6* - Envío y entrega
+*7* - Preguntas frecuentes
+*8* - Hablar con agente
+
+¿En cuál te puedo ayudar? 🌱`;
         
         // Delay configurable para simular tiempo de respuesta humano
         const { getBotDelay } = await import('../utils/bot-config.util');

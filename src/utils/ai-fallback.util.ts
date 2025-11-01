@@ -10,103 +10,99 @@ export interface AIResponse {
 }
 
 export const aiCompletion = async (query: string): Promise<AIResponse> => {
+    // Limpiar y normalizar el query para evitar problemas
+    const cleanQuery = query.trim();
+    if (!cleanQuery || cleanQuery.length === 0) {
+        throw new Error("Query vacío");
+    }
+    
     // Intentar primero con Gemini
     try {
         if (EnvConfig.GEMINI_API_KEY) {
-            const geminiResponse = await tryGemini(query);
-            return {
-                text: geminiResponse,
-                provider: "gemini"
-            };
+            const geminiResponse = await tryGemini(cleanQuery);
+            if (geminiResponse && geminiResponse.trim().length > 0) {
+                return {
+                    text: geminiResponse,
+                    provider: "gemini"
+                };
+            }
         }
     } catch (error) {
-        logger.warn(`Gemini falló: ${error.message}`);
+        logger.error(`Gemini falló: ${error.message}`);
+        // Continuar con Claude si Gemini falla
     }
 
     // Si Gemini falla, intentar con Claude
     try {
         if (EnvConfig.ANTHROPIC_API_KEY) {
-            const claudeResponse = await tryClaude(query);
-            return {
-                text: claudeResponse,
-                provider: "claude"
-            };
+            const claudeResponse = await tryClaude(cleanQuery);
+            if (claudeResponse && claudeResponse.trim().length > 0) {
+                return {
+                    text: claudeResponse,
+                    provider: "claude"
+                };
+            }
         }
     } catch (error) {
-        logger.warn(`Claude falló: ${error.message}`);
+        logger.error(`Claude falló: ${error.message}`);
     }
 
-    // Si ambas fallan, devolver mensaje de error
+    // Si ambas fallan, lanzar error específico
     throw new Error("Todas las APIs de IA están temporalmente no disponibles. Por favor intenta de nuevo más tarde.");
 };
 
 const tryGemini = async (query: string): Promise<string> => {
     const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash", // Modelo más económico
+        model: "gemini-2.0-flash-exp", // Modelo más reciente y eficiente
         generationConfig: {
-            maxOutputTokens: 300, // Reducido para ahorrar tokens
-            temperature: 0.7,
+            maxOutputTokens: 200, // Reducido para ahorrar tokens
+            temperature: 0.6, // Reducido para respuestas más consistentes
         }
     });
     
-    const systemPrompt = `Eres un agente de ventas experto de Müllblue. Responde en español con emojis, sin signos de admiración.
+    // Prompt más corto y eficiente para ahorrar tokens
+    const systemPrompt = `Eres agente de ventas Müllblue. Responde en español con emojis.
 
-PRODUCTO: Compostero fermentador 15L - Reduce residuos 2.5x, sin olores, plagas ni escurrimientos.
-
+PRODUCTO: Compostero 15L - Reduce 2.5x, sin olores/plagas.
 PRECIO: $1,490 MXN (antes $1,890) - Incluye biocatalizador 1kg + envío gratis.
-
-QUÉ INCLUYE: Compostero 15L + biocatalizador 1kg + envío gratis + acompañamiento.
-
-CÓMO FUNCIONA: 1.Depositar residuos 2.Espolvorear biocatalizador 3.Compactar 4.Tapar. Fermenta 2 semanas.
-
-DIMENSIONES: 30x30x40 cm, capacidad 15L.
-
-PAGOS: Transferencia Banco Azteca cuenta 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas 3MSI: https://mpago.li/1W2JhS5
-
+INCLUYE: Compostero + biocatalizador 1kg + envío + acompañamiento.
+FUNCIONA: Depositar → Espolvorear biocatalizador → Compactar → Tapar. Fermenta 2 semanas.
+DIMENSIONES: 30x30x40 cm, 15L.
+PAGOS: Banco Azteca 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas: https://mpago.li/1W2JhS5
 VIDEO: https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
 
-TÉCNICAS DE VENTA:
-- Usa escasez: "Solo quedan pocas unidades"
-- Urgencia: "Precio promocional por tiempo limitado"
-- Beneficios emocionales: "Tu familia respirará mejor aire"
-- Social proof: "Más de 1000 familias ya lo usan"
-- Objeciones: Si dice caro, recalca ahorro en basura y fertilizante
-- Cierre: Siempre pregunta "¿Te interesa proceder con tu compra?"
+TÉCNICAS: Escasez, urgencia, beneficios emocionales. Siempre pregunta "¿Te interesa proceder?"`;
 
-Siempre pregunta algo para continuar hacia la venta.`;
-
+    // Usar solo el query del usuario para reducir tokens de entrada
     const fullQuery = `${systemPrompt}\n\nUsuario: ${query}`;
-    const result = await model.generateContent([fullQuery]);
-    return result.response.text() || 'No reply';
+    
+    try {
+        const result = await model.generateContent([fullQuery]);
+        const responseText = result.response.text();
+        if (!responseText || responseText.trim().length === 0) {
+            throw new Error("Empty response from Gemini");
+        }
+        return responseText;
+    } catch (error) {
+        logger.error(`Gemini API error: ${error.message}`);
+        throw error;
+    }
 };
 
 const tryClaude = async (query: string): Promise<string> => {
-    const systemPrompt = `Eres un agente de ventas experto de Müllblue. Responde en español con emojis, sin signos de admiración.
+    // Prompt más corto para ahorrar tokens
+    const systemPrompt = `Eres agente de ventas Müllblue. Responde en español con emojis.
 
-PRODUCTO: Compostero fermentador 15L - Reduce residuos 2.5x, sin olores, plagas ni escurrimientos.
-
+PRODUCTO: Compostero 15L - Reduce 2.5x, sin olores/plagas.
 PRECIO: $1,490 MXN (antes $1,890) - Incluye biocatalizador 1kg + envío gratis.
-
-QUÉ INCLUYE: Compostero 15L + biocatalizador 1kg + envío gratis + acompañamiento.
-
-CÓMO FUNCIONA: 1.Depositar residuos 2.Espolvorear biocatalizador 3.Compactar 4.Tapar. Fermenta 2 semanas.
-
-DIMENSIONES: 30x30x40 cm, capacidad 15L.
-
-PAGOS: Transferencia Banco Azteca cuenta 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas 3MSI: https://mpago.li/1W2JhS5
-
+INCLUYE: Compostero + biocatalizador 1kg + envío + acompañamiento.
+FUNCIONA: Depositar → Espolvorear biocatalizador → Compactar → Tapar. Fermenta 2 semanas.
+DIMENSIONES: 30x30x40 cm, 15L.
+PAGOS: Banco Azteca 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas: https://mpago.li/1W2JhS5
 VIDEO: https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
 
-TÉCNICAS DE VENTA:
-- Usa escasez: "Solo quedan pocas unidades"
-- Urgencia: "Precio promocional por tiempo limitado"
-- Beneficios emocionales: "Tu familia respirará mejor aire"
-- Social proof: "Más de 1000 familias ya lo usan"
-- Objeciones: Si dice caro, recalca ahorro en basura y fertilizante
-- Cierre: Siempre pregunta "¿Te interesa proceder con tu compra?"
-
-Siempre pregunta algo para continuar hacia la venta.`;
+TÉCNICAS: Escasez, urgencia, beneficios emocionales. Siempre pregunta "¿Te interesa proceder?"`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -117,7 +113,7 @@ Siempre pregunta algo para continuar hacia la venta.`;
         },
         body: JSON.stringify({
             model: 'claude-3-haiku-20240307', // Modelo más económico
-            max_tokens: 300, // Reducido aún más para ahorrar tokens
+            max_tokens: 200, // Reducido para ahorrar tokens
             messages: [
                 {
                     role: 'user',
@@ -128,9 +124,15 @@ Siempre pregunta algo para continuar hacia la venta.`;
     });
 
     if (!response.ok) {
+        const errorText = await response.text();
+        logger.error(`Claude API error: ${response.status} - ${errorText}`);
         throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    return data.content[0].text || 'No reply';
+    const responseText = data.content?.[0]?.text;
+    if (!responseText || responseText.trim().length === 0) {
+        throw new Error("Empty response from Claude");
+    }
+    return responseText;
 };
