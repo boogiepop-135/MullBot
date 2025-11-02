@@ -126,6 +126,18 @@
 
     #whatsapp-web-iframe {
       min-height: calc(100vh - 80px);
+      width: 100%;
+    }
+    
+    /* WhatsApp Web Button in Sidebar */
+    #whatsapp-web-btn {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    #whatsapp-web-btn:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
+      transition: all 0.2s ease;
     }
   </style>
 </head>
@@ -449,11 +461,6 @@
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 class="text-lg font-medium text-gray-800">Contactos</h2>
             <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
-              <!-- WhatsApp Web Button -->
-              <button onclick="openWhatsAppWeb()" id="whatsapp-web-btn-contacts" disabled
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                <i class="fas fa-external-link-alt mr-2"></i> WhatsApp Web
-              </button>
               <!-- Sale Status Filter -->
               <select id="sale-status-filter" class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
                 <option value="">Todos los estados</option>
@@ -725,10 +732,6 @@
               <button onclick="logoutWhatsApp()"
                 class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
                 <i class="fas fa-unlink mr-2"></i> Desvincular WhatsApp
-              </button>
-              <button onclick="openWhatsAppWeb()" id="whatsapp-web-btn" disabled
-                class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fas fa-external-link-alt mr-2"></i> Abrir WhatsApp Web
               </button>
             </div>
             <p class="text-xs text-gray-400 mt-2">Después de desvincular, se generará un nuevo código QR para escanear con otra cuenta.</p>
