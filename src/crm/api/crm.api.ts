@@ -133,6 +133,38 @@ export default function (botManager: BotManager) {
                 return res.status(404).json({ error: 'Contact not found' });
             }
 
+            // Si se está pausando (no despausando), enviar mensaje automático
+            if (isPaused === true && botManager.client) {
+                try {
+                    const formattedNumber = phoneNumber.includes('@') 
+                        ? phoneNumber 
+                        : `${phoneNumber}@c.us`;
+
+                    const pauseMessage = `✅ *Solicitud Recibida*
+
+Tu solicitud ha sido registrada correctamente.
+
+👤 *Estado:* En cola para atención humana
+⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
+
+📝 Enseguida vendrá un asesor a atenderte. El bot ha sido pausado temporalmente para evitar respuestas automáticas.
+
+¡Gracias por tu paciencia! 🌱`;
+
+                    const sentMessage = await botManager.client.sendMessage(formattedNumber, pauseMessage);
+                    
+                    // Guardar mensaje enviado en la base de datos
+                    if (sentMessage) {
+                        await botManager.saveSentMessage(phoneNumber, pauseMessage, sentMessage.id._serialized);
+                    }
+                    
+                    logger.info(`Pause confirmation message sent to ${phoneNumber}`);
+                } catch (messageError) {
+                    logger.error(`Error sending pause confirmation message to ${phoneNumber}:`, messageError);
+                    // No fallar la operación de pausa si el mensaje falla
+                }
+            }
+
             res.json({ message: `Contact ${isPaused ? 'paused' : 'unpaused'} successfully`, contact });
         } catch (error) {
             logger.error('Failed to pause/unpause contact:', error);

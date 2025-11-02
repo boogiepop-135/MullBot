@@ -1341,6 +1341,36 @@ document.addEventListener('DOMContentLoaded', function () {
     // Scroll al final
     container.scrollTop = container.scrollHeight;
   }
+  
+  // Función para pausar bot desde el chat
+  async function pauseBotFromChat(phoneNumber) {
+    if (!confirm('¿Pausar el bot para este contacto? Se enviará un mensaje automático al contacto.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/crm/contacts/${phoneNumber}/pause`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isPaused: true })
+      });
+
+      if (!response.ok) throw new Error('Failed to pause contact');
+
+      alert('Bot pausado correctamente. Se ha enviado un mensaje al contacto.');
+      
+      // Recargar mensajes y datos
+      loadChatMessages();
+      loadContacts(contactsPage);
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error pausing bot from chat:', error);
+      alert('Error al pausar el bot');
+    }
+  }
 
   async function sendChatMessage() {
     const messageInput = document.getElementById('chat-message-input');
@@ -1401,6 +1431,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.openWhatsAppWebForContact = openWhatsAppWebForContact;
   window.refreshWhatsAppWeb = refreshWhatsAppWeb;
   window.openMessageModal = openMessageModal; // Mantener compatibilidad
+  window.pauseBotFromChat = pauseBotFromChat;
 
   // Users Management Functions
   async function loadUsers() {

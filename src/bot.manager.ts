@@ -503,21 +503,52 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 { upsert: true, new: true }
             );
 
-            // Si el mensaje requiere atención, pausar temporalmente al contacto
-            if (requiresAttention && contact && !isFromBot) {
-                try {
-                    await ContactModel.findOneAndUpdate(
-                        { phoneNumber: phoneNumber },
-                        { 
-                            $set: { isPaused: true },
-                            $push: { tags: 'requires_human_attention' }
+                    // Si el mensaje requiere atención, pausar temporalmente al contacto y enviar mensaje
+                    if (requiresAttention && contact && !isFromBot && this.client) {
+                        try {
+                            // Pausar contacto
+                            await ContactModel.findOneAndUpdate(
+                                { phoneNumber: phoneNumber },
+                                { 
+                                    $set: { isPaused: true },
+                                    $push: { tags: 'requires_human_attention' }
+                                }
+                            );
+                            logger.info(`Contact ${phoneNumber} paused temporarily - requested human agent`);
+                            
+                            // Enviar mensaje automático de confirmación
+                            try {
+                                const formattedNumber = phoneNumber.includes('@') 
+                                    ? phoneNumber 
+                                    : `${phoneNumber}@c.us`;
+
+                                const pauseMessage = `✅ *Solicitud Recibida*
+
+Tu solicitud ha sido registrada correctamente.
+
+👤 *Estado:* En cola para atención humana
+⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
+
+📝 Enseguida vendrá un asesor a atenderte. El bot ha sido pausado temporalmente para evitar respuestas automáticas.
+
+¡Gracias por tu paciencia! 🌱`;
+
+                                const sentMessage = await this.client.sendMessage(formattedNumber, pauseMessage);
+                                
+                                // Guardar mensaje enviado en la base de datos
+                                if (sentMessage) {
+                                    await this.saveMessage(sentMessage, true);
+                                }
+                                
+                                logger.info(`Pause confirmation message sent automatically to ${phoneNumber}`);
+                            } catch (messageError) {
+                                logger.error(`Error sending automatic pause confirmation message to ${phoneNumber}:`, messageError);
+                                // No fallar la operación de pausa si el mensaje falla
+                            }
+                        } catch (error) {
+                            logger.error(`Error pausing contact ${phoneNumber}: ${error}`);
                         }
-                    );
-                    logger.info(`Contact ${phoneNumber} paused temporarily - requested human agent`);
-                } catch (error) {
-                    logger.error(`Error pausing contact ${phoneNumber}: ${error}`);
-                }
-            }
+                    }
         } catch (error) {
             logger.error(`Error saving message: ${error}`);
             // No fallar el procesamiento del mensaje si no se puede guardar
