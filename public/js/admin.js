@@ -8,6 +8,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // Check authentication
   checkAuth();
 
+  // Function to hide all sections
+  function hideAllSections() {
+    document.querySelectorAll('.section-content').forEach(section => {
+      section.classList.add('hidden');
+    });
+  }
+
   // Tab switching
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function (e) {

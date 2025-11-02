@@ -771,7 +771,33 @@ export default function (botManager: BotManager) {
             });
 
             // Server-Sent Events para notificaciones en tiempo real
-            router.get('/notifications/stream', authenticate, authorizeAdmin, (req, res) => {
+            // Middleware especial para SSE que acepta token como query parameter
+            router.get('/notifications/stream', async (req, res, next) => {
+                try {
+                    // Intentar obtener token del query parameter o del header
+                    let token = req.query.token as string || req.header('Authorization')?.replace('Bearer ', '');
+                    
+                    if (!token) {
+                        return res.status(401).json({ error: 'Authentication required' });
+                    }
+
+                    const decoded = await (await import('../utils/auth.util')).AuthService.verifyToken(token);
+                    if (!decoded) {
+                        return res.status(401).json({ error: 'Invalid token' });
+                    }
+
+                    // Verificar que sea admin
+                    if (decoded.role !== 'admin') {
+                        return res.status(403).json({ error: 'Admin access required' });
+                    }
+
+                    req.user = decoded;
+                    next();
+                } catch (error) {
+                    logger.error('SSE Authentication error:', error);
+                    res.status(401).json({ error: 'Authentication failed' });
+                }
+            }, (req, res) => {
                 // Configurar SSE
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');

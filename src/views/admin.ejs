@@ -797,13 +797,17 @@
             <i class="fas fa-sync-alt mr-2"></i> Recargar
           </button>
         </div>
-        <div class="flex-1 overflow-hidden">
-          <iframe id="whatsapp-web-iframe" 
-                  src="https://web.whatsapp.com" 
-                  class="w-full h-full border-0"
-                  allow="camera; microphone; geolocation"
-                  title="WhatsApp Web">
-          </iframe>
+        <div class="flex-1 overflow-hidden bg-gray-100 flex items-center justify-center">
+          <div class="text-center p-8">
+            <i class="fab fa-whatsapp text-6xl text-green-600 mb-4"></i>
+            <h3 class="text-xl font-medium text-gray-800 mb-2">WhatsApp Web</h3>
+            <p class="text-gray-600 mb-4">WhatsApp Web no se puede mostrar en un iframe por razones de seguridad.</p>
+            <p class="text-sm text-gray-500 mb-4">Por favor, abre WhatsApp Web en una nueva ventana o pestaña.</p>
+            <button onclick="window.open('https://web.whatsapp.com', '_blank')" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+              <i class="fab fa-whatsapp mr-2"></i> Abrir WhatsApp Web
+            </button>
+          </div>
         </div>
       </div>
     </div>
