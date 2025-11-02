@@ -117,6 +117,16 @@
       transform: translate(-50%, -50%);
       z-index: 1001;
     }
+
+    /* WhatsApp Web Section Styles */
+    #whatsapp-web-section {
+      height: calc(100vh - 0px);
+      padding: 0 !important;
+    }
+
+    #whatsapp-web-iframe {
+      min-height: calc(100vh - 80px);
+    }
   </style>
 </head>
 
@@ -760,6 +770,29 @@
               <!-- Users will be loaded here -->
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- WhatsApp Web Section -->
+    <div id="whatsapp-web-section" class="section-content hidden">
+      <div class="h-full flex flex-col">
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-medium text-gray-800">WhatsApp Web</h2>
+            <p class="text-sm text-gray-500 mt-1">Gestiona tus conversaciones directamente desde aquí</p>
+          </div>
+          <button onclick="refreshWhatsAppWeb()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-sync-alt mr-2"></i> Recargar
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden">
+          <iframe id="whatsapp-web-iframe" 
+                  src="https://web.whatsapp.com" 
+                  class="w-full h-full border-0"
+                  allow="camera; microphone; geolocation"
+                  title="WhatsApp Web">
+          </iframe>
         </div>
       </div>
     </div>

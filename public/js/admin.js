@@ -54,6 +54,12 @@ document.addEventListener('DOMContentLoaded', function () {
         currentPage = 'settings';
         loadBotConfig();
         loadWhatsAppStatus();
+      } else if (this.id === 'whatsapp-web-tab') {
+        hideAllSections();
+        document.getElementById('whatsapp-web-section').classList.remove('hidden');
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        this.classList.add('active');
+        currentPage = 'whatsapp-web';
       } else if (this.id === 'notifications-tab') {
         document.getElementById('notifications-section').classList.remove('hidden');
         currentPage = 'notifications';
@@ -979,11 +985,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Función para abrir WhatsApp Web
+  // Función para abrir WhatsApp Web en la pestaña del panel admin
   function openWhatsAppWeb() {
-    // Simplemente abrir WhatsApp Web - no necesitamos verificar estado
-    // WhatsApp Web se abrirá normalmente y el usuario puede iniciar sesión
-    window.open('https://web.whatsapp.com', '_blank');
+    // Cambiar a la pestaña de WhatsApp Web
+    const whatsappWebTab = document.getElementById('whatsapp-web-tab');
+    if (whatsappWebTab) {
+      whatsappWebTab.click();
+    } else {
+      // Si no existe la pestaña, abrir en nueva ventana como fallback
+      window.open('https://web.whatsapp.com', '_blank');
+    }
+  }
+  
+  // Función para recargar WhatsApp Web
+  function refreshWhatsAppWeb() {
+    const iframe = document.getElementById('whatsapp-web-iframe');
+    if (iframe) {
+      iframe.src = iframe.src; // Recargar iframe
+    }
   }
 
   async function loadQRCode() {
@@ -1220,7 +1239,6 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     
-    // Abrir WhatsApp Web con el número del contacto
     // Limpiar número: quitar espacios, guiones, paréntesis, etc. y dejar solo números
     let phoneNumber = currentChatPhoneNumber.replace(/[^0-9]/g, ''); // Solo números
     
@@ -1236,8 +1254,19 @@ document.addEventListener('DOMContentLoaded', function () {
       phoneNumber = '52' + phoneNumber;
     }
     
-    // Abrir WhatsApp Web con el número
-    window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
+    // Cambiar a la pestaña de WhatsApp Web y actualizar el iframe con el número
+    const whatsappWebTab = document.getElementById('whatsapp-web-tab');
+    if (whatsappWebTab) {
+      whatsappWebTab.click();
+      // Actualizar el iframe con la URL del contacto
+      const iframe = document.getElementById('whatsapp-web-iframe');
+      if (iframe) {
+        iframe.src = `https://web.whatsapp.com/send?phone=${phoneNumber}`;
+      }
+    } else {
+      // Fallback: abrir en nueva ventana
+      window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, '_blank');
+    }
   }
 
   function closeChatModal() {
@@ -1363,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.sendChatMessage = sendChatMessage;
   window.openWhatsAppWeb = openWhatsAppWeb;
   window.openWhatsAppWebForContact = openWhatsAppWebForContact;
+  window.refreshWhatsAppWeb = refreshWhatsAppWeb;
   window.openMessageModal = openMessageModal; // Mantener compatibilidad
 
   // Users Management Functions
