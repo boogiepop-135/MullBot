@@ -44,6 +44,12 @@ export class BotManager {
 
         try {
             logger.info("Initializing WhatsApp client...");
+            
+            // Limpiar sesión anterior de MongoDB antes de crear nuevo cliente
+            // Esto asegura que no haya conflictos con sesiones previas cuando se vincula un nuevo número
+            await this.clearSessionFromMongoDB();
+            logger.info("Previous session cleared from MongoDB");
+            
             // Obtener configuración del cliente (incluye RemoteAuth con MongoStore)
             const clientConfig = await getClientConfig();
             
@@ -132,6 +138,10 @@ export class BotManager {
                 await this.initializeClient();
             }
             
+            // Limpiar sesión anterior antes de inicializar (por si acaso)
+            // Esto asegura que cuando se genera un nuevo QR, no hay sesiones viejas interfiriendo
+            await this.clearSessionFromMongoDB();
+            
             // Inicializar el cliente de WhatsApp
             await this.client.initialize();
         } catch (error) {
@@ -180,22 +190,45 @@ export class BotManager {
 
     /**
      * Limpiar sesión de MongoDB
+     * También limpia la colección 'auth_sessions' que usa wwebjs-mongo
      */
     private async clearSessionFromMongoDB(): Promise<void> {
         try {
             const mongoose = require('mongoose');
-            // wwebjs-mongo guarda las sesiones en la colección 'authsessions'
             const db = mongoose.connection.db;
             if (db) {
-                // Borrar todas las sesiones del clientId 'mullbot-client'
-                const result = await db.collection('authsessions').deleteMany({ 
+                let totalDeleted = 0;
+                
+                // Borrar todas las sesiones de 'authsessions' (colección usada por RemoteAuth)
+                const authsessionsResult = await db.collection('authsessions').deleteMany({ 
                     _id: { $regex: /^mullbot-client/ }
                 });
-                logger.info(`Cleared ${result.deletedCount} session(s) from MongoDB`);
+                totalDeleted += authsessionsResult.deletedCount;
+                logger.info(`Cleared ${authsessionsResult.deletedCount} session(s) from 'authsessions' collection`);
+                
+                // Borrar todas las sesiones de 'auth_sessions' (colección usada por MongoStore/wwebjs-mongo)
+                const authSessionsResult = await db.collection('auth_sessions').deleteMany({ 
+                    _id: { $regex: /^mullbot-client/ }
+                });
+                totalDeleted += authSessionsResult.deletedCount;
+                logger.info(`Cleared ${authSessionsResult.deletedCount} session(s) from 'auth_sessions' collection`);
+                
+                // También intentar borrar cualquier sesión que contenga 'mullbot' en el ID
+                const allSessionsResult = await db.collection('auth_sessions').deleteMany({ 
+                    $or: [
+                        { _id: { $regex: /mullbot/i } },
+                        { clientId: 'mullbot-client' }
+                    ]
+                });
+                totalDeleted += allSessionsResult.deletedCount;
+                logger.info(`Cleared ${allSessionsResult.deletedCount} additional session(s) from 'auth_sessions' collection`);
+                
+                logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB`);
             }
         } catch (error) {
             logger.error(`Error clearing session from MongoDB: ${error}`);
-            throw error;
+            // No lanzar error para que la inicialización continúe incluso si hay un problema limpiando sesiones
+            logger.warn("Continuing with client initialization despite session cleanup error");
         }
     }
 
