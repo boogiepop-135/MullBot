@@ -15,7 +15,7 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
     if (!cleanQuery || cleanQuery.length === 0) {
         throw new Error("Query vacío");
     }
-    
+    //HOLA SOY ALDAIR 
     // Intentar primero con Gemini
     try {
         if (EnvConfig.GEMINI_API_KEY) {
