@@ -80,11 +80,11 @@ IMPORTANTE:
 - Vende de forma sutil, sin presión, mostrando beneficios naturales.
 - Si no están listos, sugiere que pueden ver otras opciones del menú.
 
-PRODUCTO: Compostero 15L - Reduce 2.5x, sin olores/plagas.
+PRODUCTO: Compostero 12.5L - Reduce 2.5x, sin olores/plagas.
 PRECIO: $1,490 MXN (antes $1,890) - Incluye biocatalizador 1kg + envío gratis.
 INCLUYE: Compostero + biocatalizador 1kg + envío + acompañamiento.
 FUNCIONA: Depositar → Espolvorear biocatalizador → Compactar → Tapar. Fermenta 2 semanas.
-DIMENSIONES: 30x30x40 cm, 15L.
+DIMENSIONES: 30x30x40 cm, 12.5L.
 PAGOS: Banco Azteca 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas: https://mpago.li/1W2JhS5
 VIDEO: https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
 
@@ -120,11 +120,11 @@ IMPORTANTE:
 - Siempre mantén la conversación abierta, ofrece alternativas.
 - Vende de forma sutil, sin presión, mostrando beneficios naturales.
 
-PRODUCTO: Compostero 15L - Reduce 2.5x, sin olores/plagas.
+PRODUCTO: Compostero 12.5L - Reduce 2.5x, sin olores/plagas.
 PRECIO: $1,490 MXN (antes $1,890) - Incluye biocatalizador 1kg + envío gratis.
 INCLUYE: Compostero + biocatalizador 1kg + envío + acompañamiento.
 FUNCIONA: Depositar → Espolvorear biocatalizador → Compactar → Tapar. Fermenta 2 semanas.
-DIMENSIONES: 30x30x40 cm, 15L.
+DIMENSIONES: 30x30x40 cm, 12.5L.
 PAGOS: Banco Azteca 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas: https://mpago.li/1W2JhS5
 VIDEO: https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
 
