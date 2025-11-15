@@ -153,7 +153,7 @@ const getOptionResponse = (option: number): QuickResponse => {
 🎁 *Ahorro: $400 MXN*
 
 *QUÉ INCLUYE:*
-📦 Compostero 15L
+📦 Compostero fementador 12.5L
 🌿 Biocatalizador 1kg
 🚚 Envío gratis
 📞 Acompañamiento personalizado
@@ -197,7 +197,7 @@ const getOptionResponse = (option: number): QuickResponse => {
                 message: addMenuFooter(`📦 *CONTENIDO DEL KIT MÜLLBLUE*
 
 *INCLUYE:*
-✅ Compostero fermentador 15L
+✅ Compostero fermentador 12.5L
 ✅ Biocatalizador 1kg (equivalente a 2-3 meses)
 ✅ Envío gratis a toda la República
 ✅ Guía de uso digital
@@ -206,7 +206,7 @@ const getOptionResponse = (option: number): QuickResponse => {
 
 *ESPECIFICACIONES:*
 📏 Dimensiones: 30x30x40 cm
-💧 Capacidad: 15 litros máximo
+💧 Capacidad: 12.5 litros máximo
 🌿 Material: Plástico de alta calidad
 🔒 Tapa hermética anti-olores
 
@@ -221,7 +221,7 @@ const getOptionResponse = (option: number): QuickResponse => {
 
 *ESPECIFICACIONES:*
 📐 Dimensiones: 30 x 30 x 40 cm (alto)
-💧 Capacidad: 15 litros máximo
+💧 Capacidad: 12.5 litros máximo
 📦 Peso: ~2.5 kg (vacío)
 ✨ Material: Plástico reciclable
 
