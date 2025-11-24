@@ -12,10 +12,46 @@ import { NotificationModel } from '../models/notification.model';
 import { MessageModel } from '../models/message.model';
 import { UserModel } from '../models/user.model';
 import { ProductModel } from '../models/product.model';
+import { BotContentModel } from '../models/bot-content.model';
 
 export const router = express.Router();
 
 export default function (botManager: BotManager) {
+    // Content Management API
+    router.get('/content', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            // Seed content if empty (simple check)
+            const count = await BotContentModel.countDocuments();
+            if (count === 0) {
+                await seedDefaultContent();
+            }
+
+            const content = await BotContentModel.find().sort({ key: 1 });
+            res.json(content);
+        } catch (error) {
+            logger.error('Failed to fetch content:', error);
+            res.status(500).json({ error: 'Failed to fetch content' });
+        }
+    });
+
+    router.put('/content/:key', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { key } = req.params;
+            const { content, mediaPath } = req.body;
+
+            const updatedContent = await BotContentModel.findOneAndUpdate(
+                { key },
+                { content, mediaPath },
+                { new: true, upsert: true }
+            );
+
+            res.json(updatedContent);
+        } catch (error) {
+            logger.error('Failed to update content:', error);
+            res.status(500).json({ error: 'Failed to update content' });
+        }
+    });
+
     // Contacts API
     router.get('/contacts', authenticate, authorizeAdmin, async (req, res) => {
         try {
@@ -1000,5 +1036,490 @@ async function sendCampaignMessages(botManager: BotManager, campaign: any) {
         logger.error('Failed to send campaign:', error);
         campaign.status = 'failed';
         await campaign.save();
+    }
+}
+
+async function seedDefaultContent() {
+    try {
+        const defaultContent = [
+            // Quick Responses (Menus)
+            {
+                key: 'main_menu',
+                category: 'quick_response',
+                description: 'Mensaje del menú principal',
+                content: `👋 *MENÚ PRINCIPAL MÜLLBLUE*
+
+¡Hola! ¿En qué puedo ayudarte hoy? 🤔
+
+*Opciones disponibles:*
+
+*1.* Conocer el proceso de compostaje fermentativo
+*2.* Dudas sobre precios y promociones
+*3.* Métodos de pago disponibles
+*4.* ¿Qué incluye el kit?
+*5.* Dimensiones y espacio necesario
+*6.* Información sobre envío y entrega
+*7.* Preguntas frecuentes
+*8.* Hablar con un agente
+
+Escribe el *número* de la opción que te interesa o pregunta lo que necesites 🌱
+
+*💡 Tip:* Puedes escribir *menú* o *volver* en cualquier momento para ver estas opciones nuevamente`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_1_process',
+                category: 'quick_response',
+                description: 'Opción 1: Proceso de compostaje',
+                content: `🌱 *PROCESO DE COMPOSTAJE FERMENTATIVO MÜLLBLUE*
+
+*PASOS SIMPLES:*
+1️⃣ *Depositar* residuos orgánicos
+2️⃣ *Espolvorear* biocatalizador (50g por kg)
+3️⃣ *Compactar* para eliminar aire
+4️⃣ *Tapar* herméticamente
+5️⃣ *Repetir* hasta llenar
+
+*TIEMPO:*
+⏰ Llenado: 4-6 semanas
+⏰ Fermentación: 2 semanas adicionales
+⏰ Resultado: Tierra fértil lista
+
+*BENEFICIOS:*
+✅ Reduce residuos 2.5x
+✅ Sin olores ni plagas
+✅ Genera biofertilizante líquido
+
+¿Quieres más detalles sobre algún paso específico o te gustaría conocer otra opción? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_2_price',
+                category: 'quick_response',
+                description: 'Opción 2: Precio y promoción',
+                content: `💰 *PRECIO Y PROMOCIÓN MÜLLBLUE*
+
+*PRECIO ESPECIAL:*
+💵 *$1,490 MXN* (antes $1,890)
+🎁 *Ahorro: $400 MXN*
+
+*QUÉ INCLUYE:*
+📦 Compostero fementador 12.5L
+🌿 Biocatalizador 1kg
+🚚 Envío gratis
+📞 Acompañamiento personalizado
+
+*PROMOCIÓN VIGENTE:*
+⏰ Precio promocional limitado
+✨ Disponibilidad limitada
+
+¿Te gustaría conocer más sobre los métodos de pago disponibles o tienes alguna pregunta sobre el producto? 🌱`,
+                mediaPath: 'public/precio.png'
+            },
+            {
+                key: 'option_3_payment',
+                category: 'quick_response',
+                description: 'Opción 3: Métodos de pago',
+                content: `💳 *MÉTODOS DE PAGO MÜLLBLUE*
+
+*OPCIÓN 1 - TRANSFERENCIA:*
+🏦 Banco Azteca
+📝 Cuenta: 127180013756372173
+👤 Titular: Aldair Eduardo Rivera García
+💵 Monto: $1,490 MXN
+
+*OPCIÓN 2 - TARJETAS:*
+💳 Tarjetas de crédito/débito
+🔄 Hasta 3 meses sin intereses (3MSI)
+🔗 Link de pago: https://mpago.li/1W2JhS5
+
+*VENTAJAS:*
+✅ Pago seguro y rápido
+✅ Confirmación inmediata
+✅ Envío en 2-3 días hábiles
+
+¿Prefieres transferencia o tarjeta? Si tienes más dudas sobre el producto, puedo ayudarte 🌱`,
+                mediaPath: 'public/pago.png'
+            },
+            {
+                key: 'option_4_kit',
+                category: 'quick_response',
+                description: 'Opción 4: Contenido del kit',
+                content: `📦 *CONTENIDO DEL KIT MÜLLBLUE*
+
+*INCLUYE:*
+✅ Compostero fermentador 12.5L
+✅ Biocatalizador 1kg (equivalente a 2-3 meses)
+✅ Envío gratis a toda la República
+✅ Guía de uso digital
+✅ Acompañamiento personalizado por WhatsApp
+✅ Soporte post-venta
+
+*ESPECIFICACIONES:*
+📏 Dimensiones: 30x30x40 cm
+💧 Capacidad: 12.5 litros máximo
+🌿 Material: Plástico de alta calidad
+🔒 Tapa hermética anti-olores
+
+¿Tienes alguna pregunta sobre el kit o te gustaría conocer más sobre dimensiones, envío u otra opción? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_5_dimensions',
+                category: 'quick_response',
+                description: 'Opción 5: Dimensiones',
+                content: `📏 *DIMENSIONES Y ESPACIO MÜLLBLUE*
+
+*ESPECIFICACIONES:*
+📐 Dimensiones: 30 x 30 x 40 cm (alto)
+💧 Capacidad: 12.5 litros máximo
+📦 Peso: ~2.5 kg (vacío)
+✨ Material: Plástico reciclable
+
+*ESPACIO NECESARIO:*
+🏠 Ideal para patios, jardines o terrazas
+🏢 También funciona en interiores (cocina/balcón)
+📍 Área mínima: 30x30 cm
+📌 Superficie: Debe estar nivelada
+
+*VENTAJAS:*
+✅ Compacto y práctico
+✅ No requiere mucho espacio
+✅ Fácil de mover si es necesario
+
+¿Tienes un espacio adecuado o te gustaría conocer más sobre el proceso de uso? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_6_shipping',
+                category: 'quick_response',
+                description: 'Opción 6: Envío',
+                content: `🚚 *ENVÍO Y ENTREGA MÜLLBLUE*
+
+*ENVÍO GRATIS:*
+🚚 A toda la República Mexicana
+📦 Empaque seguro y protegido
+⏰ Entrega en 2-3 días hábiles
+2️⃣ Confirmamos tu compra
+3️⃣ Preparamos tu kit
+4️⃣ Te enviamos guía de rastreo
+5️⃣ Recibes en tu domicilio
+
+*SEGUIMIENTO:*
+📱 Te notificamos cada paso
+📧 Recibes número de rastreo
+✅ Confirmación de entrega
+
+¿Tienes alguna pregunta sobre el proceso de envío o quieres conocer más sobre métodos de pago? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_7_faq',
+                category: 'quick_response',
+                description: 'Opción 7: Preguntas frecuentes',
+                content: `❓ *PREGUNTAS FRECUENTES MÜLLBLUE*
+
+*P: ¿Qué puedo agregar?*
+R: Cáscaras, restos de comida, carnes, lácteos (poca cantidad), pan, arroz, café molido.
+
+*P: ¿Qué NO puedo agregar?*
+R: Estampas de frutas, huesos grandes, semillas grandes, aceite, líquidos excesivos, plásticos, metales.
+
+*P: ¿Cuánto biocatalizador usar?*
+    } catch (error) {
+        logger.error('Failed to send campaign:', error);
+        logger.error('Failed to send campaign:', error);
+        campaign.status = 'failed';
+        await campaign.save();
+    }
+}
+
+async function seedDefaultContent() {
+    try {
+        const defaultContent = [
+            // Quick Responses (Menus)
+            {
+                key: 'main_menu',
+                category: 'quick_response',
+                description: 'Mensaje del menú principal',
+                content: `👋 *MENÚ PRINCIPAL MÜLLBLUE*
+
+¡Hola! ¿En qué puedo ayudarte hoy ? 🤔
+
+* Opciones disponibles:*
+
+* 1. * Conocer el proceso de compostaje fermentativo
+            * 2. * Dudas sobre precios y promociones
+                * 3. * Métodos de pago disponibles
+                    * 4. * ¿Qué incluye el kit ?
+* 5. * Dimensiones y espacio necesario
+            * 6. * Información sobre envío y entrega
+                * 7. * Preguntas frecuentes
+                    * 8. * Hablar con un agente
+
+Escribe el * número * de la opción que te interesa o pregunta lo que necesites 🌱
+
+*💡 Tip:* Puedes escribir * menú * o * volver * en cualquier momento para ver estas opciones nuevamente`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_1_process',
+                category: 'quick_response',
+                description: 'Opción 1: Proceso de compostaje',
+                content: `🌱 * PROCESO DE COMPOSTAJE FERMENTATIVO MÜLLBLUE *
+
+* PASOS SIMPLES:*
+            1️⃣ * Depositar * residuos orgánicos
+        2️⃣ * Espolvorear * biocatalizador(50g por kg)
+        3️⃣ * Compactar * para eliminar aire
+        4️⃣ * Tapar * herméticamente
+        5️⃣ * Repetir * hasta llenar
+
+            * TIEMPO:*
+⏰ Llenado: 4 - 6 semanas
+⏰ Fermentación: 2 semanas adicionales
+⏰ Resultado: Tierra fértil lista
+
+            * BENEFICIOS:*
+✅ Reduce residuos 2.5x
+✅ Sin olores ni plagas
+✅ Genera biofertilizante líquido
+
+¿Quieres más detalles sobre algún paso específico o te gustaría conocer otra opción ? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_2_price',
+                category: 'quick_response',
+                description: 'Opción 2: Precio y promoción',
+                content: `💰 * PRECIO Y PROMOCIÓN MÜLLBLUE *
+
+* PRECIO ESPECIAL:*
+💵 * $1, 490 MXN * (antes $1, 890)
+🎁 * Ahorro: $400 MXN *
+
+* QUÉ INCLUYE:*
+📦 Compostero fementador 12.5L
+🌿 Biocatalizador 1kg
+🚚 Envío gratis
+📞 Acompañamiento personalizado
+
+            * PROMOCIÓN VIGENTE:*
+⏰ Precio promocional limitado
+✨ Disponibilidad limitada
+
+¿Te gustaría conocer más sobre los métodos de pago disponibles o tienes alguna pregunta sobre el producto ? 🌱`,
+                mediaPath: 'public/precio.png'
+            },
+            {
+                key: 'option_3_payment',
+                category: 'quick_response',
+                description: 'Opción 3: Métodos de pago',
+                content: `💳 * MÉTODOS DE PAGO MÜLLBLUE *
+
+* OPCIÓN 1 - TRANSFERENCIA:*
+🏦 Banco Azteca
+📝 Cuenta: 127180013756372173
+👤 Titular: Aldair Eduardo Rivera García
+💵 Monto: $1, 490 MXN
+
+            * OPCIÓN 2 - TARJETAS:*
+💳 Tarjetas de crédito / débito
+🔄 Hasta 3 meses sin intereses(3MSI)
+🔗 Link de pago: https://mpago.li/1W2JhS5
+
+* VENTAJAS:*
+✅ Pago seguro y rápido
+✅ Confirmación inmediata
+✅ Envío en 2 - 3 días hábiles
+
+¿Prefieres transferencia o tarjeta ? Si tienes más dudas sobre el producto, puedo ayudarte 🌱`,
+                mediaPath: 'public/pago.png'
+            },
+            {
+                key: 'option_4_kit',
+                category: 'quick_response',
+                description: 'Opción 4: Contenido del kit',
+                content: `📦 * CONTENIDO DEL KIT MÜLLBLUE *
+
+* INCLUYE:*
+✅ Compostero fermentador 12.5L
+✅ Biocatalizador 1kg(equivalente a 2 - 3 meses)
+✅ Envío gratis a toda la República
+✅ Guía de uso digital
+✅ Acompañamiento personalizado por WhatsApp
+✅ Soporte post - venta
+
+            * ESPECIFICACIONES:*
+📏 Dimensiones: 30x30x40 cm
+💧 Capacidad: 12.5 litros máximo
+🌿 Material: Plástico de alta calidad
+🔒 Tapa hermética anti - olores
+
+¿Tienes alguna pregunta sobre el kit o te gustaría conocer más sobre dimensiones, envío u otra opción ? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_5_dimensions',
+                category: 'quick_response',
+                description: 'Opción 5: Dimensiones',
+                content: `📏 * DIMENSIONES Y ESPACIO MÜLLBLUE *
+
+* ESPECIFICACIONES:*
+📐 Dimensiones: 30 x 30 x 40 cm(alto)
+💧 Capacidad: 12.5 litros máximo
+📦 Peso: ~2.5 kg(vacío)
+✨ Material: Plástico reciclable
+
+            * ESPACIO NECESARIO:*
+🏠 Ideal para patios, jardines o terrazas
+🏢 También funciona en interiores(cocina / balcón)
+📍 Área mínima: 30x30 cm
+📌 Superficie: Debe estar nivelada
+
+            * VENTAJAS:*
+✅ Compacto y práctico
+✅ No requiere mucho espacio
+✅ Fácil de mover si es necesario
+
+¿Tienes un espacio adecuado o te gustaría conocer más sobre el proceso de uso ? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_6_shipping',
+                category: 'quick_response',
+                description: 'Opción 6: Envío',
+                content: `🚚 * ENVÍO Y ENTREGA MÜLLBLUE *
+
+* ENVÍO GRATIS:*
+🚚 A toda la República Mexicana
+📦 Empaque seguro y protegido
+⏰ Entrega en 2 - 3 días hábiles
+        2️⃣ Confirmamos tu compra
+        3️⃣ Preparamos tu kit
+        4️⃣ Te enviamos guía de rastreo
+        5️⃣ Recibes en tu domicilio
+
+            * SEGUIMIENTO:*
+📱 Te notificamos cada paso
+📧 Recibes número de rastreo
+✅ Confirmación de entrega
+
+¿Tienes alguna pregunta sobre el proceso de envío o quieres conocer más sobre métodos de pago ? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_7_faq',
+                category: 'quick_response',
+                description: 'Opción 7: Preguntas frecuentes',
+                content: `❓ * PREGUNTAS FRECUENTES MÜLLBLUE *
+
+* P: ¿Qué puedo agregar ?*
+            R : Cáscaras, restos de comida, carnes, lácteos(poca cantidad), pan, arroz, café molido.
+
+* P: ¿Qué NO puedo agregar ?*
+            R : Estampas de frutas, huesos grandes, semillas grandes, aceite, líquidos excesivos, plásticos, metales.
+
+* P: ¿Cuánto biocatalizador usar ?*
+            R : 50g por cada kg de residuos(equivale a 2 palas por cubeta de 5 litros).
+
+* P: ¿Genera mal olor ?*
+            R : No, el proceso anaeróbico y el biocatalizador eliminan olores completamente.
+
+* P: ¿Atrae plagas ?*
+            R : No, al estar herméticamente cerrado no atrae insectos ni animales.
+
+¿Tienes alguna otra pregunta específica o te gustaría conocer más sobre precios o métodos de pago ? 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'option_8_agent',
+                category: 'quick_response',
+                description: 'Opción 8: Agente humano',
+                content: `👤 * HABLAR CON UN AGENTE *
+
+            Para hablar directamente con un agente de Müllblue:
+
+📞 Puedes escribir "agente" o "humano" en cualquier momento
+⏰ Horario de atención: Lunes a Viernes 9am - 7pm
+📱 También puedes llamarnos directamente
+
+            * MIENTRAS TANTO:*
+                Puedo ayudarte con:
+✅ Información del producto
+✅ Proceso de compra
+✅ Métodos de pago
+✅ Preguntas técnicas
+
+¿En qué más puedo ayudarte ? Puedo resolver la mayoría de tus dudas aquí mismo 🌱`,
+                mediaPath: 'public/info.png'
+            },
+            {
+                key: 'command_precios',
+                category: 'command',
+                description: 'Comando /precios (Detallado)',
+                content: `💰 * PRECIOS MÜLLBLUE - COMPOSTERO FERMENTADOR 15L *
+
+* PRECIO ESPECIAL * 🎯
+💵 * $1, 490 MXN * (antes $1, 890)
+   ⏰ Precio promocional por tiempo limitado
+   💳 A 3 meses sin intereses
+
+            * INCLUYE TODO * ✅
+✅ Compostero fermentador de 15 litros
+✅ Biocatalizador(1 kg) - Ya incluido
+✅ Envío gratis a todo México
+✅ Acompañamiento personalizado
+✅ Garantía de satisfacción
+
+            * BIOCATALIZADOR ADICIONAL * 🌿
+💵 * $150 pesos por kg *
+   📦 Rinde para 30 kg de residuos orgánicos
+   🚚 Envío gratis a partir de 3 kg
+
+            * MÉTODOS DE PAGO * 💳
+
+🏦 * Transferencia Bancaria:*
+            Banco Azteca
+        Cuenta: 127180013756372173
+        Beneficiario: Aldair Eduardo Rivera García
+        Concepto: [Tu nombre]
+
+💳 * Tarjetas de Crédito:*
+            A 3 meses sin intereses
+   Enlace seguro: https://mpago.li/1W2JhS5
+
+*¡Paga aquí con tarjeta! * 👆
+        https://mpago.li/1W2JhS5
+
+* ENVÍO Y ENTREGA * 🚚
+📦 Gratis a todo México
+⏰ 5 a 7 días hábiles
+📋 Seguimiento incluido
+
+            * GARANTÍAS * 🛡️
+✅ Garantía de satisfacción
+✅ Soporte técnico incluido
+✅ Acompañamiento personalizado
+✅ Reposición de piezas
+
+            * VIDEO DEMOSTRATIVO * 📹
+        https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
+
+¿Te interesa adquirir tu compostero fermentador ? ¿Tienes alguna pregunta sobre el proceso de compra ? 🌱`,
+                mediaPath: 'public/precio.png'
+            }
+        ];
+
+        for (const item of defaultContent) {
+            await BotContentModel.findOneAndUpdate(
+                { key: item.key },
+                item,
+                { upsert: true }
+            );
+        }
+        logger.info('Default bot content seeded successfully');
+    } catch (error) {
+        logger.error('Failed to seed default content:', error);
     }
 }

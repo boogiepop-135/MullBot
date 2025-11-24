@@ -12,7 +12,7 @@ export async function textToSpeech(text: string, fileName: string): Promise<stri
     const detectedLanguage = detectLanguageLocale(text);
     const locale = detectedLanguage.locale;
 
-    console.log(`Detected language: ${locale}`);
+    // logger.debug(`Detected language: ${locale}`);
 
     const url = AppConfig.instance.getSpeechifyBaseUrl();
     const options = {

@@ -140,853 +140,467 @@
         <span class="font-medium ml-2">Campañas</span>
       </a>
 
-      <a href="#" onclick="showSection('templates')" id="nav-templates"
-        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
-        <i class="fas fa-file-alt w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
-        <span class="font-medium ml-2">Plantillas</span>
-      </a>
-
-      <a href="#" onclick="showSection('products')" id="nav-products"
-        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
-        <i class="fas fa-box w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
-        <span class="font-medium ml-2">Productos</span>
-      </a>
-
-      <a href="#" onclick="showSection('users')" id="nav-users"
-        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group hidden"
-        id="users-nav-item">
-        <i class="fas fa-users w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
-        <span class="font-medium ml-2">Usuarios</span>
-      </a>
-
-      <a href="#" onclick="showSection('settings')" id="nav-settings"
-        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
-        <i class="fas fa-cog w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
-        <span class="font-medium ml-2">Configuración</span>
-      </a>
-    </nav>
-
-    <!-- Footer Actions -->
-    <div class="p-4 border-t border-gray-200 bg-gray-50">
-      <button onclick="showSection('whatsapp-web')" id="whatsapp-web-btn"
-        class="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-4 shadow-sm font-medium text-sm">
-        <i class="fab fa-whatsapp mr-2 text-lg"></i> WhatsApp Web
-      </button>
-
-      <div class="flex items-center pt-2">
-        <div
-          class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold mr-3 border border-indigo-200">
-          <span id="user-initials">U</span>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-gray-900 truncate" id="user-name">Usuario</p>
-          <p class="text-xs text-gray-500 truncate" id="user-role">Rol</p>
-        </div>
-        <button onclick="logout()"
-          class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-          title="Cerrar Sesión">
-          <i class="fas fa-sign-out-alt"></i>
+      <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-gray-800">Gestión de Usuarios</h2>
+        <button onclick="openCreateUserModal()"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+          <i class="fas fa-plus mr-2"></i>Crear Usuario
         </button>
       </div>
-    </div>
-  </aside>
-
-  <!-- Main Content -->
-  <main class="main-content bg-gray-50">
-
-    <!-- Dashboard Section -->
-    <div id="dashboard-section" class="section-content hidden p-8">
-      <div class="mb-8">
-        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p class="text-gray-500">Resumen general de tu actividad</p>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Users loaded here -->
+          </tbody>
+        </table>
+      </div>
+      </div>
       </div>
 
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Stat 1 -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500">Leads</p>
-              <h3 id="leads-count" class="text-3xl font-bold text-gray-800 mt-2">0</h3>
-              <p class="text-xs text-green-600 mt-1 font-medium"><i class="fas fa-arrow-up mr-1"></i>Nuevos clientes</p>
+      <!-- Settings Section -->
+      <div id="settings-section" class="section-content hidden p-8">
+        <div class="max-w-4xl mx-auto space-y-6">
+          <!-- Bot Config -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+              <h2 class="text-lg font-bold text-gray-800">Configuración del Bot</h2>
             </div>
-            <div class="p-4 rounded-full bg-indigo-50 text-indigo-600">
-              <i class="fas fa-user-plus text-xl"></i>
-            </div>
-          </div>
-        </div>
-
-        <!-- Stat 2 -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500">Interesados</p>
-              <h3 id="interested-contacts" class="text-3xl font-bold text-gray-800 mt-2">0</h3>
-              <p class="text-xs text-blue-600 mt-1 font-medium"><i class="fas fa-chart-line mr-1"></i>En seguimiento</p>
-            </div>
-            <div class="p-4 rounded-full bg-blue-50 text-blue-600">
-              <i class="fas fa-eye text-xl"></i>
-            </div>
-          </div>
-        </div>
-
-        <!-- Stat 3 -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500">Pago Pendiente</p>
-              <h3 id="payment-pending-count" class="text-3xl font-bold text-gray-800 mt-2">0</h3>
-              <p class="text-xs text-yellow-600 mt-1 font-medium"><i class="fas fa-clock mr-1"></i>Por confirmar</p>
-            </div>
-            <div class="p-4 rounded-full bg-yellow-50 text-yellow-600">
-              <i class="fas fa-file-invoice-dollar text-xl"></i>
-            </div>
-          </div>
-        </div>
-
-        <!-- Stat 4 -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500">Citas Confirmadas</p>
-              <h3 id="appointment-confirmed-count" class="text-3xl font-bold text-gray-800 mt-2">0</h3>
-              <p class="text-xs text-green-600 mt-1 font-medium"><i class="fas fa-check-circle mr-1"></i>Listas</p>
-            </div>
-            <div class="p-4 rounded-full bg-green-50 text-green-600">
-              <i class="fas fa-calendar-check text-xl"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Secondary Stats -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-sm font-medium text-gray-500">Info Solicitada</p>
-            <i class="fas fa-info-circle text-indigo-400"></i>
-          </div>
-          <h3 id="info-requested-count" class="text-2xl font-bold text-gray-800">0</h3>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-sm font-medium text-gray-500">Citas Agendadas</p>
-            <i class="fas fa-calendar text-orange-400"></i>
-          </div>
-          <h3 id="appointment-scheduled-count" class="text-2xl font-bold text-gray-800">0</h3>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-sm font-medium text-gray-500">Completados</p>
-            <i class="fas fa-check-double text-green-400"></i>
-          </div>
-          <h3 id="completed-count" class="text-2xl font-bold text-gray-800">0</h3>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-sm font-medium text-gray-500">Pausados</p>
-            <i class="fas fa-pause text-red-400"></i>
-          </div>
-          <h3 id="paused-contacts" class="text-2xl font-bold text-gray-800">0</h3>
-        </div>
-      </div>
-
-      <!-- Charts & Tables Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <!-- Intent Stats -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 class="text-lg font-semibold text-gray-800">Intentos de Venta</h2>
-          </div>
-          <div class="p-6" id="intent-stats">
-            <!-- Filled by JS -->
-            <div class="flex items-center justify-center h-48 text-gray-400">
-              Cargando estadísticas...
-            </div>
-          </div>
-        </div>
-
-        <!-- Top Leads -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 class="text-lg font-semibold text-gray-800">Top Leads</h2>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody id="top-leads-table" class="bg-white divide-y divide-gray-200">
-                <!-- Filled by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Recent Contacts -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-          <h2 class="text-lg font-semibold text-gray-800">Contactos Recientes</h2>
-          <button onclick="showSection('contacts')"
-            class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Ver todos</button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última
-                  Interacción</th>
-              </tr>
-            </thead>
-            <tbody id="recent-contacts" class="bg-white divide-y divide-gray-200">
-              <!-- Filled by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Contacts Section -->
-    <div id="contacts-section" class="section-content hidden p-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-          <h2 class="text-xl font-bold text-gray-800">Contactos</h2>
-          <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-            <select id="sale-status-filter"
-              class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
-              <option value="">Todos los estados</option>
-              <option value="lead">Leads</option>
-              <option value="interested">Interesados</option>
-              <option value="info_requested">Info Solicitada</option>
-              <option value="payment_pending">Pago Pendiente</option>
-              <option value="appointment_scheduled">Cita Agendada</option>
-              <option value="appointment_confirmed">Cita Confirmada</option>
-              <option value="completed">Completados</option>
-              <option value="paused">Pausados</option>
-            </select>
-            <div class="relative">
-              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <input type="text" id="contact-search" placeholder="Buscar..."
-                class="pl-10 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-full md:w-64 text-sm">
-            </div>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última
-                  Interacción</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="contacts-table-body" class="bg-white divide-y divide-gray-200">
-              <!-- Filled by JS -->
-            </tbody>
-          </table>
-        </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-          <div class="text-sm text-gray-500" id="contacts-pagination-info">
-            Cargando...
-          </div>
-          <div id="contacts-pagination" class="flex space-x-2">
-            <!-- Pagination -->
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Campaigns Section -->
-    <div id="campaigns-section" class="section-content hidden p-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800">Campañas</h2>
-          <button onclick="showSection('new-campaign')"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
-            <i class="fas fa-plus mr-2"></i>Nueva Campaña
-          </button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Programada
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enviados</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fallidos</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="campaigns-table-body" class="bg-white divide-y divide-gray-200">
-              <!-- Filled by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- New Campaign Section -->
-    <div id="new-campaign-section" class="section-content hidden p-8">
-      <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800">Crear Nueva Campaña</h2>
-          <button onclick="showSection('campaigns')" class="text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <form id="campaign-form" class="p-6 space-y-6">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Campaña</label>
-            <input type="text" name="name" required
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
-              <textarea name="message" id="campaign-message" rows="8" required
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
-                oninput="updateWhatsAppPreview()"></textarea>
-
-              <div class="mt-3">
-                <span class="text-xs text-gray-500 block mb-2">Variables disponibles:</span>
-                <div class="flex flex-wrap gap-2">
-                  <button type="button" onclick="insertVariable('{name}')"
-                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition-colors">{name}</button>
-                  <button type="button" onclick="insertVariable('{phone}')"
-                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition-colors">{phone}</button>
-                  <button type="button" onclick="insertVariable('{date}')"
-                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition-colors">{date}</button>
-                </div>
+            <div class="p-6">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Delay de Respuesta (ms)</label>
+              <div class="flex items-center gap-4">
+                <input type="number" id="bot-delay-input" min="0" step="1000"
+                  class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-40">
+                <button onclick="saveBotConfig()"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Guardar</button>
+                <span class="text-sm text-gray-500" id="current-delay-text">Cargando...</span>
               </div>
+              <p class="text-xs text-gray-500 mt-2">Tiempo de espera antes de que el bot responda (1000ms = 1 segundo).
+              </p>
             </div>
+          </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Vista Previa</label>
-              <div class="bg-gray-100 p-4 rounded-xl border border-gray-200 h-full max-h-[300px] overflow-y-auto">
-                <div
-                  class="bg-white p-3 rounded-lg shadow-sm max-w-[80%] ml-auto whatsapp-message text-sm text-gray-800 break-words">
-                  <!-- Preview content -->
+          <!-- WhatsApp Connection -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+              <h2 class="text-lg font-bold text-gray-800">Conexión de WhatsApp</h2>
+            </div>
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Estado de la conexión</p>
+                  <p class="text-sm text-gray-500" id="whatsapp-connected-status">Verificando...</p>
                 </div>
+                <button onclick="logoutWhatsApp()"
+                  class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200">
+                  <i class="fas fa-unlink mr-2"></i>Desvincular
+                </button>
+              </div>
+              <div id="qr-display"
+                class="hidden mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col items-center">
+                <p class="text-sm font-medium text-gray-700 mb-3">Escanea el código QR para vincular:</p>
+                <div id="qr-code-container" class="bg-white p-2 rounded shadow-sm"></div>
               </div>
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Programar (opcional)</label>
-            <input type="datetime-local" name="scheduledAt"
-              class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            <p class="text-xs text-gray-500 mt-1">Dejar en blanco para enviar inmediatamente.</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Seleccionar Contactos</label>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-80">
-              <div class="border border-gray-300 rounded-lg flex flex-col overflow-hidden">
-                <div class="bg-gray-50 px-4 py-2 border-b border-gray-300 font-medium text-sm text-gray-700">Disponibles
-                </div>
-                <div id="available-contacts" class="flex-1 overflow-y-auto p-2 space-y-1">
-                  <!-- Contacts list -->
-                </div>
-              </div>
-              <div class="border border-gray-300 rounded-lg flex flex-col overflow-hidden">
-                <div class="bg-gray-50 px-4 py-2 border-b border-gray-300 font-medium text-sm text-gray-700">
-                  Seleccionados</div>
-                <div id="selected-contacts" class="flex-1 overflow-y-auto p-2 space-y-1">
-                  <p class="text-gray-400 text-sm text-center mt-4" id="no-contacts-message">Ningún contacto
-                    seleccionado</p>
-                </div>
-              </div>
+          <!-- Change Password -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+              <h2 class="text-lg font-bold text-gray-800">Cambiar Contraseña</h2>
             </div>
-          </div>
-
-          <div class="flex justify-end pt-4">
-            <button type="submit"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-colors flex items-center">
-              <i class="fas fa-paper-plane mr-2"></i> Enviar Campaña
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Templates Section -->
-    <div id="templates-section" class="section-content hidden p-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800">Plantillas de Mensajes</h2>
-          <button onclick="openNewTemplateModal()"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
-            <i class="fas fa-plus mr-2"></i>Nueva Plantilla
-          </button>
-        </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="templates-container">
-          <!-- Templates loaded here -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Products Section -->
-    <div id="products-section" class="section-content hidden p-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800">Gestión de Productos</h2>
-          <button onclick="openCreateProductModal()"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
-            <i class="fas fa-plus mr-2"></i>Nuevo Producto
-          </button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
-              <!-- Products loaded here -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Users Section -->
-    <div id="users-section" class="section-content hidden p-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800">Gestión de Usuarios</h2>
-          <button onclick="openCreateUserModal()"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
-            <i class="fas fa-plus mr-2"></i>Crear Usuario
-          </button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
-              <!-- Users loaded here -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Section -->
-    <div id="settings-section" class="section-content hidden p-8">
-      <div class="max-w-4xl mx-auto space-y-6">
-        <!-- Bot Config -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-bold text-gray-800">Configuración del Bot</h2>
-          </div>
-          <div class="p-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Delay de Respuesta (ms)</label>
-            <div class="flex items-center gap-4">
-              <input type="number" id="bot-delay-input" min="0" step="1000"
-                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-40">
-              <button onclick="saveBotConfig()"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Guardar</button>
-              <span class="text-sm text-gray-500" id="current-delay-text">Cargando...</span>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">Tiempo de espera antes de que el bot responda (1000ms = 1 segundo).
-            </p>
-          </div>
-        </div>
-
-        <!-- WhatsApp Connection -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-bold text-gray-800">Conexión de WhatsApp</h2>
-          </div>
-          <div class="p-6">
-            <div class="flex items-center justify-between mb-4">
+            <div class="p-6 space-y-4 max-w-md">
               <div>
-                <p class="text-sm font-medium text-gray-700">Estado de la conexión</p>
-                <p class="text-sm text-gray-500" id="whatsapp-connected-status">Verificando...</p>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
+                <input type="password" id="current-password-input"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
               </div>
-              <button onclick="logoutWhatsApp()"
-                class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200">
-                <i class="fas fa-unlink mr-2"></i>Desvincular
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
+                <input type="password" id="new-password-input"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña</label>
+                <input type="password" id="confirm-password-input"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <button onclick="changePassword()"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                Actualizar Contraseña
               </button>
             </div>
-            <div id="qr-display"
-              class="hidden mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col items-center">
-              <p class="text-sm font-medium text-gray-700 mb-3">Escanea el código QR para vincular:</p>
-              <div id="qr-code-container" class="bg-white p-2 rounded shadow-sm"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Change Password -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-bold text-gray-800">Cambiar Contraseña</h2>
-          </div>
-          <div class="p-6 space-y-4 max-w-md">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
-              <input type="password" id="current-password-input"
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
-              <input type="password" id="new-password-input"
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña</label>
-              <input type="password" id="confirm-password-input"
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            </div>
-            <button onclick="changePassword()"
-              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-              Actualizar Contraseña
-            </button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- WhatsApp Web Section -->
-    <div id="whatsapp-web-section" class="section-content hidden h-screen flex flex-col">
-      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-gray-800">WhatsApp Web</h2>
-          <p class="text-sm text-gray-500">Gestiona tus conversaciones directamente</p>
-        </div>
-        <button onclick="window.open('https://web.whatsapp.com', '_blank')"
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <i class="fas fa-external-link-alt mr-2"></i>Abrir en nueva pestaña
-        </button>
-      </div>
-      <div class="flex-1 bg-gray-100 flex items-center justify-center p-8">
-        <div class="text-center max-w-md">
-          <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <i class="fab fa-whatsapp text-4xl text-green-600"></i>
+      <!-- WhatsApp Web Section -->
+      <div id="whatsapp-web-section" class="section-content hidden h-screen flex flex-col">
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">WhatsApp Web</h2>
+            <p class="text-sm text-gray-500">Gestiona tus conversaciones directamente</p>
           </div>
-          <h3 class="text-xl font-bold text-gray-800 mb-2">WhatsApp Web</h3>
-          <p class="text-gray-600 mb-6">Por razones de seguridad, WhatsApp Web no permite ser incrustado directamente.
-            Por favor, ábrelo en una nueva pestaña.</p>
           <button onclick="window.open('https://web.whatsapp.com', '_blank')"
-            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-            Abrir WhatsApp Web
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-external-link-alt mr-2"></i>Abrir en nueva pestaña
           </button>
         </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- Modals -->
-
-  <!-- Chat Modal -->
-  <div id="chat-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
-    aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
-        onclick="closeChatModal()"></div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-      <div
-        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full h-[80vh] flex flex-col">
-        <!-- Header -->
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-          <div class="flex items-center">
-            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 mr-3">
-              <i class="fas fa-user"></i>
+        <div class="flex-1 bg-gray-100 flex items-center justify-center p-8">
+          <div class="text-center max-w-md">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i class="fab fa-whatsapp text-4xl text-green-600"></i>
             </div>
-            <div>
-              <h3 class="text-lg leading-6 font-medium text-gray-900" id="chat-contact-name">Contacto</h3>
-              <p class="text-sm text-gray-500" id="chat-contact-phone">Teléfono</p>
-            </div>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button type="button" onclick="pauseBotFromChat(currentChatPhoneNumber)" id="pause-bot-btn"
-              class="bg-yellow-50 text-yellow-600 hover:bg-yellow-100 px-3 py-1.5 rounded-md text-sm font-medium transition-colors border border-yellow-200">
-              <i class="fas fa-pause mr-1"></i>Pausar Bot
-            </button>
-            <button type="button" onclick="closeChatModal()"
-              class="text-gray-400 hover:text-gray-500 focus:outline-none">
-              <span class="sr-only">Cerrar</span>
-              <i class="fas fa-times text-xl"></i>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">WhatsApp Web</h3>
+            <p class="text-gray-600 mb-6">Por razones de seguridad, WhatsApp Web no permite ser incrustado directamente.
+              Por favor, ábrelo en una nueva pestaña.</p>
+            <button onclick="window.open('https://web.whatsapp.com', '_blank')"
+              class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+              Abrir WhatsApp Web
             </button>
           </div>
         </div>
-        <!-- Messages -->
-        <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100">
-          <!-- Messages loaded here -->
-        </div>
-        <!-- Input -->
-        <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center gap-2">
-          <textarea id="chat-message-input" rows="1"
-            class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
-            placeholder="Escribe un mensaje..."
-            onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"></textarea>
-          <button onclick="sendChatMessage()"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-colors shadow-sm">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Status Change Modal -->
-  <div id="status-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-      <div
-        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Cambiar Estado</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nuevo Estado</label>
-              <select id="status-select"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="lead">Lead</option>
-                <option value="interested">Interesado</option>
-                <option value="info_requested">Info Solicitada</option>
-                <option value="payment_pending">Pago Pendiente</option>
-                <option value="appointment_scheduled">Cita Agendada</option>
-                <option value="appointment_confirmed">Cita Confirmada</option>
-                <option value="completed">Completado</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha (si aplica)</label>
-              <input type="datetime-local" id="appointment-date"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-              <textarea id="status-notes" rows="3"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button type="button" onclick="saveStatusChange()"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-            Guardar
-          </button>
-          <button type="button" onclick="closeStatusModal()"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+      </main>
 
-  <!-- Product Modal -->
-  <div id="product-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-      <div
-        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="product-modal-title">Nuevo Producto</h3>
-          <input type="hidden" id="product-id">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-              <input type="text" id="product-name"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-              <textarea id="product-description" rows="3"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
-                <input type="number" id="product-price" step="0.01"
-                  class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <!-- Modals -->
+
+      <!-- Chat Modal -->
+      <div id="chat-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+            onclick="closeChatModal()"></div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full h-[80vh] flex flex-col">
+            <!-- Header -->
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 mr-3">
+                  <i class="fas fa-user"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg leading-6 font-medium text-gray-900" id="chat-contact-name">Contacto</h3>
+                  <p class="text-sm text-gray-500" id="chat-contact-phone">Teléfono</p>
+                </div>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                <input type="text" id="product-category"
-                  class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <div class="flex items-center space-x-2">
+                <button type="button" onclick="pauseBotFromChat(currentChatPhoneNumber)" id="pause-bot-btn"
+                  class="bg-yellow-50 text-yellow-600 hover:bg-yellow-100 px-3 py-1.5 rounded-md text-sm font-medium transition-colors border border-yellow-200">
+                  <i class="fas fa-pause mr-1"></i>Pausar Bot
+                </button>
+                <button type="button" onclick="closeChatModal()"
+                  class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                  <span class="sr-only">Cerrar</span>
+                  <i class="fas fa-times text-xl"></i>
+                </button>
               </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Tamaños (separados por coma)</label>
-              <input type="text" id="product-sizes" placeholder="S, M, L"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <!-- Messages -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100">
+              <!-- Messages loaded here -->
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Promociones</label>
-              <input type="text" id="product-promotions"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">URL Imagen</label>
-              <input type="text" id="product-image-url"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-            <div class="flex items-center">
-              <input type="checkbox" id="product-in-stock"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-              <label for="product-in-stock" class="ml-2 block text-sm text-gray-900">En Stock</label>
+            <!-- Input -->
+            <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center gap-2">
+              <textarea id="chat-message-input" rows="1"
+                class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+                placeholder="Escribe un mensaje..."
+                onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"></textarea>
+              <button onclick="sendChatMessage()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-colors shadow-sm">
+                <i class="fas fa-paper-plane"></i>
+              </button>
             </div>
           </div>
         </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button type="button" onclick="saveProduct()"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-            Guardar
-          </button>
-          <button type="button" onclick="closeProductModal()"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-            Cancelar
-          </button>
-        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Template Modal -->
-  <div id="template-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-      <div
-        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="template-modal-title">Nueva Plantilla</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-              <input type="text" id="template-name"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <!-- Edit Content Modal -->
+      <div id="edit-content-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75" onclick="closeEditContentModal()"></div>
+          </div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="content-modal-title">Editar Respuesta
+              </h3>
+              <div class="space-y-4">
+                <input type="hidden" id="content-key">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                  <input type="text" id="content-description" disabled
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 text-gray-600">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Contenido del Mensaje</label>
+                  <textarea id="content-text" rows="10"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Puedes usar formato de WhatsApp (*negrita*, _cursiva_,
+                    ~tachado~, etc.)</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Ruta de Imagen (Opcional)</label>
+                  <input type="text" id="content-media-path"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Contenido</label>
-              <textarea id="template-content" rows="5"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button type="button" onclick="saveBotContent()"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                Guardar Cambios
+              </button>
+              <button type="button" onclick="closeEditContentModal()"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button type="button" onclick="saveTemplate()"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-            Guardar
-          </button>
-          <button type="button" onclick="closeTemplateModal()"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-            Cancelar
-          </button>
-        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Create User Modal -->
-  <div id="create-user-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-      <div
-        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Crear Usuario</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
-              <input type="text" id="create-username-input"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <!-- Status Change Modal -->
+      <div id="status-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+          </div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Cambiar Estado</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nuevo Estado</label>
+                  <select id="status-select"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="lead">Lead</option>
+                    <option value="interested">Interesado</option>
+                    <option value="info_requested">Info Solicitada</option>
+                    <option value="payment_pending">Pago Pendiente</option>
+                    <option value="appointment_scheduled">Cita Agendada</option>
+                    <option value="appointment_confirmed">Cita Confirmada</option>
+                    <option value="completed">Completado</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Fecha (si aplica)</label>
+                  <input type="datetime-local" id="appointment-date"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                  <textarea id="status-notes" rows="3"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input type="password" id="create-password-input"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-              <select id="create-role-select"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="user">Usuario</option>
-                <option value="admin">Administrador</option>
-              </select>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button type="button" onclick="saveStatusChange()"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                Guardar
+              </button>
+              <button type="button" onclick="closeStatusModal()"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button type="button" onclick="saveCreateUser()"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-            Crear
-          </button>
-          <button type="button" onclick="closeCreateUserModal()"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-            Cancelar
-          </button>
+      </div>
+
+      <!-- Product Modal -->
+      <div id="product-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+          </div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="product-modal-title">Nuevo Producto</h3>
+              <input type="hidden" id="product-id">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                  <input type="text" id="product-name"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                  <textarea id="product-description" rows="3"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                    <input type="number" id="product-price" step="0.01"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                    <input type="text" id="product-category"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Tamaños (separados por coma)</label>
+                  <input type="text" id="product-sizes" placeholder="S, M, L"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Promociones</label>
+                  <input type="text" id="product-promotions"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">URL Imagen</label>
+                  <input type="text" id="product-image-url"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="flex items-center">
+                  <input type="checkbox" id="product-in-stock"
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                  <label for="product-in-stock" class="ml-2 block text-sm text-gray-900">En Stock</label>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button type="button" onclick="saveProduct()"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                Guardar
+              </button>
+              <button type="button" onclick="closeProductModal()"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <script src="/public/js/admin.js"></script>
-  <script>
-    // Inline scripts for specific UI interactions
-    function updateWhatsAppPreview() {
-      const message = document.getElementById('campaign-message').value;
-      const preview = document.querySelector('.whatsapp-message');
-      if (preview) preview.textContent = message;
-    }
+      <!-- Template Modal -->
+      <div id="template-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+          </div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="template-modal-title">Nueva Plantilla
+              </h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                  <input type="text" id="template-name"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Contenido</label>
+                  <textarea id="template-content" rows="5"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button type="button" onclick="saveTemplate()"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                Guardar
+              </button>
+              <button type="button" onclick="closeTemplateModal()"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    function insertVariable(variable) {
-      const textarea = document.getElementById('campaign-message');
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const text = textarea.value;
-      textarea.value = text.substring(0, start) + variable + text.substring(end);
-      textarea.selectionStart = textarea.selectionEnd = start + variable.length;
-      textarea.focus();
-      updateWhatsAppPreview();
-    }
+      <!-- Create User Modal -->
+      <div id="create-user-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+          </div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Crear Usuario</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                  <input type="text" id="create-username-input"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                  <input type="password" id="create-password-input"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                  <select id="create-role-select"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="user">Usuario</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button type="button" onclick="saveCreateUser()"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                Crear
+              </button>
+              <button type="button" onclick="closeCreateUserModal()"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    // Initialize preview
-    document.addEventListener('DOMContentLoaded', updateWhatsAppPreview);
-  </script>
+      <script src="/public/js/admin.js"></script>
+      <script>
+        // Inline scripts for specific UI interactions
+        function updateWhatsAppPreview() {
+          const message = document.getElementById('campaign-message').value;
+          const preview = document.querySelector('.whatsapp-message');
+          if (preview) preview.textContent = message;
+        }
+
+        function insertVariable(variable) {
+          const textarea = document.getElementById('campaign-message');
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const text = textarea.value;
+          textarea.value = text.substring(0, start) + variable + text.substring(end);
+          textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+          textarea.focus();
+          updateWhatsAppPreview();
+        }
+
+        // Initialize preview
+        document.addEventListener('DOMContentLoaded', updateWhatsAppPreview);
+      </script>
 </body>
 
 </html>

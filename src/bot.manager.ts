@@ -44,21 +44,21 @@ export class BotManager {
 
         try {
             logger.info("Initializing WhatsApp client...");
-            
+
             // Limpiar sesión anterior de MongoDB antes de crear nuevo cliente
             // Esto asegura que no haya conflictos con sesiones previas cuando se vincula un nuevo número
             await this.clearSessionFromMongoDB();
             logger.info("Previous session cleared from MongoDB");
-            
+
             // Obtener configuración del cliente (incluye RemoteAuth con MongoStore)
             const clientConfig = await getClientConfig();
-            
+
             // Crear el cliente de WhatsApp
             this.client = new Client(clientConfig);
-            
+
             // Configurar event handlers
             this.setupEventHandlers();
-            
+
             logger.info("WhatsApp client created successfully");
         } catch (error) {
             logger.error("Error initializing client:", error);
@@ -70,8 +70,8 @@ export class BotManager {
         if (!this.client) {
             throw new Error("Client must be initialized before setting up event handlers");
         }
-        
-        console.log("Setting up event handlers...");
+
+        logger.info("Setting up event handlers...");
         this.client.on('ready', this.handleReady.bind(this));
         this.client.on('qr', this.handleQr.bind(this));
         this.client.on('message_create', this.handleMessage.bind(this));
@@ -97,7 +97,7 @@ export class BotManager {
         logger.info('QR RECEIVED');
         this.qrData.qrCodeData = qr;
         this.qrData.qrScanned = false;
-        console.log(qr);
+        logger.info("QR Code generated:", qr);
         qrcode.generate(qr, { small: true });
     }
 
@@ -137,11 +137,11 @@ export class BotManager {
             if (!this.client) {
                 await this.initializeClient();
             }
-            
+
             // Limpiar sesión anterior antes de inicializar (por si acaso)
             // Esto asegura que cuando se genera un nuevo QR, no hay sesiones viejas interfiriendo
             await this.clearSessionFromMongoDB();
-            
+
             // Inicializar el cliente de WhatsApp
             await this.client.initialize();
         } catch (error) {
@@ -156,7 +156,7 @@ export class BotManager {
     public async logout(): Promise<void> {
         try {
             logger.info("Logging out WhatsApp client...");
-            
+
             // Cerrar y destruir el cliente actual
             if (this.client) {
                 try {
@@ -198,23 +198,23 @@ export class BotManager {
             const db = mongoose.connection.db;
             if (db) {
                 let totalDeleted = 0;
-                
+
                 // Borrar todas las sesiones de 'authsessions' (colección usada por RemoteAuth)
-                const authsessionsResult = await db.collection('authsessions').deleteMany({ 
+                const authsessionsResult = await db.collection('authsessions').deleteMany({
                     _id: { $regex: /^mullbot-client/ }
                 });
                 totalDeleted += authsessionsResult.deletedCount;
                 logger.info(`Cleared ${authsessionsResult.deletedCount} session(s) from 'authsessions' collection`);
-                
+
                 // Borrar todas las sesiones de 'auth_sessions' (colección usada por MongoStore/wwebjs-mongo)
-                const authSessionsResult = await db.collection('auth_sessions').deleteMany({ 
+                const authSessionsResult = await db.collection('auth_sessions').deleteMany({
                     _id: { $regex: /^mullbot-client/ }
                 });
                 totalDeleted += authSessionsResult.deletedCount;
                 logger.info(`Cleared ${authSessionsResult.deletedCount} session(s) from 'auth_sessions' collection`);
-                
+
                 // También intentar borrar cualquier sesión que contenga 'mullbot' en el ID
-                const allSessionsResult = await db.collection('auth_sessions').deleteMany({ 
+                const allSessionsResult = await db.collection('auth_sessions').deleteMany({
                     $or: [
                         { _id: { $regex: /mullbot/i } },
                         { clientId: 'mullbot-client' }
@@ -222,7 +222,7 @@ export class BotManager {
                 });
                 totalDeleted += allSessionsResult.deletedCount;
                 logger.info(`Cleared ${allSessionsResult.deletedCount} additional session(s) from 'auth_sessions' collection`);
-                
+
                 logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB`);
             }
         } catch (error) {
@@ -333,12 +333,12 @@ export class BotManager {
             if (isPaymentReceipt) {
                 const user = await message.getContact();
                 const contact = await ContactModel.findOne({ phoneNumber: user.number });
-                
+
                 await handlePaymentReceipt(message);
-                
+
                 // Mensaje personalizado según el estado del contacto
                 let receiptMessage = '';
-                
+
                 if (contact && contact.saleStatus === 'appointment_confirmed') {
                     receiptMessage = `✅ *Comprobante Recibido*
 
@@ -368,7 +368,7 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                         await this.saveMessage(sentMsg, true);
                     }
                 }
-                
+
                 logger.info(`Payment receipt detected and processed for ${message.from}`);
                 return;
             }
@@ -452,7 +452,7 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
             // Determinar el número de teléfono del contacto
             let phoneNumber: string;
             let contact;
-            
+
             if (isFromBot) {
                 // Mensaje enviado por el bot: el destinatario está en message.to
                 phoneNumber = message.to.split('@')[0];
@@ -463,11 +463,11 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 phoneNumber = user.number;
                 contact = await ContactModel.findOne({ phoneNumber });
             }
-            
+
             // Intentar obtener media si existe
             let mediaUrl: string | undefined = undefined;
             let hasMedia = false;
-            
+
             if (message.hasMedia) {
                 hasMedia = true;
                 try {
@@ -502,13 +502,13 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 const content = message.body.toLowerCase();
                 const agentKeywords = ['agente', 'humano', 'persona', 'representante', 'atencion', 'atención', 'hablar con', 'hablar con un', 'quiero hablar', 'necesito hablar'];
                 requiresAttention = agentKeywords.some(keyword => content.includes(keyword));
-                
+
                 // También detectar si es la opción 8 del menú
                 const cleanContent = content.trim();
-                const isOption8 = /^8[\s\.\)\-]*$/.test(cleanContent) || 
-                                 /^8[\s\.\)\-]/.test(cleanContent) ||
-                                 cleanContent === '8';
-                
+                const isOption8 = /^8[\s\.\)\-]*$/.test(cleanContent) ||
+                    /^8[\s\.\)\-]/.test(cleanContent) ||
+                    cleanContent === '8';
+
                 requiresAttention = requiresAttention || isOption8;
             }
 
@@ -536,26 +536,26 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 { upsert: true, new: true }
             );
 
-                    // Si el mensaje requiere atención, pausar temporalmente al contacto y enviar mensaje
-                    if (requiresAttention && contact && !isFromBot && this.client) {
-                        try {
-                            // Pausar contacto
-                            await ContactModel.findOneAndUpdate(
-                                { phoneNumber: phoneNumber },
-                                { 
-                                    $set: { isPaused: true },
-                                    $push: { tags: 'requires_human_attention' }
-                                }
-                            );
-                            logger.info(`Contact ${phoneNumber} paused temporarily - requested human agent`);
-                            
-                            // Enviar mensaje automático de confirmación
-                            try {
-                                const formattedNumber = phoneNumber.includes('@') 
-                                    ? phoneNumber 
-                                    : `${phoneNumber}@c.us`;
+            // Si el mensaje requiere atención, pausar temporalmente al contacto y enviar mensaje
+            if (requiresAttention && contact && !isFromBot && this.client) {
+                try {
+                    // Pausar contacto
+                    await ContactModel.findOneAndUpdate(
+                        { phoneNumber: phoneNumber },
+                        {
+                            $set: { isPaused: true },
+                            $push: { tags: 'requires_human_attention' }
+                        }
+                    );
+                    logger.info(`Contact ${phoneNumber} paused temporarily - requested human agent`);
 
-                                const pauseMessage = `✅ *Solicitud Recibida*
+                    // Enviar mensaje automático de confirmación
+                    try {
+                        const formattedNumber = phoneNumber.includes('@')
+                            ? phoneNumber
+                            : `${phoneNumber}@c.us`;
+
+                        const pauseMessage = `✅ *Solicitud Recibida*
 
 Tu solicitud ha sido registrada correctamente.
 
@@ -566,22 +566,22 @@ Tu solicitud ha sido registrada correctamente.
 
 ¡Gracias por tu paciencia! 🌱`;
 
-                                const sentMessage = await this.client.sendMessage(formattedNumber, pauseMessage);
-                                
-                                // Guardar mensaje enviado en la base de datos
-                                if (sentMessage) {
-                                    await this.saveMessage(sentMessage, true);
-                                }
-                                
-                                logger.info(`Pause confirmation message sent automatically to ${phoneNumber}`);
-                            } catch (messageError) {
-                                logger.error(`Error sending automatic pause confirmation message to ${phoneNumber}:`, messageError);
-                                // No fallar la operación de pausa si el mensaje falla
-                            }
-                        } catch (error) {
-                            logger.error(`Error pausing contact ${phoneNumber}: ${error}`);
+                        const sentMessage = await this.client.sendMessage(formattedNumber, pauseMessage);
+
+                        // Guardar mensaje enviado en la base de datos
+                        if (sentMessage) {
+                            await this.saveMessage(sentMessage, true);
                         }
+
+                        logger.info(`Pause confirmation message sent automatically to ${phoneNumber}`);
+                    } catch (messageError) {
+                        logger.error(`Error sending automatic pause confirmation message to ${phoneNumber}:`, messageError);
+                        // No fallar la operación de pausa si el mensaje falla
                     }
+                } catch (error) {
+                    logger.error(`Error pausing contact ${phoneNumber}: ${error}`);
+                }
+            }
         } catch (error) {
             logger.error(`Error saving message: ${error}`);
             // No fallar el procesamiento del mensaje si no se puede guardar
@@ -595,7 +595,7 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const contact = await ContactModel.findOne({ phoneNumber });
             const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
-            
+
             await MessageModel.create({
                 phoneNumber: phoneNumber,
                 contactId: contact?._id.toString(),
