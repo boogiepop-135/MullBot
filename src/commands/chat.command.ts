@@ -108,19 +108,6 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
                 normalizedQuery.includes('humano') ||
                 normalizedQuery.includes('persona') ||
                 normalizedQuery.includes('representante') ||
-                normalizedQuery.includes('atencion') ||
-                normalizedQuery.includes('atención') ||
-                normalizedQuery.includes('hablar con'));
-
-        // Detectar intención y hacer seguimiento
-        const intent = SalesTracker.detectIntent(query);
-        SalesTracker.trackInteraction(message, query, quickResponse.message, quickResponse.intent || intent);
-
-        // Delay configurable
-        const { getBotDelay } = await import('../utils/bot-config.util');
-        const delay = await getBotDelay();
-        await new Promise(resolve => setTimeout(resolve, delay));
-
         // Enviar respuesta rápida con media si está disponible
         const mediaPath = quickResponse.mediaPath || "public/info.png";
         const media = MessageMedia.fromFilePath(mediaPath);
