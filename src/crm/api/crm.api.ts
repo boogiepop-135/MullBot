@@ -559,7 +559,6 @@ Tu solicitud ha sido registrada correctamente.
     });
 
     // Endpoint público para crear usuario (sin autenticación) - solo para desarrollo/uso personal
-    // IMPORTANTE: En producción, considera proteger este endpoint con una API key o deshabilitarlo
     router.post('/auth/create-user', async (req, res) => {
         try {
             const { username, password, role = 'user' } = req.body;
@@ -610,8 +609,17 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
-    router.get('/auth/check', authenticate, (req, res) => {
-        res.json({ user: req.user });
+    router.get('/auth/check', authenticate, async (req, res) => {
+        try {
+            const user = await UserModel.findById(req.user.userId).select('-password');
+            if (!user) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            res.json({ user });
+        } catch (error) {
+            logger.error('Auth check failed:', error);
+            res.status(500).json({ error: 'Auth check failed' });
+        }
     });
 
     // Sales Statistics API
