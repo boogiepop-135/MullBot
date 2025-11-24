@@ -73,6 +73,47 @@ npm run dev
 npm start
 ```
 
+## 🐳 Docker
+
+Para ejecutar Mullbot en contenedores Docker (útil para desplegar en VPS o entornos controlados), hay dos opciones: usar el `Dockerfile` o usar `docker-compose` que incluye un servicio de MongoDB para pruebas locales.
+
+1) Construir y ejecutar la imagen Docker:
+
+```bash
+# Construir imagen
+docker build -t mullbot:latest .
+
+# Ejecutar (asegúrate de exportar las variables de entorno necesarias)
+docker run -d \
+	-p 3000:3000 \
+	-e NODE_ENV=production \
+	-e PORT=3000 \
+	-e GEMINI_API_KEY="$GEMINI_API_KEY" \
+	-e MONGODB_URI="$MONGODB_URI" \
+	-e JWT_SECRET="$JWT_SECRET" \
+	-e PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium" \
+	--name mullbot mullbot:latest
+```
+
+2) Usar `docker-compose` (rápido para pruebas locales, levanta MongoDB junto con la app):
+
+```bash
+# Copiar variables de entorno a .env (o exportarlas en tu entorno)
+cp mullbot.env.example .env
+
+# Iniciar los servicios
+docker-compose up -d --build
+
+# Ver logs
+docker-compose logs -f app
+```
+
+Notas importantes:
+- El `Dockerfile` incluido intenta instalar Chromium (usado por Puppeteer). En algunos entornos la paquetería puede variar; si el build falla, puedes usar una imagen base que ya incluya Chrome/Chromium (p. ej. `zenika/alpine-chrome`) o instalar Chrome en el host y apuntar `PUPPETEER_EXECUTABLE_PATH` a esa ruta.
+- En producción se recomienda conectar la app a una instancia de MongoDB gestionada (Atlas) o a un servicio de base de datos separado, y no usar el contenedor `mongo` incluido en `docker-compose`.
+- Protege las variables sensibles (`GEMINI_API_KEY`, `JWT_SECRET`, `MONGODB_URI`) usando secretos del orquestador, `docker secret`, o variables en `systemd`/`pm2` en la VM.
+
+
 ## 📱 Comandos del Agente de Ventas
 
 ### Comandos Especializados en Ventas

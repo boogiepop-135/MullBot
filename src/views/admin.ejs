@@ -128,12 +128,12 @@
       min-height: calc(100vh - 80px);
       width: 100%;
     }
-    
+
     /* WhatsApp Web Button in Sidebar */
     #whatsapp-web-btn {
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
     #whatsapp-web-btn:hover {
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
       transform: translateY(-1px);
@@ -190,58 +190,28 @@
             class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
             <i class="fas fa-file-alt w-5 text-center"></i>
             <span>Plantillas</span>
-          </a>
-        </li>
-        <li>
-          <a href="#" id="settings-tab"
-            class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
-            <i class="fas fa-cog w-5 text-center"></i>
-            <span>Configuración</span>
-          </a>
-        </li>
-        <li>
-          <a href="#" id="notifications-tab"
-            class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
-            <i class="fas fa-bell w-5 text-center"></i>
-            <span>Notificaciones</span>
-            <span id="notification-badge" class="hidden bg-red-500 text-white text-xs font-semibold px-1.5 py-0.5 rounded-full ml-auto">0</span>
-          </a>
-        </li>
-        <li>
-          <a href="#" id="users-tab"
-            class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 font-medium">
-            <i class="fas fa-users w-5 text-center"></i>
-            <span>Usuarios</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-    <div class="absolute bottom-0 w-full p-4 border-t border-gray-200 space-y-3">
-      <!-- WhatsApp Web Button -->
-      <button onclick="openWhatsAppWeb()" id="whatsapp-web-btn"
-        class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2">
-        <i class="fab fa-whatsapp text-lg"></i>
-        <span>WhatsApp Web</span>
-      </button>
-      
-      <!-- User Info -->
-      <div class="flex items-center justify-between pt-2">
-        <div class="flex items-center space-x-2">
-          <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-            <i class="fas fa-user text-gray-600"></i>
-          </div>
-          <span id="username" class="text-gray-700 font-medium">Admin</span>
-        </div>
-        <button id="logout" class="text-gray-500 hover:text-gray-700">
-          <i class="fas fa-sign-out-alt"></i>
-        </button>
-      </div>
-    </div>
+            <i class="fab fa-whatsapp text-lg"></i>
+            <span>WhatsApp Web</span>
+            </button>
+
+            <!-- User Info -->
+            <div class="flex items-center justify-between pt-2">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  <i class="fas fa-user text-gray-600"></i>
+                </div>
+                <span id="username" class="text-gray-700 font-medium">Admin</span>
+              </div>
+              <button id="logout" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-sign-out-alt"></i>
+              </button>
+            </div>
+            </div>
   </aside>
 
   <!-- Main Content -->
   <main class="main-content flex-grow">
-      <!-- Dashboard Section -->
+    <!-- Dashboard Section -->
     <div id="dashboard-section" class="section-content hidden p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <!-- Stat 1 - Leads -->
@@ -470,7 +440,8 @@
             <h2 class="text-lg font-medium text-gray-800">Contactos</h2>
             <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
               <!-- Sale Status Filter -->
-              <select id="sale-status-filter" class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
+              <select id="sale-status-filter"
+                class="border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-gray-300 transition-colors">
                 <option value="">Todos los estados</option>
                 <option value="lead">Leads</option>
                 <option value="interested">Interesados</option>
@@ -694,7 +665,8 @@
               </button>
               <span class="text-sm text-gray-500" id="current-delay-text">Cargando...</span>
             </div>
-            <p class="text-xs text-gray-400 mt-2">Tiempo de espera antes de responder mensajes (por defecto: 10000ms = 10 segundos)</p>
+            <p class="text-xs text-gray-400 mt-2">Tiempo de espera antes de responder mensajes (por defecto: 10000ms =
+              10 segundos)</p>
           </div>
         </div>
       </div>
@@ -742,7 +714,8 @@
                 <i class="fas fa-unlink mr-2"></i> Desvincular WhatsApp
               </button>
             </div>
-            <p class="text-xs text-gray-400 mt-2">Después de desvincular, se generará un nuevo código QR para escanear con otra cuenta.</p>
+            <p class="text-xs text-gray-400 mt-2">Después de desvincular, se generará un nuevo código QR para escanear
+              con otra cuenta.</p>
           </div>
           <div id="whatsapp-status" class="mt-4 p-4 bg-gray-50 rounded-lg">
             <p class="text-sm text-gray-600">
@@ -785,6 +758,36 @@
       </div>
     </div>
 
+    <!-- Products Section -->
+    <div id="products-section" class="section-content hidden p-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div class="p-5 border-b border-gray-200 flex justify-between items-center">
+          <h2 class="text-lg font-medium text-gray-800">Gestión de Productos</h2>
+          <button onclick="openCreateProductModal()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <i class="fas fa-plus mr-2"></i> Nuevo Producto
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
+              <!-- Products will be loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- WhatsApp Web Section -->
     <div id="whatsapp-web-section" class="section-content hidden">
       <div class="h-full flex flex-col">
@@ -793,7 +796,8 @@
             <h2 class="text-lg font-medium text-gray-800">WhatsApp Web</h2>
             <p class="text-sm text-gray-500 mt-1">Gestiona tus conversaciones directamente desde aquí</p>
           </div>
-          <button onclick="refreshWhatsAppWeb()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <button onclick="refreshWhatsAppWeb()"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <i class="fas fa-sync-alt mr-2"></i> Recargar
           </button>
         </div>
@@ -803,8 +807,8 @@
             <h3 class="text-xl font-medium text-gray-800 mb-2">WhatsApp Web</h3>
             <p class="text-gray-600 mb-4">WhatsApp Web no se puede mostrar en un iframe por razones de seguridad.</p>
             <p class="text-sm text-gray-500 mb-4">Por favor, abre WhatsApp Web en una nueva ventana o pestaña.</p>
-            <button onclick="window.open('https://web.whatsapp.com', '_blank')" 
-                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            <button onclick="window.open('https://web.whatsapp.com', '_blank')"
+              class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
               <i class="fab fa-whatsapp mr-2"></i> Abrir WhatsApp Web
             </button>
           </div>
@@ -818,9 +822,9 @@
         <div class="p-5 border-b border-gray-200 flex justify-between items-center">
           <h2 class="text-lg font-medium text-gray-800">Notificaciones</h2>
           <div class="flex items-center space-x-3">
-            <span id="unread-count-badge" class="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">0</span>
-            <button onclick="markAllNotificationsAsRead()"
-              class="text-sm text-blue-600 hover:text-blue-800">
+            <span id="unread-count-badge"
+              class="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">0</span>
+            <button onclick="markAllNotificationsAsRead()" class="text-sm text-blue-600 hover:text-blue-800">
               Marcar todas como leídas
             </button>
           </div>
@@ -853,22 +857,21 @@
               <p id="chat-contact-phone" class="text-sm text-green-100"></p>
             </div>
           </div>
-              <div class="flex items-center space-x-2">
-                  <button type="button" onclick="pauseBotFromChat(currentChatPhoneNumber)" id="pause-bot-btn"
-                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-md"
-                    title="Pausar bot y enviar mensaje de confirmación">
-                    <i class="fas fa-pause mr-1"></i> Pausar Bot
-                  </button>
-                  <button type="button" onclick="openWhatsAppWebForContact()" id="whatsapp-web-contact-btn" disabled
-                    class="bg-green-700 hover:bg-green-800 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Abrir WhatsApp Web para este contacto">
-                    <i class="fas fa-external-link-alt mr-1"></i> WhatsApp Web
-                  </button>
-                  <button type="button" onclick="closeChatModal()"
-                    class="text-white hover:text-gray-200">
-                    <i class="fas fa-times text-xl"></i>
-                  </button>
-                </div>
+          <div class="flex items-center space-x-2">
+            <button type="button" onclick="pauseBotFromChat(currentChatPhoneNumber)" id="pause-bot-btn"
+              class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-md"
+              title="Pausar bot y enviar mensaje de confirmación">
+              <i class="fas fa-pause mr-1"></i> Pausar Bot
+            </button>
+            <button type="button" onclick="openWhatsAppWebForContact()" id="whatsapp-web-contact-btn" disabled
+              class="bg-green-700 hover:bg-green-800 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Abrir WhatsApp Web para este contacto">
+              <i class="fas fa-external-link-alt mr-1"></i> WhatsApp Web
+            </button>
+            <button type="button" onclick="closeChatModal()" class="text-white hover:text-gray-200">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Messages Container (WhatsApp style) -->
@@ -1028,6 +1031,76 @@
             Cambiar
           </button>
           <button type="button" onclick="closeChangeUserPasswordModal()"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Modal -->
+  <div id="product-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <div
+        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="product-modal-title">Nuevo Producto</h3>
+          <div class="mt-2 space-y-4">
+            <input type="hidden" id="product-id">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+              <input type="text" id="product-name"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+              <textarea id="product-description" rows="3"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                <input type="number" id="product-price" step="0.01"
+                  class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                <input type="text" id="product-category"
+                  class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tamaños (separados por coma)</label>
+              <input type="text" id="product-sizes" placeholder="Ej: S, M, L"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Promociones</label>
+              <input type="text" id="product-promotions"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">URL Imagen</label>
+              <input type="text" id="product-image-url"
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex items-center">
+              <input type="checkbox" id="product-in-stock"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+              <label for="product-in-stock" class="ml-2 block text-sm text-gray-900">En Stock</label>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" onclick="saveProduct()"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Guardar
+          </button>
+          <button type="button" onclick="closeProductModal()"
             class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
             Cancelar
           </button>

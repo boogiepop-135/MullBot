@@ -11,6 +11,7 @@ import { sendPaymentConfirmationMessage, sendAppointmentConfirmationMessage } fr
 import { NotificationModel } from '../models/notification.model';
 import { MessageModel } from '../models/message.model';
 import { UserModel } from '../models/user.model';
+import { ProductModel } from '../models/product.model';
 
 export const router = express.Router();
 
@@ -74,7 +75,7 @@ export default function (botManager: BotManager) {
             if (saleStatusNotes !== undefined) {
                 updateData.saleStatusNotes = saleStatusNotes;
             }
-            
+
             // Manejar estados específicos
             if (saleStatus === 'payment_pending') {
                 if (!req.body.paidAt) {
@@ -136,8 +137,8 @@ export default function (botManager: BotManager) {
             // Si se está pausando (no despausando), enviar mensaje automático
             if (isPaused === true && botManager.client) {
                 try {
-                    const formattedNumber = phoneNumber.includes('@') 
-                        ? phoneNumber 
+                    const formattedNumber = phoneNumber.includes('@')
+                        ? phoneNumber
                         : `${phoneNumber}@c.us`;
 
                     const pauseMessage = `✅ *Solicitud Recibida*
@@ -152,12 +153,12 @@ Tu solicitud ha sido registrada correctamente.
 ¡Gracias por tu paciencia! 🌱`;
 
                     const sentMessage = await botManager.client.sendMessage(formattedNumber, pauseMessage);
-                    
+
                     // Guardar mensaje enviado en la base de datos
                     if (sentMessage) {
                         await botManager.saveSentMessage(phoneNumber, pauseMessage, sentMessage.id._serialized);
                     }
-                    
+
                     logger.info(`Pause confirmation message sent to ${phoneNumber}`);
                 } catch (messageError) {
                     logger.error(`Error sending pause confirmation message to ${phoneNumber}:`, messageError);
@@ -203,8 +204,8 @@ Tu solicitud ha sido registrada correctamente.
             try {
                 if (botManager.client) {
                     await sendAppointmentConfirmationMessage(
-                        botManager.client, 
-                        phoneNumber, 
+                        botManager.client,
+                        phoneNumber,
                         contact.appointmentDate ? new Date(contact.appointmentDate) : undefined,
                         contact.appointmentNotes
                     );
@@ -228,8 +229,8 @@ Tu solicitud ha sido registrada correctamente.
 
             const contact = await ContactModel.findOneAndUpdate(
                 { phoneNumber },
-                { 
-                    $set: { 
+                {
+                    $set: {
                         paymentConfirmedAt: new Date(),
                         saleStatus: 'appointment_scheduled'
                     }
@@ -367,27 +368,100 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
+    // Products API
+    router.get('/products', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const products = await ProductModel.find().sort({ createdAt: -1 });
+            res.json(products);
+        } catch (error) {
+            logger.error('Failed to fetch products:', error);
+            res.status(500).json({ error: 'Failed to fetch products' });
+        }
+    });
+
+    router.post('/products', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { name, description, price, sizes, promotions, imageUrl, category, inStock } = req.body;
+
+            const product = new ProductModel({
+                name,
+                description,
+                price,
+                sizes,
+                promotions,
+                imageUrl,
+                category,
+                inStock
+            });
+
+            await product.save();
+            res.status(201).json(product);
+        } catch (error) {
+            logger.error('Failed to create product:', error);
+            res.status(500).json({ error: 'Failed to create product' });
+        }
+    });
+
+    router.put('/products/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+
+            const product = await ProductModel.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true }
+            );
+
+            if (!product) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+
+            res.json(product);
+        } catch (error) {
+            logger.error('Failed to update product:', error);
+            res.status(500).json({ error: 'Failed to update product' });
+        }
+    });
+
+    router.delete('/products/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const product = await ProductModel.findByIdAndDelete(id);
+
+            if (!product) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+
+            res.json({ success: true });
+        } catch (error) {
+            logger.error('Failed to delete product:', error);
+            res.status(500).json({ error: 'Failed to delete product' });
+        }
+    });
+
     // Auth API
     // Endpoint para crear usuario (requiere autenticación admin)
     router.post('/auth/register', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { username, password, role = 'user' } = req.body;
-            
+
             // Validación
             if (!username || !password) {
                 return res.status(400).json({ error: 'Username and password are required' });
             }
-            
+
             if (password.length < 6) {
                 return res.status(400).json({ error: 'Password must be at least 6 characters long' });
             }
-            
+
             if (!['admin', 'user'].includes(role)) {
                 return res.status(400).json({ error: 'Invalid role. Must be admin or user' });
             }
-            
+
             const user = await AuthService.register(username, password, role);
-            
+
             // No devolver la contraseña
             const userResponse = {
                 _id: user._id,
@@ -396,11 +470,11 @@ Tu solicitud ha sido registrada correctamente.
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt
             };
-            
+
             logger.info(`User created by ${req.user?.username}: ${username} (${role})`);
-            res.status(201).json({ 
+            res.status(201).json({
                 message: 'User created successfully',
-                user: userResponse 
+                user: userResponse
             });
         } catch (error) {
             logger.error('Registration failed:', error);
@@ -412,18 +486,18 @@ Tu solicitud ha sido registrada correctamente.
     router.post('/auth/change-password', authenticate, async (req, res) => {
         try {
             const { currentPassword, newPassword } = req.body;
-            
+
             // Validación
             if (!currentPassword || !newPassword) {
                 return res.status(400).json({ error: 'Current password and new password are required' });
             }
-            
+
             if (newPassword.length < 6) {
                 return res.status(400).json({ error: 'New password must be at least 6 characters long' });
             }
-            
+
             await AuthService.changePassword(req.user.userId, currentPassword, newPassword);
-            
+
             logger.info(`Password changed by user: ${req.user.username}`);
             res.json({ message: 'Password changed successfully' });
         } catch (error) {
@@ -437,18 +511,18 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { userId } = req.params;
             const { newPassword } = req.body;
-            
+
             // Validación
             if (!newPassword) {
                 return res.status(400).json({ error: 'New password is required' });
             }
-            
+
             if (newPassword.length < 6) {
                 return res.status(400).json({ error: 'New password must be at least 6 characters long' });
             }
-            
+
             await AuthService.changePasswordByAdmin(userId, newPassword);
-            
+
             logger.info(`Password changed by admin ${req.user.username} for user: ${userId}`);
             res.json({ message: 'Password changed successfully' });
         } catch (error) {
@@ -461,7 +535,7 @@ Tu solicitud ha sido registrada correctamente.
     router.get('/auth/users', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const users = await UserModel.find().select('-password').sort({ createdAt: -1 });
-            
+
             res.json({ users });
         } catch (error) {
             logger.error('Failed to fetch users:', error);
@@ -476,35 +550,35 @@ Tu solicitud ha sido registrada correctamente.
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });
             }
-            
+
             res.json({ user });
         } catch (error) {
             logger.error('Failed to fetch user:', error);
             res.status(500).json({ error: 'Failed to fetch user' });
         }
     });
-    
+
     // Endpoint público para crear usuario (sin autenticación) - solo para desarrollo/uso personal
     // IMPORTANTE: En producción, considera proteger este endpoint con una API key o deshabilitarlo
     router.post('/auth/create-user', async (req, res) => {
         try {
             const { username, password, role = 'user' } = req.body;
-            
+
             // Validación
             if (!username || !password) {
                 return res.status(400).json({ error: 'Username and password are required' });
             }
-            
+
             if (password.length < 6) {
                 return res.status(400).json({ error: 'Password must be at least 6 characters long' });
             }
-            
+
             if (!['admin', 'user'].includes(role)) {
                 return res.status(400).json({ error: 'Invalid role. Must be admin or user' });
             }
-            
+
             const user = await AuthService.register(username, password, role);
-            
+
             // No devolver la contraseña
             const userResponse = {
                 _id: user._id,
@@ -513,11 +587,11 @@ Tu solicitud ha sido registrada correctamente.
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt
             };
-            
+
             logger.info(`User created via public API: ${username} (${role})`);
-            res.status(201).json({ 
+            res.status(201).json({
                 message: 'User created successfully',
-                user: userResponse 
+                user: userResponse
             });
         } catch (error) {
             logger.error('User creation failed:', error);
@@ -544,10 +618,10 @@ Tu solicitud ha sido registrada correctamente.
     router.get('/statistics', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const SalesTracker = (await import('../../utils/sales-tracker.util')).default;
-            
+
             // Get sales statistics
             const salesStats = SalesTracker.getSalesStats();
-            
+
             // Get contact statistics
             const totalContacts = await ContactModel.countDocuments();
             const contactsWithTags = await ContactModel.countDocuments({ tags: { $exists: true, $ne: [] } });
@@ -564,22 +638,22 @@ Tu solicitud ha sido registrada correctamente.
             const appointmentConfirmed = await ContactModel.countDocuments({ saleStatus: 'appointment_confirmed' });
             const completed = await ContactModel.countDocuments({ saleStatus: 'completed' });
             const pausedContacts = await ContactModel.countDocuments({ isPaused: true });
-            
+
             // Get campaign statistics
             const totalCampaigns = await CampaignModel.countDocuments();
             const sentCampaigns = await CampaignModel.countDocuments({ status: 'sent' });
             const scheduledCampaigns = await CampaignModel.countDocuments({ status: 'scheduled' });
-            
+
             // Calculate total messages sent
             const campaigns = await CampaignModel.find({ status: 'sent' });
             const totalMessagesSent = campaigns.reduce((sum, campaign) => sum + (campaign.sentCount || 0), 0);
-            
+
             // Get top leads from contacts based on interactions
             const topLeadsContacts = await ContactModel.find()
                 .sort({ interactionsCount: -1 })
                 .limit(10)
                 .select('phoneNumber name pushName interactionsCount lastInteraction');
-            
+
             res.json({
                 sales: salesStats,
                 contacts: {
@@ -634,7 +708,7 @@ Tu solicitud ha sido registrada correctamente.
     router.put('/bot-config', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { botDelay } = req.body;
-            
+
             if (botDelay === undefined || botDelay < 0) {
                 return res.status(400).json({ error: 'botDelay is required and must be >= 0' });
             }
@@ -661,14 +735,14 @@ Tu solicitud ha sido registrada correctamente.
             if (!botManager.client) {
                 await botManager.initializeClient();
             }
-            
+
             const { phoneNumber, message } = req.body;
             const formattedNumber = phoneNumber.includes('@')
                 ? phoneNumber
                 : `${phoneNumber}@c.us`;
 
             const sentMessage = await botManager.client.sendMessage(formattedNumber, message);
-            
+
             // Guardar mensaje enviado en la base de datos
             if (sentMessage) {
                 await botManager.saveSentMessage(phoneNumber, message, sentMessage.id._serialized);
@@ -688,7 +762,7 @@ Tu solicitud ha sido registrada correctamente.
             const { limit = 50, before, requiresAttention } = req.query; // Paginación opcional y filtro de atención
 
             const query: any = { phoneNumber };
-            
+
             // Si hay un timestamp "before", obtener mensajes anteriores a esa fecha
             if (before) {
                 query.timestamp = { $lt: new Date(before) };
@@ -730,164 +804,164 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
-            // WhatsApp logout endpoint
-            router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
-                try {
-                    await botManager.logout();
-                    res.json({ message: 'WhatsApp session disconnected successfully. You can now scan a new QR code.' });
-                } catch (error) {
-                    logger.error('Failed to logout WhatsApp:', error);
-                    res.status(500).json({ error: 'Failed to logout WhatsApp' });
-                }
-            });
-
-            // Notifications API
-            router.get('/notifications', authenticate, authorizeAdmin, async (req, res) => {
-                try {
-                    const { unreadOnly = 'true', limit = 50 } = req.query;
-                    
-                    const query: any = {};
-                    if (unreadOnly === 'true') {
-                        query.read = false;
-                    }
-
-                    const notifications = await NotificationModel.find(query)
-                        .sort({ createdAt: -1 })
-                        .limit(Number(limit));
-
-                    const unreadCount = await NotificationModel.countDocuments({ read: false });
-
-                    res.json({
-                        notifications,
-                        unreadCount
-                    });
-                } catch (error) {
-                    logger.error('Failed to fetch notifications:', error);
-                    res.status(500).json({ error: 'Failed to fetch notifications' });
-                }
-            });
-
-            router.put('/notifications/:id/read', authenticate, authorizeAdmin, async (req, res) => {
-                try {
-                    const { id } = req.params;
-                    
-                    const notification = await NotificationModel.findByIdAndUpdate(
-                        id,
-                        { $set: { read: true } },
-                        { new: true }
-                    );
-
-                    if (!notification) {
-                        return res.status(404).json({ error: 'Notification not found' });
-                    }
-
-                    res.json(notification);
-                } catch (error) {
-                    logger.error('Failed to mark notification as read:', error);
-                    res.status(500).json({ error: 'Failed to mark notification as read' });
-                }
-            });
-
-            router.put('/notifications/read-all', authenticate, authorizeAdmin, async (req, res) => {
-                try {
-                    await NotificationModel.updateMany(
-                        { read: false },
-                        { $set: { read: true } }
-                    );
-
-                    res.json({ message: 'All notifications marked as read' });
-                } catch (error) {
-                    logger.error('Failed to mark all notifications as read:', error);
-                    res.status(500).json({ error: 'Failed to mark all notifications as read' });
-                }
-            });
-
-            // Server-Sent Events para notificaciones en tiempo real
-            // Middleware especial para SSE que acepta token como query parameter
-            router.get('/notifications/stream', async (req, res, next) => {
-                try {
-                    // Intentar obtener token del query parameter o del header
-                    let token = req.query.token as string || req.header('Authorization')?.replace('Bearer ', '');
-                    
-                    if (!token) {
-                        return res.status(401).json({ error: 'Authentication required' });
-                    }
-
-                    const decoded = await (await import('../utils/auth.util')).AuthService.verifyToken(token);
-                    if (!decoded) {
-                        return res.status(401).json({ error: 'Invalid token' });
-                    }
-
-                    // Verificar que sea admin
-                    if (decoded.role !== 'admin') {
-                        return res.status(403).json({ error: 'Admin access required' });
-                    }
-
-                    req.user = decoded;
-                    next();
-                } catch (error) {
-                    logger.error('SSE Authentication error:', error);
-                    res.status(401).json({ error: 'Authentication failed' });
-                }
-            }, (req, res) => {
-                // Configurar SSE
-                res.setHeader('Content-Type', 'text/event-stream');
-                res.setHeader('Cache-Control', 'no-cache');
-                res.setHeader('Connection', 'keep-alive');
-                res.setHeader('X-Accel-Buffering', 'no'); // Deshabilitar buffering en nginx
-
-                // Enviar ping inicial
-                res.write(': ping\n\n');
-
-                // Polling cada 2 segundos para notificaciones nuevas
-                const interval = setInterval(async () => {
-                    try {
-                        // Verificar si la conexión sigue activa
-                        if (req.closed || res.destroyed) {
-                            clearInterval(interval);
-                            return;
-                        }
-
-                        const unreadCount = await NotificationModel.countDocuments({ read: false });
-                        const latestNotifications = await NotificationModel.find({ read: false })
-                            .sort({ createdAt: -1 })
-                            .limit(5);
-
-                        res.write(`data: ${JSON.stringify({ unreadCount, notifications: latestNotifications })}\n\n`);
-                    } catch (error) {
-                        logger.error('Error in notification stream:', error);
-                        if (!res.destroyed) {
-                            res.write(`event: error\ndata: ${JSON.stringify({ error: 'Failed to fetch notifications' })}\n\n`);
-                        }
-                    }
-                }, 2000);
-
-                // Limpiar cuando el cliente se desconecta
-                req.on('close', () => {
-                    clearInterval(interval);
-                    if (!res.destroyed) {
-                        res.end();
-                    }
-                });
-
-                req.on('error', () => {
-                    clearInterval(interval);
-                    if (!res.destroyed) {
-                        res.end();
-                    }
-                });
-            });
-
-            return router;
+    // WhatsApp logout endpoint
+    router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            await botManager.logout();
+            res.json({ message: 'WhatsApp session disconnected successfully. You can now scan a new QR code.' });
+        } catch (error) {
+            logger.error('Failed to logout WhatsApp:', error);
+            res.status(500).json({ error: 'Failed to logout WhatsApp' });
         }
+    });
 
-        async function sendCampaignMessages(botManager: BotManager, campaign: any) {
+    // Notifications API
+    router.get('/notifications', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { unreadOnly = 'true', limit = 50 } = req.query;
+
+            const query: any = {};
+            if (unreadOnly === 'true') {
+                query.read = false;
+            }
+
+            const notifications = await NotificationModel.find(query)
+                .sort({ createdAt: -1 })
+                .limit(Number(limit));
+
+            const unreadCount = await NotificationModel.countDocuments({ read: false });
+
+            res.json({
+                notifications,
+                unreadCount
+            });
+        } catch (error) {
+            logger.error('Failed to fetch notifications:', error);
+            res.status(500).json({ error: 'Failed to fetch notifications' });
+        }
+    });
+
+    router.put('/notifications/:id/read', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const notification = await NotificationModel.findByIdAndUpdate(
+                id,
+                { $set: { read: true } },
+                { new: true }
+            );
+
+            if (!notification) {
+                return res.status(404).json({ error: 'Notification not found' });
+            }
+
+            res.json(notification);
+        } catch (error) {
+            logger.error('Failed to mark notification as read:', error);
+            res.status(500).json({ error: 'Failed to mark notification as read' });
+        }
+    });
+
+    router.put('/notifications/read-all', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            await NotificationModel.updateMany(
+                { read: false },
+                { $set: { read: true } }
+            );
+
+            res.json({ message: 'All notifications marked as read' });
+        } catch (error) {
+            logger.error('Failed to mark all notifications as read:', error);
+            res.status(500).json({ error: 'Failed to mark all notifications as read' });
+        }
+    });
+
+    // Server-Sent Events para notificaciones en tiempo real
+    // Middleware especial para SSE que acepta token como query parameter
+    router.get('/notifications/stream', async (req, res, next) => {
+        try {
+            // Intentar obtener token del query parameter o del header
+            let token = req.query.token as string || req.header('Authorization')?.replace('Bearer ', '');
+
+            if (!token) {
+                return res.status(401).json({ error: 'Authentication required' });
+            }
+
+            const decoded = await (await import('../utils/auth.util')).AuthService.verifyToken(token);
+            if (!decoded) {
+                return res.status(401).json({ error: 'Invalid token' });
+            }
+
+            // Verificar que sea admin
+            if (decoded.role !== 'admin') {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+
+            req.user = decoded;
+            next();
+        } catch (error) {
+            logger.error('SSE Authentication error:', error);
+            res.status(401).json({ error: 'Authentication failed' });
+        }
+    }, (req, res) => {
+        // Configurar SSE
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no'); // Deshabilitar buffering en nginx
+
+        // Enviar ping inicial
+        res.write(': ping\n\n');
+
+        // Polling cada 2 segundos para notificaciones nuevas
+        const interval = setInterval(async () => {
+            try {
+                // Verificar si la conexión sigue activa
+                if (req.closed || res.destroyed) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                const unreadCount = await NotificationModel.countDocuments({ read: false });
+                const latestNotifications = await NotificationModel.find({ read: false })
+                    .sort({ createdAt: -1 })
+                    .limit(5);
+
+                res.write(`data: ${JSON.stringify({ unreadCount, notifications: latestNotifications })}\n\n`);
+            } catch (error) {
+                logger.error('Error in notification stream:', error);
+                if (!res.destroyed) {
+                    res.write(`event: error\ndata: ${JSON.stringify({ error: 'Failed to fetch notifications' })}\n\n`);
+                }
+            }
+        }, 2000);
+
+        // Limpiar cuando el cliente se desconecta
+        req.on('close', () => {
+            clearInterval(interval);
+            if (!res.destroyed) {
+                res.end();
+            }
+        });
+
+        req.on('error', () => {
+            clearInterval(interval);
+            if (!res.destroyed) {
+                res.end();
+            }
+        });
+    });
+
+    return router;
+}
+
+async function sendCampaignMessages(botManager: BotManager, campaign: any) {
     try {
         // Asegurar que el cliente esté inicializado
         if (!botManager.client) {
             await botManager.initializeClient();
         }
-        
+
         campaign.status = 'sending';
         await campaign.save();
 
