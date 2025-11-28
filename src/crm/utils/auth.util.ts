@@ -41,8 +41,13 @@ export class AuthService {
   static async verifyToken(token: string) {
     try {
       return jwt.verify(token, EnvConfig.JWT_SECRET);
-    } catch (error) {
-      logger.error('Token verification failed:', error);
+    } catch (error: any) {
+      // Log el error pero con nivel info para tokens inválidos comunes
+      if (error?.name === 'JsonWebTokenError' || error?.message?.includes('malformed')) {
+        logger.error(error.message);
+      } else {
+        logger.error('Token verification failed:', error);
+      }
       return null;
     }
   }

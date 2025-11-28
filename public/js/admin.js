@@ -107,10 +107,38 @@ window.showSection = function (sectionId) {
     case 'users':
       if (typeof loadUsers === 'function') loadUsers();
       break;
+    case 'bot-content':
+      loadBotContent();
+      break;
     case 'settings':
       loadBotConfig();
       loadWhatsAppStatus();
       break;
+  }
+};
+
+// Settings tabs navigation
+window.showSettingsTab = function(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.settings-tab').forEach(tab => {
+    tab.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
+    tab.classList.add('text-gray-500');
+  });
+  
+  const activeTab = document.getElementById('tab-' + tabName);
+  if (activeTab) {
+    activeTab.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
+    activeTab.classList.remove('text-gray-500');
+  }
+  
+  // Show/hide panels
+  document.querySelectorAll('.settings-panel').forEach(panel => {
+    panel.classList.add('hidden');
+  });
+  
+  const activePanel = document.getElementById('settings-' + tabName);
+  if (activePanel) {
+    activePanel.classList.remove('hidden');
   }
 };
 
@@ -120,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Initial navigation based on hash
   const hash = window.location.hash.substring(1);
-  if (hash && ['dashboard', 'contacts', 'campaigns', 'templates', 'products', 'users', 'settings'].includes(hash)) {
+  if (hash && ['dashboard', 'contacts', 'campaigns', 'templates', 'products', 'users', 'bot-content', 'settings'].includes(hash)) {
     showSection(hash);
   } else {
     showSection('dashboard');
@@ -829,3 +857,716 @@ async function loadNotifications() {
 function startNotificationStream() {
   // Implementation for SSE
 }
+
+// --- Bot Config & WhatsApp Functions ---
+let currentBotConfig = null;
+
+async function loadBotConfig() {
+  try {
+    const response = await fetch('/crm/bot-config', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to load bot config');
+    const config = await response.json();
+    currentBotConfig = config;
+    
+    // Configuración general
+    setInputValue('bot-name-input', config.botName);
+    setInputValue('bot-emoji-input', config.botEmoji);
+    setInputValue('bot-delay-input', config.botDelay || 10000);
+    
+    // Información del negocio
+    setInputValue('business-name-input', config.businessName);
+    setInputValue('business-description-input', config.businessDescription);
+    setInputValue('business-phone-input', config.businessPhone);
+    setInputValue('business-email-input', config.businessEmail);
+    setInputValue('business-address-input', config.businessAddress);
+    setInputValue('business-website-input', config.businessWebsite);
+    setInputValue('business-hours-input', config.businessHours);
+    
+    // Redes sociales
+    setInputValue('social-facebook-input', config.socialFacebook);
+    setInputValue('social-instagram-input', config.socialInstagram);
+    setInputValue('social-tiktok-input', config.socialTiktok);
+    
+    // Configuración de pagos
+    setInputValue('bank-info-input', config.bankInfo);
+    setInputValue('paypal-email-input', config.paypalEmail);
+    
+    // Mensajes personalizados
+    setInputValue('welcome-message-input', config.welcomeMessage);
+    setInputValue('pause-message-input', config.pauseMessage);
+    
+    // IA
+    setInputValue('ai-system-prompt-input', config.aiSystemPrompt);
+    setInputValue('ai-model-input', config.aiModel);
+    
+    const delayText = document.getElementById('current-delay-text');
+    if (delayText) delayText.textContent = `Actual: ${(config.botDelay || 10000) / 1000}s`;
+    
+  } catch (error) {
+    console.error('Error loading bot config:', error);
+  }
+}
+
+function setInputValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value || '';
+}
+
+function getInputValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+window.saveBotConfig = async function() {
+  const config = {
+    // Configuración general
+    botName: getInputValue('bot-name-input'),
+    botEmoji: getInputValue('bot-emoji-input'),
+    botDelay: parseInt(getInputValue('bot-delay-input')) || 10000,
+    
+    // Información del negocio
+    businessName: getInputValue('business-name-input'),
+    businessDescription: getInputValue('business-description-input'),
+    businessPhone: getInputValue('business-phone-input'),
+    businessEmail: getInputValue('business-email-input'),
+    businessAddress: getInputValue('business-address-input'),
+    businessWebsite: getInputValue('business-website-input'),
+    businessHours: getInputValue('business-hours-input'),
+    
+    // Redes sociales
+    socialFacebook: getInputValue('social-facebook-input'),
+    socialInstagram: getInputValue('social-instagram-input'),
+    socialTiktok: getInputValue('social-tiktok-input'),
+    
+    // Configuración de pagos
+    bankInfo: getInputValue('bank-info-input'),
+    paypalEmail: getInputValue('paypal-email-input'),
+    
+    // Mensajes personalizados
+    welcomeMessage: getInputValue('welcome-message-input'),
+    pauseMessage: getInputValue('pause-message-input'),
+    
+    // IA
+    aiSystemPrompt: getInputValue('ai-system-prompt-input'),
+    aiModel: getInputValue('ai-model-input')
+  };
+  
+  try {
+    const response = await fetch('/crm/bot-config', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(config)
+    });
+    
+    if (!response.ok) throw new Error('Failed to save bot config');
+    
+    const delayText = document.getElementById('current-delay-text');
+    if (delayText) delayText.textContent = `Actual: ${config.botDelay / 1000}s`;
+    
+    currentBotConfig = config;
+    alert('Configuración guardada correctamente');
+  } catch (error) {
+    console.error('Error saving bot config:', error);
+    alert('Error al guardar configuración');
+  }
+};
+
+// --- Bot Content Functions ---
+let allBotContent = [];
+
+async function loadBotContent() {
+  try {
+    const response = await fetch('/crm/bot-content', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to load bot content');
+    allBotContent = await response.json();
+    renderBotContent(allBotContent);
+  } catch (error) {
+    console.error('Error loading bot content:', error);
+  }
+}
+
+function renderBotContent(contents) {
+  const container = document.getElementById('bot-content-container');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (contents.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full text-center py-8">
+        <p class="text-gray-500 mb-4">No hay contenido configurado</p>
+        <button onclick="initDefaultBotContent()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          Inicializar contenido predeterminado
+        </button>
+      </div>`;
+    return;
+  }
+  
+  const categoryLabels = {
+    'quick_response': 'Respuesta Rápida',
+    'command': 'Comando',
+    'other': 'Otro'
+  };
+  
+  contents.forEach(content => {
+    const div = document.createElement('div');
+    div.className = 'bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow';
+    div.innerHTML = `
+      <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <div>
+          <h3 class="font-medium text-gray-800">${content.key}</h3>
+          <span class="text-xs text-gray-500">${categoryLabels[content.category] || content.category}</span>
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="openEditBotContentModal('${content.key}')" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteBotContent('${content.key}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="p-4">
+        <p class="text-sm text-gray-600 mb-2">${content.description || 'Sin descripción'}</p>
+        <pre class="text-xs text-gray-500 bg-gray-50 p-2 rounded max-h-32 overflow-auto whitespace-pre-wrap">${content.content.substring(0, 200)}${content.content.length > 200 ? '...' : ''}</pre>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+window.initDefaultBotContent = async function() {
+  if (!confirm('¿Inicializar contenido predeterminado del bot?')) return;
+  
+  try {
+    const response = await fetch('/crm/bot-content/init-defaults', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to init defaults');
+    const result = await response.json();
+    alert(result.message);
+    loadBotContent();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al inicializar contenido');
+  }
+};
+
+window.openCreateBotContentModal = function() {
+  document.getElementById('bot-content-modal-title').textContent = 'Nuevo Contenido';
+  document.getElementById('bot-content-key-input').value = '';
+  document.getElementById('bot-content-key-input').disabled = false;
+  document.getElementById('bot-content-description-input').value = '';
+  document.getElementById('bot-content-category-input').value = 'quick_response';
+  document.getElementById('bot-content-text-input').value = '';
+  document.getElementById('bot-content-media-input').value = '';
+  document.getElementById('bot-content-modal').classList.remove('hidden');
+};
+
+window.openEditBotContentModal = function(key) {
+  const content = allBotContent.find(c => c.key === key);
+  if (!content) return;
+  
+  document.getElementById('bot-content-modal-title').textContent = 'Editar Contenido';
+  document.getElementById('bot-content-key-input').value = content.key;
+  document.getElementById('bot-content-key-input').disabled = true;
+  document.getElementById('bot-content-description-input').value = content.description || '';
+  document.getElementById('bot-content-category-input').value = content.category || 'other';
+  document.getElementById('bot-content-text-input').value = content.content;
+  document.getElementById('bot-content-media-input').value = content.mediaPath || '';
+  document.getElementById('bot-content-modal').classList.remove('hidden');
+};
+
+window.closeBotContentModal = function() {
+  document.getElementById('bot-content-modal').classList.add('hidden');
+};
+
+window.saveBotContent = async function() {
+  const key = document.getElementById('bot-content-key-input').value;
+  const isNew = !document.getElementById('bot-content-key-input').disabled;
+  
+  const data = {
+    key,
+    content: document.getElementById('bot-content-text-input').value,
+    description: document.getElementById('bot-content-description-input').value,
+    category: document.getElementById('bot-content-category-input').value,
+    mediaPath: document.getElementById('bot-content-media-input').value
+  };
+  
+  if (!data.key || !data.content) {
+    alert('La clave y el contenido son requeridos');
+    return;
+  }
+  
+  try {
+    const url = isNew ? '/crm/bot-content' : `/crm/bot-content/${key}`;
+    const method = isNew ? 'POST' : 'PUT';
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to save');
+    }
+    
+    closeBotContentModal();
+    loadBotContent();
+    alert('Contenido guardado correctamente');
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error: ' + error.message);
+  }
+};
+
+window.deleteBotContent = async function(key) {
+  if (!confirm('¿Eliminar este contenido?')) return;
+  
+  try {
+    const response = await fetch(`/crm/bot-content/${key}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete');
+    loadBotContent();
+    alert('Contenido eliminado');
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al eliminar');
+  }
+};
+
+async function loadWhatsAppStatus() {
+  const statusEl = document.getElementById('whatsapp-connected-status');
+  const qrDisplay = document.getElementById('qr-display');
+  const qrContainer = document.getElementById('qr-code-container');
+  
+  try {
+    const response = await fetch('/health');
+    if (!response.ok) throw new Error('Failed to check status');
+    const data = await response.json();
+    
+    if (data.clientReady && data.qrScanned) {
+      if (statusEl) {
+        statusEl.innerHTML = `<span class="text-green-600 font-medium">✅ Conectado</span>`;
+        if (data.botContact) {
+          statusEl.innerHTML += ` - ${data.botPushName || ''} (${data.botContact})`;
+        }
+      }
+      if (qrDisplay) qrDisplay.classList.add('hidden');
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Esperando conexión...</span>`;
+      // Mostrar QR si está disponible
+      await loadQRCode();
+    }
+  } catch (error) {
+    console.error('Error loading WhatsApp status:', error);
+    if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-medium">❌ Error al verificar estado</span>`;
+  }
+}
+
+async function loadQRCode() {
+  const qrDisplay = document.getElementById('qr-display');
+  const qrContainer = document.getElementById('qr-code-container');
+  
+  try {
+    const response = await fetch('/qr');
+    if (!response.ok) {
+      if (qrDisplay) qrDisplay.classList.add('hidden');
+      return;
+    }
+    const data = await response.json();
+    
+    if (data.qr && !data.qrScanned) {
+      if (qrDisplay) qrDisplay.classList.remove('hidden');
+      if (qrContainer) {
+        qrContainer.innerHTML = `<img src="data:image/png;base64,${data.qr}" alt="QR Code" class="w-64 h-64">`;
+      }
+      // Refrescar QR cada 20 segundos
+      setTimeout(loadQRCode, 20000);
+    } else if (data.qrScanned) {
+      if (qrDisplay) qrDisplay.classList.add('hidden');
+      loadWhatsAppStatus();
+    }
+  } catch (error) {
+    console.error('Error loading QR code:', error);
+  }
+}
+
+window.logoutWhatsApp = async function() {
+  if (!confirm('¿Estás seguro de que deseas desvincular WhatsApp? Tendrás que escanear el QR nuevamente.')) {
+    return;
+  }
+  
+  const statusEl = document.getElementById('whatsapp-connected-status');
+  if (statusEl) statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Desvinculando...</span>`;
+  
+  try {
+    const response = await fetch('/crm/whatsapp/logout', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to logout');
+    
+    alert('WhatsApp desvinculado correctamente. Escanea el nuevo código QR para reconectar.');
+    
+    // Esperar un momento y recargar el estado
+    setTimeout(() => {
+      loadWhatsAppStatus();
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error logging out WhatsApp:', error);
+    alert('Error al desvincular WhatsApp');
+    loadWhatsAppStatus();
+  }
+};
+
+// --- Password Functions ---
+window.changePassword = async function() {
+  const currentPassword = document.getElementById('current-password-input').value;
+  const newPassword = document.getElementById('new-password-input').value;
+  const confirmPassword = document.getElementById('confirm-password-input').value;
+  
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    alert('Por favor completa todos los campos');
+    return;
+  }
+  
+  if (newPassword !== confirmPassword) {
+    alert('Las contraseñas no coinciden');
+    return;
+  }
+  
+  if (newPassword.length < 6) {
+    alert('La contraseña debe tener al menos 6 caracteres');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/crm/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to change password');
+    }
+    
+    alert('Contraseña actualizada correctamente');
+    document.getElementById('current-password-input').value = '';
+    document.getElementById('new-password-input').value = '';
+    document.getElementById('confirm-password-input').value = '';
+  } catch (error) {
+    console.error('Error changing password:', error);
+    alert('Error al cambiar contraseña: ' + error.message);
+  }
+};
+
+// --- Status Modal Functions ---
+window.openStatusModal = function(phoneNumber, currentStatus, appointmentDate) {
+  currentStatusPhone = phoneNumber;
+  document.getElementById('status-select').value = currentStatus || 'lead';
+  document.getElementById('appointment-date').value = appointmentDate ? appointmentDate.substring(0, 16) : '';
+  document.getElementById('status-notes').value = '';
+  document.getElementById('status-modal').classList.remove('hidden');
+};
+
+window.closeStatusModal = function() {
+  document.getElementById('status-modal').classList.add('hidden');
+  currentStatusPhone = null;
+};
+
+window.saveStatusChange = async function() {
+  if (!currentStatusPhone) return;
+  
+  const saleStatus = document.getElementById('status-select').value;
+  const appointmentDate = document.getElementById('appointment-date').value;
+  const saleStatusNotes = document.getElementById('status-notes').value;
+  
+  try {
+    const response = await fetch(`/crm/contacts/${currentStatusPhone}/status`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ saleStatus, appointmentDate, saleStatusNotes })
+    });
+    
+    if (!response.ok) throw new Error('Failed to update status');
+    
+    closeStatusModal();
+    loadContacts();
+    alert('Estado actualizado correctamente');
+  } catch (error) {
+    console.error('Error updating status:', error);
+    alert('Error al actualizar estado');
+  }
+};
+
+// --- Pause/Unpause Contact ---
+window.togglePauseContact = async function(phoneNumber, isPaused) {
+  const action = isPaused ? 'reanudar' : 'pausar';
+  if (!confirm(`¿Estás seguro de que deseas ${action} este contacto?`)) return;
+  
+  try {
+    const response = await fetch(`/crm/contacts/${phoneNumber}/pause`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ isPaused: !isPaused })
+    });
+    
+    if (!response.ok) throw new Error('Failed to toggle pause');
+    
+    loadContacts();
+    alert(`Contacto ${isPaused ? 'reanudado' : 'pausado'} correctamente`);
+  } catch (error) {
+    console.error('Error toggling pause:', error);
+    alert('Error al cambiar estado de pausa');
+  }
+};
+
+window.pauseBotFromChat = async function(phoneNumber) {
+  if (!phoneNumber) return;
+  await togglePauseContact(phoneNumber, false);
+};
+
+// --- User Management Functions ---
+async function loadUsers() {
+  try {
+    const response = await fetch('/crm/auth/users', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to load users');
+    const data = await response.json();
+    renderUsers(data.users);
+  } catch (error) {
+    console.error('Error loading users:', error);
+  }
+}
+
+function renderUsers(users) {
+  const tbody = document.getElementById('users-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  if (!users || users.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-sm text-gray-500 text-center">No hay usuarios</td></tr>`;
+    return;
+  }
+  
+  users.forEach(user => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${user.username}</td>
+      <td class="px-6 py-4 whitespace-nowrap">
+        <span class="px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+          ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
+        </span>
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(user.createdAt)}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+        <button onclick="changeUserPassword('${user._id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Cambiar contraseña">
+          <i class="fas fa-key"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.openCreateUserModal = function() {
+  document.getElementById('create-username-input').value = '';
+  document.getElementById('create-password-input').value = '';
+  document.getElementById('create-role-select').value = 'user';
+  document.getElementById('create-user-modal').classList.remove('hidden');
+};
+
+window.closeCreateUserModal = function() {
+  document.getElementById('create-user-modal').classList.add('hidden');
+};
+
+window.saveCreateUser = async function() {
+  const username = document.getElementById('create-username-input').value;
+  const password = document.getElementById('create-password-input').value;
+  const role = document.getElementById('create-role-select').value;
+  
+  if (!username || !password) {
+    alert('Por favor completa todos los campos');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/crm/auth/register', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, password, role })
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to create user');
+    }
+    
+    closeCreateUserModal();
+    loadUsers();
+    alert('Usuario creado correctamente');
+  } catch (error) {
+    console.error('Error creating user:', error);
+    alert('Error al crear usuario: ' + error.message);
+  }
+};
+
+window.changeUserPassword = async function(userId) {
+  const newPassword = prompt('Ingresa la nueva contraseña (mínimo 6 caracteres):');
+  if (!newPassword) return;
+  
+  if (newPassword.length < 6) {
+    alert('La contraseña debe tener al menos 6 caracteres');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/crm/auth/change-password/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ newPassword })
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to change password');
+    }
+    
+    alert('Contraseña actualizada correctamente');
+  } catch (error) {
+    console.error('Error changing password:', error);
+    alert('Error al cambiar contraseña: ' + error.message);
+  }
+};
+
+// --- Template Functions ---
+window.openCreateTemplateModal = function() {
+  currentTemplateId = null;
+  document.getElementById('template-modal-title').textContent = 'Nueva Plantilla';
+  document.getElementById('template-name').value = '';
+  document.getElementById('template-content').value = '';
+  document.getElementById('template-modal').classList.remove('hidden');
+};
+
+window.openEditTemplateModal = function(id) {
+  const template = templates.find(t => t._id === id);
+  if (!template) return;
+  currentTemplateId = id;
+  document.getElementById('template-modal-title').textContent = 'Editar Plantilla';
+  document.getElementById('template-name').value = template.name;
+  document.getElementById('template-content').value = template.content;
+  document.getElementById('template-modal').classList.remove('hidden');
+};
+
+window.closeTemplateModal = function() {
+  document.getElementById('template-modal').classList.add('hidden');
+  currentTemplateId = null;
+};
+
+window.saveTemplate = async function() {
+  const name = document.getElementById('template-name').value;
+  const content = document.getElementById('template-content').value;
+  
+  if (!name || !content) {
+    alert('Por favor completa todos los campos');
+    return;
+  }
+  
+  try {
+    const url = currentTemplateId ? `/crm/templates/${currentTemplateId}` : '/crm/templates';
+    const method = currentTemplateId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, content })
+    });
+    
+    if (!response.ok) throw new Error('Failed to save template');
+    
+    closeTemplateModal();
+    loadTemplates();
+    alert('Plantilla guardada correctamente');
+  } catch (error) {
+    console.error('Error saving template:', error);
+    alert('Error al guardar plantilla');
+  }
+};
+
+window.deleteTemplate = async function(id) {
+  if (!confirm('¿Estás seguro de eliminar esta plantilla?')) return;
+  
+  try {
+    const response = await fetch(`/crm/templates/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete template');
+    
+    loadTemplates();
+    alert('Plantilla eliminada');
+  } catch (error) {
+    console.error('Error deleting template:', error);
+    alert('Error al eliminar plantilla');
+  }
+};
+
+window.useTemplate = function(id) {
+  const template = templates.find(t => t._id === id);
+  if (!template) return;
+  
+  // Si hay un modal de chat abierto, insertar el template
+  const chatInput = document.getElementById('chat-message-input');
+  if (chatInput && !document.getElementById('chat-modal').classList.contains('hidden')) {
+    chatInput.value = template.content;
+    chatInput.focus();
+  } else {
+    // Copiar al portapapeles
+    navigator.clipboard.writeText(template.content).then(() => {
+      alert('Plantilla copiada al portapapeles');
+    });
+  }
+};
+
+// --- Logout Function ---
+window.logout = function() {
+  localStorage.removeItem('token');
+  window.location.href = '/admin/login';
+};

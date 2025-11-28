@@ -705,7 +705,7 @@ Tu solicitud ha sido registrada correctamente.
     // Bot Configuration API
     router.get('/bot-config', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const config = await BotConfigModel.findOne() || await BotConfigModel.create({ botDelay: 10000 });
+            const config = await BotConfigModel.findOne() || await BotConfigModel.create({});
             res.json(config);
         } catch (error) {
             logger.error('Failed to fetch bot config:', error);
@@ -715,17 +715,23 @@ Tu solicitud ha sido registrada correctamente.
 
     router.put('/bot-config', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { botDelay } = req.body;
-
-            if (botDelay === undefined || botDelay < 0) {
-                return res.status(400).json({ error: 'botDelay is required and must be >= 0' });
+            const updateData = req.body;
+            
+            // Validar botDelay si se proporciona
+            if (updateData.botDelay !== undefined && updateData.botDelay < 0) {
+                return res.status(400).json({ error: 'botDelay must be >= 0' });
             }
 
             let config = await BotConfigModel.findOne();
             if (!config) {
-                config = await BotConfigModel.create({ botDelay });
+                config = await BotConfigModel.create(updateData);
             } else {
-                config.botDelay = botDelay;
+                // Actualizar todos los campos proporcionados
+                Object.keys(updateData).forEach(key => {
+                    if (updateData[key] !== undefined) {
+                        (config as any)[key] = updateData[key];
+                    }
+                });
                 await config.save();
             }
 
@@ -733,6 +739,195 @@ Tu solicitud ha sido registrada correctamente.
         } catch (error) {
             logger.error('Failed to update bot config:', error);
             res.status(500).json({ error: 'Failed to update bot config' });
+        }
+    });
+
+    // Bot Content API (para mensajes y respuestas del bot)
+    router.get('/bot-content', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { BotContentModel } = await import('../models/bot-content.model');
+            const contents = await BotContentModel.find().sort({ category: 1, key: 1 });
+            res.json(contents);
+        } catch (error) {
+            logger.error('Failed to fetch bot content:', error);
+            res.status(500).json({ error: 'Failed to fetch bot content' });
+        }
+    });
+
+    router.get('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { BotContentModel } = await import('../models/bot-content.model');
+            const content = await BotContentModel.findOne({ key: req.params.key });
+            if (!content) {
+                return res.status(404).json({ error: 'Content not found' });
+            }
+            res.json(content);
+        } catch (error) {
+            logger.error('Failed to fetch bot content:', error);
+            res.status(500).json({ error: 'Failed to fetch bot content' });
+        }
+    });
+
+    router.put('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { BotContentModel } = await import('../models/bot-content.model');
+            const { content, mediaPath, description, category } = req.body;
+            
+            const updateData: any = { content };
+            if (mediaPath !== undefined) updateData.mediaPath = mediaPath;
+            if (description !== undefined) updateData.description = description;
+            if (category !== undefined) updateData.category = category;
+
+            const botContent = await BotContentModel.findOneAndUpdate(
+                { key: req.params.key },
+                { $set: updateData },
+                { new: true, upsert: true }
+            );
+
+            res.json({ message: 'Content updated successfully', content: botContent });
+        } catch (error) {
+            logger.error('Failed to update bot content:', error);
+            res.status(500).json({ error: 'Failed to update bot content' });
+        }
+    });
+
+    router.post('/bot-content', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { BotContentModel } = await import('../models/bot-content.model');
+            const { key, content, mediaPath, description, category } = req.body;
+            
+            if (!key || !content) {
+                return res.status(400).json({ error: 'key and content are required' });
+            }
+
+            const existingContent = await BotContentModel.findOne({ key });
+            if (existingContent) {
+                return res.status(400).json({ error: 'Content with this key already exists' });
+            }
+
+            const botContent = await BotContentModel.create({
+                key,
+                content,
+                mediaPath,
+                description,
+                category: category || 'other'
+            });
+
+            res.status(201).json({ message: 'Content created successfully', content: botContent });
+        } catch (error) {
+            logger.error('Failed to create bot content:', error);
+            res.status(500).json({ error: 'Failed to create bot content' });
+        }
+    });
+
+    router.delete('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { BotContentModel } = await import('../models/bot-content.model');
+            const content = await BotContentModel.findOneAndDelete({ key: req.params.key });
+            if (!content) {
+                return res.status(404).json({ error: 'Content not found' });
+            }
+            res.json({ message: 'Content deleted successfully' });
+        } catch (error) {
+            logger.error('Failed to delete bot content:', error);
+            res.status(500).json({ error: 'Failed to delete bot content' });
+        }
+    });
+
+    // Inicializar contenido predeterminado del bot
+    router.post('/bot-content/init-defaults', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { BotContentModel } = await import('../models/bot-content.model');
+            
+            const defaultContents = [
+                {
+                    key: 'main_menu',
+                    description: 'Menú principal que se muestra al saludar',
+                    category: 'quick_response',
+                    content: `👋 *MENÚ PRINCIPAL*
+
+¡Hola! ¿En qué puedo ayudarte hoy? 🤔
+
+*Opciones disponibles:*
+
+*1.* Conocer el proceso de compostaje fermentativo
+*2.* Dudas sobre precios y promociones
+*3.* Métodos de pago disponibles
+*4.* ¿Qué incluye el kit?
+*5.* Dimensiones y espacio necesario
+*6.* Información sobre envío y entrega
+*7.* Preguntas frecuentes
+*8.* Hablar con un agente
+
+Escribe el *número* de la opción que te interesa o pregunta lo que necesites 🌱`
+                },
+                {
+                    key: 'option_1_process',
+                    description: 'Respuesta sobre el proceso de compostaje',
+                    category: 'quick_response',
+                    content: `🌱 *PROCESO DE COMPOSTAJE FERMENTATIVO*
+
+El sistema Müllblue utiliza tecnología de fermentación anaeróbica:
+
+1️⃣ *Depositar* - Coloca tus residuos orgánicos
+2️⃣ *Espolvorear* - Añade biocatalizador
+3️⃣ *Compactar* - Presiona para eliminar aire
+4️⃣ *Tapar* - Cierra herméticamente
+5️⃣ *Repetir* - Hasta llenar el compostero
+
+✅ Sin malos olores
+✅ Sin plagas
+✅ Proceso más rápido que el tradicional
+
+¿Te gustaría saber más detalles? 🌿`
+                },
+                {
+                    key: 'option_2_price',
+                    description: 'Respuesta sobre precios',
+                    category: 'quick_response',
+                    content: `💰 *PRECIOS Y PROMOCIONES*
+
+Consulta nuestros precios actualizados y promociones especiales.
+
+¿Te gustaría recibir más información sobre algún producto específico?`
+                },
+                {
+                    key: 'option_8_agent',
+                    description: 'Respuesta cuando solicitan agente humano',
+                    category: 'quick_response',
+                    content: `👤 *ATENCIÓN PERSONALIZADA*
+
+Entiendo que prefieres hablar con una persona.
+
+Tu solicitud ha sido registrada y un asesor te contactará pronto.
+
+⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
+
+¡Gracias por tu paciencia! 🌱`
+                }
+            ];
+
+            let created = 0;
+            let skipped = 0;
+
+            for (const content of defaultContents) {
+                const exists = await BotContentModel.findOne({ key: content.key });
+                if (!exists) {
+                    await BotContentModel.create(content);
+                    created++;
+                } else {
+                    skipped++;
+                }
+            }
+
+            res.json({ 
+                message: `Defaults initialized: ${created} created, ${skipped} skipped (already exist)`,
+                created,
+                skipped
+            });
+        } catch (error) {
+            logger.error('Failed to initialize default content:', error);
+            res.status(500).json({ error: 'Failed to initialize default content' });
         }
     });
 

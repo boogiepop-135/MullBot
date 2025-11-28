@@ -16,7 +16,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     req.user = decoded;
     next();
-  } catch (error) {
+  } catch (error: any) {
+    // Manejar errores de JWT específicamente
+    if (error?.message?.includes('jwt') || error?.name === 'JsonWebTokenError') {
+      logger.error('JWT error:', error.message);
+      return res.status(401).json({ error: 'Invalid or malformed token' });
+    }
     logger.error('Authentication error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

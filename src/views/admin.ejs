@@ -140,62 +140,628 @@
         <span class="font-medium ml-2">Campañas</span>
       </a>
 
-      <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-        <h2 class="text-xl font-bold text-gray-800">Gestión de Usuarios</h2>
+      <a href="#" onclick="showSection('templates')" id="nav-templates"
+        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
+        <i class="fas fa-file-alt w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+        <span class="font-medium ml-2">Plantillas</span>
+      </a>
+
+      <a href="#" onclick="showSection('products')" id="nav-products"
+        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
+        <i class="fas fa-box w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+        <span class="font-medium ml-2">Productos</span>
+      </a>
+
+      <a href="#" onclick="showSection('users')" id="nav-users"
+        class="nav-item hidden flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
+        <i class="fas fa-users w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+        <span class="font-medium ml-2">Usuarios</span>
+      </a>
+
+      <a href="#" onclick="showSection('bot-content')" id="nav-bot-content"
+        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
+        <i class="fas fa-comment-dots w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+        <span class="font-medium ml-2">Contenido Bot</span>
+      </a>
+
+      <a href="#" onclick="showSection('settings')" id="nav-settings"
+        class="nav-item flex items-center px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-all group">
+        <i class="fas fa-cog w-6 text-center text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+        <span class="font-medium ml-2">Configuración</span>
+      </a>
+    </nav>
+
+    <!-- User Info & Logout -->
+    <div class="border-t border-gray-200 p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium text-sm" id="user-initials">?</div>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-gray-700" id="user-name">Usuario</p>
+            <p class="text-xs text-gray-500" id="user-role">-</p>
+          </div>
+        </div>
+        <button onclick="logout()" class="text-gray-400 hover:text-gray-600" title="Cerrar sesión">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content bg-gray-50 min-h-screen">
+    <!-- Dashboard Section -->
+    <div id="dashboard-section" class="section-content p-8">
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p class="text-gray-500">Vista general de tu CRM</p>
+      </div>
+      
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Leads</p>
+              <p class="text-2xl font-bold text-gray-800" id="leads-count">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <i class="fas fa-user-plus text-gray-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Interesados</p>
+              <p class="text-2xl font-bold text-gray-800" id="interested-contacts">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <i class="fas fa-star text-blue-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Info Solicitada</p>
+              <p class="text-2xl font-bold text-gray-800" id="info-requested-count">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+              <i class="fas fa-info-circle text-indigo-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Pago Pendiente</p>
+              <p class="text-2xl font-bold text-gray-800" id="payment-pending-count">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+              <i class="fas fa-clock text-yellow-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Cita Agendada</p>
+              <p class="text-2xl font-bold text-gray-800" id="appointment-scheduled-count">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+              <i class="fas fa-calendar text-orange-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Cita Confirmada</p>
+              <p class="text-2xl font-bold text-gray-800" id="appointment-confirmed-count">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+              <i class="fas fa-calendar-check text-green-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Completados</p>
+              <p class="text-2xl font-bold text-gray-800" id="completed-count">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+              <i class="fas fa-check-circle text-green-600"></i>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500">Pausados</p>
+              <p class="text-2xl font-bold text-gray-800" id="paused-contacts">0</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <i class="fas fa-pause text-red-600"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Stats -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <p class="text-sm text-gray-500">Total Campañas</p>
+          <p class="text-xl font-bold text-gray-800" id="total-campaigns">0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <p class="text-sm text-gray-500">Mensajes Enviados</p>
+          <p class="text-xl font-bold text-gray-800" id="total-messages">0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <p class="text-sm text-gray-500">Total Interacciones</p>
+          <p class="text-xl font-bold text-gray-800" id="total-interactions">0</p>
+        </div>
+      </div>
+
+      <!-- Intent Stats & Top Leads -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="p-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-800">Intenciones Detectadas</h3>
+          </div>
+          <div class="p-4" id="intent-stats">
+            <p class="text-gray-400 text-sm text-center py-8">Cargando...</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="p-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-800">Top Leads</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="top-leads-table" class="divide-y divide-gray-200">
+                <tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500 text-center">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Contacts -->
+      <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-200">
+          <h3 class="font-semibold text-gray-800">Contactos Recientes</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Última Interacción</th>
+              </tr>
+            </thead>
+            <tbody id="recent-contacts" class="divide-y divide-gray-200">
+              <tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500 text-center">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contacts Section -->
+    <div id="contacts-section" class="section-content hidden p-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Contactos</h1>
+          <p class="text-gray-500">Gestiona tus contactos</p>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div class="flex flex-wrap gap-4">
+          <input type="text" id="contact-search" placeholder="Buscar contactos..."
+            class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-64">
+          <select id="sale-status-filter" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+            <option value="">Todos los estados</option>
+            <option value="lead">Lead</option>
+            <option value="interested">Interesado</option>
+            <option value="info_requested">Info Solicitada</option>
+            <option value="payment_pending">Pago Pendiente</option>
+            <option value="appointment_scheduled">Cita Agendada</option>
+            <option value="appointment_confirmed">Cita Confirmada</option>
+            <option value="completed">Completado</option>
+            <option value="paused">Pausados</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Contacts Table -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Interacción</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="contacts-table-body" class="bg-white divide-y divide-gray-200">
+              <!-- Contacts loaded here -->
+            </tbody>
+          </table>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+          <span class="text-sm text-gray-500" id="contacts-pagination-info">-</span>
+          <div id="contacts-pagination" class="flex space-x-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campaigns Section -->
+    <div id="campaigns-section" class="section-content hidden p-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Campañas</h1>
+          <p class="text-gray-500">Gestiona tus campañas de mensajes</p>
+        </div>
+        <button onclick="showSection('new-campaign')"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+          <i class="fas fa-plus mr-2"></i>Nueva Campaña
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Programada</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enviados</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fallidos</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="campaigns-table-body" class="bg-white divide-y divide-gray-200">
+              <!-- Campaigns loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Campaign Section -->
+    <div id="new-campaign-section" class="section-content hidden p-8">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Nueva Campaña</h1>
+        <p class="text-gray-500">Crea una nueva campaña de mensajes</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <form id="campaign-form">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Campaña</label>
+                <input type="text" name="name" required
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
+                <textarea name="message" id="campaign-message" rows="5" required
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  oninput="updateWhatsAppPreview()"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Programar envío (opcional)</label>
+                <input type="datetime-local" name="scheduledAt"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <button type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-medium transition-colors">
+                Crear Campaña
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Contact Selection -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="font-semibold text-gray-800">Seleccionar Contactos</h3>
+            </div>
+            <div class="p-4 max-h-64 overflow-y-auto" id="available-contacts">
+              <!-- Contacts loaded here -->
+            </div>
+          </div>
+
+          <!-- Selected Contacts -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="font-semibold text-gray-800">Contactos Seleccionados</h3>
+            </div>
+            <div class="p-4 max-h-40 overflow-y-auto" id="selected-contacts">
+              <p class="text-gray-400 text-sm text-center mt-4" id="no-contacts-message">Ningún contacto seleccionado</p>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="font-semibold text-gray-800">Vista Previa</h3>
+            </div>
+            <div class="p-4 bg-gray-100">
+              <div class="whatsapp-message">El mensaje aparecerá aquí...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates Section -->
+    <div id="templates-section" class="section-content hidden p-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Plantillas</h1>
+          <p class="text-gray-500">Gestiona tus plantillas de mensajes</p>
+        </div>
+        <button onclick="openCreateTemplateModal()"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+          <i class="fas fa-plus mr-2"></i>Nueva Plantilla
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="templates-container">
+        <!-- Templates loaded here -->
+      </div>
+    </div>
+
+    <!-- Products Section -->
+    <div id="products-section" class="section-content hidden p-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Productos</h1>
+          <p class="text-gray-500">Gestiona tu catálogo de productos</p>
+        </div>
+        <button onclick="openCreateProductModal()"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+          <i class="fas fa-plus mr-2"></i>Nuevo Producto
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
+              <!-- Products loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Section -->
+    <div id="users-section" class="section-content hidden p-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
+          <p class="text-gray-500">Administra los usuarios del sistema</p>
+        </div>
         <button onclick="openCreateUserModal()"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
           <i class="fas fa-plus mr-2"></i>Crear Usuario
         </button>
       </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
-            <!-- Users loaded here -->
-          </tbody>
-        </table>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+              <!-- Users loaded here -->
+            </tbody>
+          </table>
+        </div>
       </div>
-      </div>
+    </div>
+
+    <!-- Settings Section -->
+    <div id="settings-section" class="section-content hidden p-8">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Configuración</h1>
+        <p class="text-gray-500">Administra la configuración del bot y del negocio</p>
       </div>
 
-      <!-- Settings Section -->
-      <div id="settings-section" class="section-content hidden p-8">
-        <div class="max-w-4xl mx-auto space-y-6">
-          <!-- Bot Config -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
-              <h2 class="text-lg font-bold text-gray-800">Configuración del Bot</h2>
-            </div>
-            <div class="p-6">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Delay de Respuesta (ms)</label>
-              <div class="flex items-center gap-4">
-                <input type="number" id="bot-delay-input" min="0" step="1000"
-                  class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-40">
-                <button onclick="saveBotConfig()"
-                  class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Guardar</button>
-                <span class="text-sm text-gray-500" id="current-delay-text">Cargando...</span>
+      <div class="max-w-5xl space-y-6">
+        <!-- Tabs de configuración -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="border-b border-gray-200">
+            <nav class="flex -mb-px">
+              <button onclick="showSettingsTab('general')" id="tab-general" class="settings-tab px-6 py-3 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">General</button>
+              <button onclick="showSettingsTab('business')" id="tab-business" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">Negocio</button>
+              <button onclick="showSettingsTab('messages')" id="tab-messages" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">Mensajes</button>
+              <button onclick="showSettingsTab('payments')" id="tab-payments" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">Pagos</button>
+              <button onclick="showSettingsTab('whatsapp')" id="tab-whatsapp" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">WhatsApp</button>
+              <button onclick="showSettingsTab('security')" id="tab-security" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">Seguridad</button>
+            </nav>
+          </div>
+
+          <!-- Tab: General -->
+          <div id="settings-general" class="settings-panel p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Bot</label>
+                <input type="text" id="bot-name-input" placeholder="MüllBot"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
               </div>
-              <p class="text-xs text-gray-500 mt-2">Tiempo de espera antes de que el bot responda (1000ms = 1 segundo).
-              </p>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Emoji del Bot</label>
+                <input type="text" id="bot-emoji-input" placeholder="🌱"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Delay de Respuesta (ms)</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="bot-delay-input" min="0" step="1000" placeholder="10000"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  <span class="text-xs text-gray-500 whitespace-nowrap" id="current-delay-text"></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Tiempo de espera antes de responder (1000ms = 1s)</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Modelo de IA</label>
+                <select id="ai-model-input" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="gpt-4o">GPT-4o</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Prompt del Sistema (IA)</label>
+                <textarea id="ai-system-prompt-input" rows="4" placeholder="Instrucciones personalizadas para la IA..."
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Deja vacío para usar el prompt predeterminado</p>
+              </div>
             </div>
           </div>
 
-          <!-- WhatsApp Connection -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
-              <h2 class="text-lg font-bold text-gray-800">Conexión de WhatsApp</h2>
+          <!-- Tab: Business -->
+          <div id="settings-business" class="settings-panel hidden p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Negocio</label>
+                <input type="text" id="business-name-input" placeholder="Müllblue"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Horario de Atención</label>
+                <input type="text" id="business-hours-input" placeholder="Lunes a Viernes 9am - 7pm"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción del Negocio</label>
+                <textarea id="business-description-input" rows="2" placeholder="Descripción corta del negocio..."
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <input type="text" id="business-phone-input" placeholder="+52 123 456 7890"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" id="business-email-input" placeholder="contacto@ejemplo.com"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sitio Web</label>
+                <input type="url" id="business-website-input" placeholder="https://ejemplo.com"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                <input type="text" id="business-address-input" placeholder="Calle, Ciudad, País"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+              <div class="md:col-span-2 border-t pt-4 mt-2">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Redes Sociales</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1"><i class="fab fa-facebook text-blue-600 mr-1"></i>Facebook</label>
+                    <input type="url" id="social-facebook-input" placeholder="https://facebook.com/..."
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1"><i class="fab fa-instagram text-pink-600 mr-1"></i>Instagram</label>
+                    <input type="url" id="social-instagram-input" placeholder="https://instagram.com/..."
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1"><i class="fab fa-tiktok mr-1"></i>TikTok</label>
+                    <input type="url" id="social-tiktok-input" placeholder="https://tiktok.com/..."
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="p-6">
-              <div class="flex items-center justify-between mb-4">
+          </div>
+
+          <!-- Tab: Messages -->
+          <div id="settings-messages" class="settings-panel hidden p-6">
+            <div class="space-y-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje de Bienvenida</label>
+                <textarea id="welcome-message-input" rows="4" placeholder="Mensaje inicial cuando alguien escribe por primera vez..."
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Deja vacío para usar el mensaje predeterminado</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje de Pausa (Atención Humana)</label>
+                <textarea id="pause-message-input" rows="4" placeholder="Mensaje cuando se pausa el bot para atención humana..."
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Usa {businessHours} para insertar el horario automáticamente</p>
+              </div>
+              <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                <p class="text-sm text-indigo-800"><i class="fas fa-info-circle mr-2"></i>Para editar las respuestas del menú y otras respuestas automáticas, ve a la sección <strong>Contenido del Bot</strong> en el menú lateral.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Payments -->
+          <div id="settings-payments" class="settings-panel hidden p-6">
+            <div class="space-y-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Información Bancaria</label>
+                <textarea id="bank-info-input" rows="5" placeholder="Banco: ...&#10;Cuenta: ...&#10;CLABE: ...&#10;Titular: ..."
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Esta información se mostrará cuando pregunten por métodos de pago</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email de PayPal</label>
+                <input type="email" id="paypal-email-input" placeholder="pagos@ejemplo.com"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: WhatsApp -->
+          <div id="settings-whatsapp" class="settings-panel hidden p-6">
+            <div class="space-y-6">
+              <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <p class="text-sm font-medium text-gray-700">Estado de la conexión</p>
+                  <p class="font-medium text-gray-800">Estado de la conexión</p>
                   <p class="text-sm text-gray-500" id="whatsapp-connected-status">Verificando...</p>
                 </div>
                 <button onclick="logoutWhatsApp()"
@@ -203,20 +769,18 @@
                   <i class="fas fa-unlink mr-2"></i>Desvincular
                 </button>
               </div>
-              <div id="qr-display"
-                class="hidden mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col items-center">
-                <p class="text-sm font-medium text-gray-700 mb-3">Escanea el código QR para vincular:</p>
-                <div id="qr-code-container" class="bg-white p-2 rounded shadow-sm"></div>
+              <div id="qr-display" class="hidden p-6 bg-gray-50 rounded-lg border border-gray-200 flex flex-col items-center">
+                <p class="text-sm font-medium text-gray-700 mb-4">Escanea el código QR con WhatsApp para vincular:</p>
+                <div id="qr-code-container" class="bg-white p-3 rounded-lg shadow-sm"></div>
+                <p class="text-xs text-gray-500 mt-4">El código se actualiza automáticamente cada 20 segundos</p>
               </div>
             </div>
           </div>
 
-          <!-- Change Password -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
-              <h2 class="text-lg font-bold text-gray-800">Cambiar Contraseña</h2>
-            </div>
-            <div class="p-6 space-y-4 max-w-md">
+          <!-- Tab: Security -->
+          <div id="settings-security" class="settings-panel hidden p-6">
+            <div class="max-w-md space-y-4">
+              <h3 class="font-medium text-gray-800">Cambiar Contraseña</h3>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
                 <input type="password" id="current-password-input"
@@ -238,38 +802,42 @@
               </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- WhatsApp Web Section -->
-      <div id="whatsapp-web-section" class="section-content hidden h-screen flex flex-col">
-        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 class="text-lg font-bold text-gray-800">WhatsApp Web</h2>
-            <p class="text-sm text-gray-500">Gestiona tus conversaciones directamente</p>
-          </div>
-          <button onclick="window.open('https://web.whatsapp.com', '_blank')"
-            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            <i class="fas fa-external-link-alt mr-2"></i>Abrir en nueva pestaña
-          </button>
-        </div>
-        <div class="flex-1 bg-gray-100 flex items-center justify-center p-8">
-          <div class="text-center max-w-md">
-            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <i class="fab fa-whatsapp text-4xl text-green-600"></i>
-            </div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">WhatsApp Web</h3>
-            <p class="text-gray-600 mb-6">Por razones de seguridad, WhatsApp Web no permite ser incrustado directamente.
-              Por favor, ábrelo en una nueva pestaña.</p>
-            <button onclick="window.open('https://web.whatsapp.com', '_blank')"
-              class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-              Abrir WhatsApp Web
+          <!-- Save Button -->
+          <div class="p-6 bg-gray-50 border-t border-gray-200 flex justify-end">
+            <button onclick="saveBotConfig()"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+              <i class="fas fa-save mr-2"></i>Guardar Configuración
             </button>
           </div>
         </div>
       </div>
+    </div>
 
-      </main>
+    <!-- Bot Content Section -->
+    <div id="bot-content-section" class="section-content hidden p-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Contenido del Bot</h1>
+          <p class="text-gray-500">Edita las respuestas automáticas y mensajes del bot</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="initDefaultBotContent()"
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-magic mr-2"></i>Inicializar Predeterminados
+          </button>
+          <button onclick="openCreateBotContentModal()"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+            <i class="fas fa-plus mr-2"></i>Nuevo Contenido
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bot-content-container">
+        <div class="col-span-full text-center py-8 text-gray-500">Cargando...</div>
+      </div>
+    </div>
+  </main>
 
       <!-- Modals -->
 
@@ -570,6 +1138,67 @@
                 Crear
               </button>
               <button type="button" onclick="closeCreateUserModal()"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bot Content Modal -->
+      <div id="bot-content-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75" onclick="closeBotContentModal()"></div>
+          </div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="bot-content-modal-title">Editar Contenido</h3>
+              <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Clave (ID único)</label>
+                    <input type="text" id="bot-content-key-input" placeholder="main_menu"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-gray-500 mt-1">Identificador único para este contenido</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                    <select id="bot-content-category-input"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                      <option value="quick_response">Respuesta Rápida</option>
+                      <option value="command">Comando</option>
+                      <option value="other">Otro</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                  <input type="text" id="bot-content-description-input" placeholder="Descripción de este contenido..."
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Contenido del Mensaje</label>
+                  <textarea id="bot-content-text-input" rows="10" placeholder="Escribe el mensaje aquí..."
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Puedes usar formato de WhatsApp: *negrita*, _cursiva_, ~tachado~</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Ruta de Media (opcional)</label>
+                  <input type="text" id="bot-content-media-input" placeholder="public/images/ejemplo.jpg"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button type="button" onclick="saveBotContent()"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                Guardar
+              </button>
+              <button type="button" onclick="closeBotContentModal()"
                 class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                 Cancelar
               </button>
