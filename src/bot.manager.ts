@@ -262,6 +262,8 @@ export class BotManager {
 
         let chat = null;
         let userI18n: UserI18n;
+        let userNumber: string = '';
+        let userPushname: string = '';
 
         // Permitir mensajes con media aunque no tengan texto
         const content = message.body?.trim() || '';
@@ -271,27 +273,41 @@ export class BotManager {
         }
 
         try {
-            const user = await message.getContact();
-            logger.info(`Message from @${user.pushname} (${user.number}): ${content}`);
+            // Intentar obtener información del contacto de manera robusta
+            try {
+                const user = await message.getContact();
+                userNumber = user?.number || '';
+                userPushname = user?.pushname || '';
+            } catch (contactError) {
+                // Si falla getContact, extraer número del message.from
+                logger.warn(`Could not get contact info, using fallback: ${contactError}`);
+                userNumber = message.from.split('@')[0];
+                userPushname = 'Usuario';
+            }
 
-            if (!user || !user.number) {
+            logger.info(`Message from @${userPushname} (${userNumber}): ${content}`);
+
+            if (!userNumber) {
+                logger.warn('Could not determine user number, skipping message');
                 return;
             }
 
             // Verificar si el usuario está pausado
-            const contact = await ContactModel.findOne({ phoneNumber: user.number });
+            const contact = await ContactModel.findOne({ phoneNumber: userNumber });
             if (contact && contact.isPaused) {
-                logger.info(`Message from paused user ${user.number} - ignoring`);
+                logger.info(`Message from paused user ${userNumber} - ignoring`);
                 return; // No procesar mensajes de usuarios pausados
             }
 
-            userI18n = this.getUserI18n(user.number);
+            userI18n = this.getUserI18n(userNumber);
 
-            if (!user.isMe) {
-                await this.trackContact(message, userI18n);
+            // Solo trackear si no es mensaje propio
+            if (!message.fromMe) {
+                await this.trackContactSimple(userNumber, userPushname, userI18n);
                 // Guardar mensaje recibido en la base de datos
                 await this.saveMessage(message, false);
             }
+            
             chat = await message.getChat();
 
             if (message.from === this.client.info.wid._serialized || message.isStatus) {
@@ -303,9 +319,6 @@ export class BotManager {
                 this.processMessageContent(message, content, userI18n, chat)
             ]);
 
-            // await onboard(message, userI18n);
-            // await this.processMessageContent(message, content, userI18n, chat);
-
         } catch (error) {
             logger.error(`Message handling error: ${error}`);
             if (chat) {
@@ -314,6 +327,25 @@ export class BotManager {
             }
         } finally {
             if (chat) await chat.clearState();
+        }
+    }
+
+    private async trackContactSimple(phoneNumber: string, pushName: string, userI18n: UserI18n) {
+        try {
+            await ContactModel.findOneAndUpdate(
+                { phoneNumber },
+                {
+                    $set: {
+                        pushName: pushName,
+                        language: userI18n.getLanguage(),
+                        lastInteraction: new Date()
+                    },
+                    $inc: { interactionsCount: 1 }
+                },
+                { upsert: true, new: true }
+            );
+        } catch (error) {
+            logger.error('Failed to track contact:', error);
         }
     }
 
