@@ -104,10 +104,11 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         const isAgentRequest = normalizedQuery === '8' ||
             /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
             /^8[\s\.\)\-]/.test(normalizedQuery) ||
-            (normalizedQuery.includes('agente') ||
-                normalizedQuery.includes('humano') ||
-                normalizedQuery.includes('persona') ||
-                normalizedQuery.includes('representante') ||
+            normalizedQuery.includes('agente') ||
+            normalizedQuery.includes('humano') ||
+            normalizedQuery.includes('persona') ||
+            normalizedQuery.includes('representante');
+        
         // Enviar respuesta rápida con media si está disponible
         const mediaPath = quickResponse.mediaPath || "public/info.png";
         const media = MessageMedia.fromFilePath(mediaPath);
