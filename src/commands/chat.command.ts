@@ -133,6 +133,8 @@ Nuestro equipo se pondrá en contacto contigo lo antes posible.
 
 Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
 
+            const { getBotDelay } = await import('../utils/bot-config.util');
+            const delay = await getBotDelay();
             await new Promise(resolve => setTimeout(resolve, delay));
             await message.reply(
                 MessageMedia.fromFilePath("public/info.png"),
