@@ -13,6 +13,14 @@ const personalityMap: { [key: string]: string } = {
     'persuasivo': 'un vendedor persuasivo experto en técnicas de cierre de ventas'
 };
 
+// Valores por defecto para la configuración del vendedor
+const defaultSellerConfig = {
+    sellerPersonality: 'experto',
+    canOfferDiscounts: false,
+    maxDiscountPercent: 10,
+    discountConditions: 'Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones o descuentos. No ofrecer descuentos de forma proactiva.'
+};
+
 export const geminiCompletion = async (query: string, modelName: GeminiModel = "gemini-2.0-flash-exp") => {
     try {
         if (!EnvConfig.GEMINI_API_KEY) {
@@ -20,16 +28,21 @@ export const geminiCompletion = async (query: string, modelName: GeminiModel = "
         }
 
         // Cargar configuración del bot
-        const botConfig = await BotConfigModel.findOne() || {};
-        const personality = personalityMap[botConfig.sellerPersonality || 'experto'] || personalityMap['experto'];
+        const botConfigDoc = await BotConfigModel.findOne();
+        const sellerPersonality = botConfigDoc?.sellerPersonality || defaultSellerConfig.sellerPersonality;
+        const canOfferDiscounts = botConfigDoc?.canOfferDiscounts ?? defaultSellerConfig.canOfferDiscounts;
+        const maxDiscountPercent = botConfigDoc?.maxDiscountPercent || defaultSellerConfig.maxDiscountPercent;
+        const discountConditions = botConfigDoc?.discountConditions || defaultSellerConfig.discountConditions;
+        
+        const personality = personalityMap[sellerPersonality] || personalityMap['experto'];
         
         // Configuración de descuentos
         let discountInstructions = '';
-        if (botConfig.canOfferDiscounts) {
+        if (canOfferDiscounts) {
             discountInstructions = `
 POLÍTICA DE DESCUENTOS:
-- Estás AUTORIZADO a ofrecer descuentos de hasta ${botConfig.maxDiscountPercent || 10}% máximo
-- Condiciones: ${botConfig.discountConditions || 'Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones o descuentos. No ofrecer descuentos de forma proactiva.'}
+- Estás AUTORIZADO a ofrecer descuentos de hasta ${maxDiscountPercent}% máximo
+- Condiciones: ${discountConditions}
 - Cuando ofrezcas descuento, hazlo parecer una oferta especial y exclusiva para generar urgencia
 - Nunca ofrezcas el descuento máximo de inmediato, empieza con un porcentaje menor si el cliente negocia`;
         } else {
