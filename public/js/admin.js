@@ -901,6 +901,25 @@ async function loadBotConfig() {
     setInputValue('ai-system-prompt-input', config.aiSystemPrompt);
     setInputValue('ai-model-input', config.aiModel);
     
+    // Configuración de vendedor
+    setInputValue('seller-personality-input', config.sellerPersonality || 'experto');
+    setInputValue('max-discount-input', config.maxDiscountPercent || 10);
+    setInputValue('discount-conditions-input', config.discountConditions);
+    
+    // Radio buttons de descuentos
+    const discountsYes = document.getElementById('discounts-yes');
+    const discountsNo = document.getElementById('discounts-no');
+    if (discountsYes && discountsNo) {
+      if (config.canOfferDiscounts) {
+        discountsYes.checked = true;
+        discountsNo.checked = false;
+      } else {
+        discountsYes.checked = false;
+        discountsNo.checked = true;
+      }
+      updateDiscountVisibility();
+    }
+    
     const delayText = document.getElementById('current-delay-text');
     if (delayText) delayText.textContent = `Actual: ${(config.botDelay || 10000) / 1000}s`;
     
@@ -908,6 +927,30 @@ async function loadBotConfig() {
     console.error('Error loading bot config:', error);
   }
 }
+
+// Mostrar/ocultar opciones de descuento
+function updateDiscountVisibility() {
+  const canOfferDiscounts = document.getElementById('discounts-yes')?.checked || false;
+  const discountOptions = document.getElementById('discount-options');
+  const discountConditions = document.getElementById('discount-conditions-container');
+  
+  if (canOfferDiscounts) {
+    discountOptions?.classList.remove('hidden');
+    discountConditions?.classList.remove('hidden');
+  } else {
+    discountOptions?.classList.add('hidden');
+    discountConditions?.classList.add('hidden');
+  }
+}
+
+// Event listeners para radio buttons de descuentos
+document.addEventListener('DOMContentLoaded', function() {
+  const discountsYes = document.getElementById('discounts-yes');
+  const discountsNo = document.getElementById('discounts-no');
+  
+  if (discountsYes) discountsYes.addEventListener('change', updateDiscountVisibility);
+  if (discountsNo) discountsNo.addEventListener('change', updateDiscountVisibility);
+});
 
 function setInputValue(id, value) {
   const el = document.getElementById(id);
@@ -950,7 +993,13 @@ window.saveBotConfig = async function() {
     
     // IA
     aiSystemPrompt: getInputValue('ai-system-prompt-input'),
-    aiModel: getInputValue('ai-model-input')
+    aiModel: getInputValue('ai-model-input'),
+    
+    // Configuración de vendedor
+    sellerPersonality: getInputValue('seller-personality-input'),
+    canOfferDiscounts: document.getElementById('discounts-yes')?.checked || false,
+    maxDiscountPercent: parseInt(getInputValue('max-discount-input')) || 10,
+    discountConditions: getInputValue('discount-conditions-input')
   };
   
   try {
@@ -1231,6 +1280,29 @@ window.logoutWhatsApp = async function() {
     console.error('Error logging out WhatsApp:', error);
     alert('Error al desvincular WhatsApp');
     loadWhatsAppStatus();
+  }
+};
+
+// Despausar todos los contactos
+window.unpauseAllContacts = async function() {
+  if (!confirm('¿Estás seguro de que deseas despausar TODOS los contactos? El bot volverá a responder a todos.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch('/crm/contacts/unpause-all', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to unpause contacts');
+    
+    const result = await response.json();
+    alert(result.message || 'Contactos despausados correctamente');
+    
+  } catch (error) {
+    console.error('Error unpausing all contacts:', error);
+    alert('Error al despausar contactos');
   }
 };
 

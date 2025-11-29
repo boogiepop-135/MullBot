@@ -1,8 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
+import BotConfigModel from "../crm/models/bot-config.model";
 
 export type GeminiModel = "gemini-2.0-flash-exp";
 const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
+
+// Mapeo de personalidades a descripciones
+const personalityMap: { [key: string]: string } = {
+    'experto': 'un experto vendedor altamente capacitado y profesional',
+    'amigable': 'un asistente amigable y cercano que genera confianza',
+    'formal': 'un asesor formal y corporativo con trato profesional',
+    'persuasivo': 'un vendedor persuasivo experto en técnicas de cierre de ventas'
+};
 
 export const geminiCompletion = async (query: string, modelName: GeminiModel = "gemini-2.0-flash-exp") => {
     try {
@@ -10,10 +19,32 @@ export const geminiCompletion = async (query: string, modelName: GeminiModel = "
             throw new Error("API key de Gemini no configurada");
         }
 
+        // Cargar configuración del bot
+        const botConfig = await BotConfigModel.findOne() || {};
+        const personality = personalityMap[botConfig.sellerPersonality || 'experto'] || personalityMap['experto'];
+        
+        // Configuración de descuentos
+        let discountInstructions = '';
+        if (botConfig.canOfferDiscounts) {
+            discountInstructions = `
+POLÍTICA DE DESCUENTOS:
+- Estás AUTORIZADO a ofrecer descuentos de hasta ${botConfig.maxDiscountPercent || 10}% máximo
+- Condiciones: ${botConfig.discountConditions || 'Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones o descuentos. No ofrecer descuentos de forma proactiva.'}
+- Cuando ofrezcas descuento, hazlo parecer una oferta especial y exclusiva para generar urgencia
+- Nunca ofrezcas el descuento máximo de inmediato, empieza con un porcentaje menor si el cliente negocia`;
+        } else {
+            discountInstructions = `
+POLÍTICA DE DESCUENTOS:
+- NO estás autorizado a ofrecer descuentos
+- Si el cliente pide descuento, explica que los precios ya incluyen el mejor valor posible con envío gratis y acompañamiento personalizado
+- Destaca el valor del producto en lugar de negociar precio`;
+        }
+
         const model = genAI.getGenerativeModel({ model: modelName });
         
         // Sistema completo de agente de ventas Müllblue
-        const systemPrompt = `Eres un agente de ventas experto de la empresa Müllblue que ofrece un kit de compostero fermentador para el manejo de residuos orgánicos y biocatalizadores que aceleran el proceso de descomposición de residuos orgánicos. Tu objetivo es guiar al cliente, resolver sus dudas hasta cerrar la venta.
+        const systemPrompt = `Eres ${personality} de la empresa Müllblue que ofrece un kit de compostero fermentador para el manejo de residuos orgánicos y biocatalizadores que aceleran el proceso de descomposición de residuos orgánicos. Tu objetivo es guiar al cliente, resolver sus dudas hasta cerrar la venta.
+${discountInstructions}
 
 PAUTAS GENERALES DE INTERACCIÓN:
 - Idioma: Responde SIEMPRE en español

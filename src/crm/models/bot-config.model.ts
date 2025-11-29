@@ -26,6 +26,12 @@ export interface IBotConfig extends Document {
     aiSystemPrompt: string;
     aiModel: string;
     
+    // Configuración de vendedor
+    sellerPersonality: string; // Personalidad del vendedor (experto, amigable, formal, etc.)
+    canOfferDiscounts: boolean; // Si puede ofrecer descuentos
+    maxDiscountPercent: number; // Porcentaje máximo de descuento
+    discountConditions: string; // Condiciones para ofrecer descuentos
+    
     // Mensajes personalizados
     welcomeMessage: string;
     pauseMessage: string;
@@ -65,6 +71,12 @@ const BotConfigSchema = new Schema<IBotConfig>({
     // Configuración de IA
     aiSystemPrompt: { type: String, default: '' },
     aiModel: { type: String, default: 'gemini-2.0-flash-exp' },
+    
+    // Configuración de vendedor
+    sellerPersonality: { type: String, default: 'experto' }, // experto, amigable, formal, persuasivo
+    canOfferDiscounts: { type: Boolean, default: false },
+    maxDiscountPercent: { type: Number, default: 10 },
+    discountConditions: { type: String, default: 'Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones o descuentos. No ofrecer descuentos de forma proactiva.' },
     
     // Mensajes personalizados
     welcomeMessage: { type: String, default: '' },

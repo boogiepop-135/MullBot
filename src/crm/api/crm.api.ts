@@ -173,6 +173,25 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
+    // Despausar TODOS los contactos
+    router.post('/contacts/unpause-all', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const result = await ContactModel.updateMany(
+                { isPaused: true },
+                { $set: { isPaused: false } }
+            );
+
+            logger.info(`Unpaused ${result.modifiedCount} contacts`);
+            res.json({ 
+                message: `Se despausaron ${result.modifiedCount} contacto(s) exitosamente`,
+                count: result.modifiedCount 
+            });
+        } catch (error) {
+            logger.error('Failed to unpause all contacts:', error);
+            res.status(500).json({ error: 'Failed to unpause all contacts' });
+        }
+    });
+
     // Confirmar cita (por mullblue)
     router.put('/contacts/:phoneNumber/appointment/confirm', authenticate, authorizeAdmin, async (req, res) => {
         try {

@@ -579,26 +579,26 @@
       </div>
 
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
-              <!-- Users loaded here -->
-            </tbody>
-          </table>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Users loaded here -->
+          </tbody>
+        </table>
       </div>
-    </div>
+      </div>
+      </div>
 
-    <!-- Settings Section -->
-    <div id="settings-section" class="section-content hidden p-8">
+      <!-- Settings Section -->
+      <div id="settings-section" class="section-content hidden p-8">
       <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Configuración</h1>
         <p class="text-gray-500">Administra la configuración del bot y del negocio</p>
@@ -606,7 +606,7 @@
 
       <div class="max-w-5xl space-y-6">
         <!-- Tabs de configuración -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div class="border-b border-gray-200">
             <nav class="flex -mb-px">
               <button onclick="showSettingsTab('general')" id="tab-general" class="settings-tab px-6 py-3 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">General</button>
@@ -616,7 +616,7 @@
               <button onclick="showSettingsTab('whatsapp')" id="tab-whatsapp" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">WhatsApp</button>
               <button onclick="showSettingsTab('security')" id="tab-security" class="settings-tab px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">Seguridad</button>
             </nav>
-          </div>
+            </div>
 
           <!-- Tab: General -->
           <div id="settings-general" class="settings-panel p-6">
@@ -653,6 +653,47 @@
                 <textarea id="ai-system-prompt-input" rows="4" placeholder="Instrucciones personalizadas para la IA..."
                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></textarea>
                 <p class="text-xs text-gray-500 mt-1">Deja vacío para usar el prompt predeterminado</p>
+            </div>
+          </div>
+
+            <!-- Sección Vendedor -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+              <h3 class="text-lg font-medium text-gray-800 mb-4">🎯 Perfil de Vendedor</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Personalidad del Vendedor</label>
+                  <select id="seller-personality-input" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    <option value="experto">🧠 Experto - Profesional y capacitado</option>
+                    <option value="amigable">😊 Amigable - Cercano y genera confianza</option>
+                    <option value="formal">👔 Formal - Corporativo y profesional</option>
+                    <option value="persuasivo">💪 Persuasivo - Experto en técnicas de cierre</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1">Define el estilo de comunicación del bot</p>
+            </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">¿Puede ofrecer descuentos?</label>
+                  <div class="flex items-center gap-4 mt-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="can-offer-discounts" id="discounts-yes" value="true" class="text-indigo-600">
+                      <span class="text-sm">Sí</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="can-offer-discounts" id="discounts-no" value="false" checked class="text-indigo-600">
+                      <span class="text-sm">No</span>
+                    </label>
+                  </div>
+                </div>
+                <div id="discount-options" class="hidden">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descuento Máximo (%)</label>
+                  <input type="number" id="max-discount-input" min="1" max="50" value="10"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                  <p class="text-xs text-gray-500 mt-1">Porcentaje máximo que el bot puede ofrecer</p>
+                </div>
+                <div id="discount-conditions-container" class="md:col-span-2 hidden">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Condiciones para Ofrecer Descuentos</label>
+                  <textarea id="discount-conditions-input" rows="3" placeholder="Ej: Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones..."
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -774,6 +815,20 @@
                 <div id="qr-code-container" class="bg-white p-3 rounded-lg shadow-sm"></div>
                 <p class="text-xs text-gray-500 mt-4">El código se actualiza automáticamente cada 20 segundos</p>
               </div>
+
+              <!-- Gestión de Contactos Pausados -->
+              <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium text-yellow-800">🔇 Contactos Pausados</p>
+                    <p class="text-sm text-yellow-600">Despausar todos los contactos para que el bot pueda responderles</p>
+            </div>
+                  <button onclick="unpauseAllContacts()"
+                    class="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-yellow-300">
+                    <i class="fas fa-play mr-2"></i>Despausar Todos
+                  </button>
+          </div>
+            </div>
             </div>
           </div>
 
@@ -808,19 +863,19 @@
             <button onclick="saveBotConfig()"
               class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
               <i class="fas fa-save mr-2"></i>Guardar Configuración
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Bot Content Section -->
     <div id="bot-content-section" class="section-content hidden p-8">
       <div class="flex justify-between items-center mb-6">
-        <div>
+          <div>
           <h1 class="text-2xl font-bold text-gray-800">Contenido del Bot</h1>
           <p class="text-gray-500">Edita las respuestas automáticas y mensajes del bot</p>
-        </div>
+          </div>
         <div class="flex gap-2">
           <button onclick="initDefaultBotContent()"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
@@ -829,7 +884,7 @@
           <button onclick="openCreateBotContentModal()"
             class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
             <i class="fas fa-plus mr-2"></i>Nuevo Contenido
-          </button>
+            </button>
         </div>
       </div>
 
@@ -837,7 +892,7 @@
         <div class="col-span-full text-center py-8 text-gray-500">Cargando...</div>
       </div>
     </div>
-  </main>
+      </main>
 
       <!-- Modals -->
 
