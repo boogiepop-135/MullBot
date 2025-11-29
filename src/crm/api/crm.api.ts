@@ -1011,6 +1011,12 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
         try {
             await botManager.logout();
+            
+            // Reiniciar el cliente para generar nuevo QR
+            logger.info('Reinitializing WhatsApp client after logout...');
+            await botManager.initializeClient();
+            await botManager.initialize();
+            
             res.json({ message: 'WhatsApp session disconnected successfully. You can now scan a new QR code.' });
         } catch (error) {
             logger.error('Failed to logout WhatsApp:', error);
