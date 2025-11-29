@@ -33,8 +33,9 @@ export async function detectPaymentReceipt(message: Message): Promise<boolean> {
     }
 
     // También considerar imágenes/documents sin texto si el contacto está en un estado que sugiere pago
-    const user = await message.getContact();
-    const contact = await ContactModel.findOne({ phoneNumber: user.number });
+    // Extraer número del mensaje sin usar getContact (para evitar errores)
+    const phoneNumber = message.from.split('@')[0];
+    const contact = await ContactModel.findOne({ phoneNumber });
     
     // Si el contacto está en estado "interested" o "info_requested", probablemente quiere pagar
     if (contact && (contact.saleStatus === 'interested' || contact.saleStatus === 'info_requested')) {
@@ -59,8 +60,9 @@ export async function detectPaymentReceipt(message: Message): Promise<boolean> {
  */
 export async function handlePaymentReceipt(message: Message): Promise<void> {
     try {
-        const user = await message.getContact();
-        const contact = await ContactModel.findOne({ phoneNumber: user.number });
+        // Extraer número del mensaje sin usar getContact (para evitar errores)
+        const phoneNumber = message.from.split('@')[0];
+        const contact = await ContactModel.findOne({ phoneNumber });
 
         if (!contact) {
             return;
@@ -91,7 +93,7 @@ export async function handlePaymentReceipt(message: Message): Promise<void> {
         }
 
         const updatedContact = await ContactModel.findOneAndUpdate(
-            { phoneNumber: user.number },
+            { phoneNumber },
             { $set: updateData },
             { new: true }
         );
@@ -117,7 +119,7 @@ export async function handlePaymentReceipt(message: Message): Promise<void> {
             // No fallar si la notificación no se crea
         }
 
-        logger.info(`Payment receipt detected for ${user.number}, status updated to: ${newStatus || contact.saleStatus}`);
+        logger.info(`Payment receipt detected for ${phoneNumber}, status updated to: ${newStatus || contact.saleStatus}`);
     } catch (error) {
         logger.error(`Error handling payment receipt: ${error}`);
     }

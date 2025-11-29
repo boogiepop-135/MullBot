@@ -305,7 +305,7 @@ export class BotManager {
             if (!message.fromMe) {
                 await this.trackContactSimple(userNumber, userPushname, userI18n);
                 // Guardar mensaje recibido en la base de datos
-                await this.saveMessage(message, false);
+                await this.saveMessage(message, false, userNumber);
             }
             
             chat = await message.getChat();
@@ -363,8 +363,9 @@ export class BotManager {
         try {
             const isPaymentReceipt = await detectPaymentReceipt(message);
             if (isPaymentReceipt) {
-                const user = await message.getContact();
-                const contact = await ContactModel.findOne({ phoneNumber: user.number });
+                // Extraer número del mensaje sin usar getContact (para evitar errores)
+                const phoneNumber = message.from.split('@')[0];
+                const contact = await ContactModel.findOne({ phoneNumber });
 
                 await handlePaymentReceipt(message);
 
@@ -478,8 +479,11 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
 
     /**
      * Guarda un mensaje en la base de datos
+     * @param message - El mensaje de WhatsApp
+     * @param isFromBot - Si el mensaje fue enviado por el bot
+     * @param knownPhoneNumber - Número de teléfono si ya se conoce (evita llamar a getContact)
      */
-    private async saveMessage(message: Message, isFromBot: boolean): Promise<void> {
+    private async saveMessage(message: Message, isFromBot: boolean, knownPhoneNumber?: string): Promise<void> {
         try {
             // Determinar el número de teléfono del contacto
             let phoneNumber: string;
@@ -489,10 +493,13 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 // Mensaje enviado por el bot: el destinatario está en message.to
                 phoneNumber = message.to.split('@')[0];
                 contact = await ContactModel.findOne({ phoneNumber });
+            } else if (knownPhoneNumber) {
+                // Si ya conocemos el número, usarlo directamente
+                phoneNumber = knownPhoneNumber;
+                contact = await ContactModel.findOne({ phoneNumber });
             } else {
-                // Mensaje recibido: el remitente está en message.from
-                const user = await message.getContact();
-                phoneNumber = user.number;
+                // Fallback: extraer del message.from
+                phoneNumber = message.from.split('@')[0];
                 contact = await ContactModel.findOne({ phoneNumber });
             }
 
@@ -514,17 +521,9 @@ Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha pa
                 }
             }
 
-            // Obtener pushName solo para mensajes recibidos
+            // Obtener pushName del contacto en la base de datos
             let pushName: string | undefined = undefined;
-            if (!isFromBot) {
-                try {
-                    const user = await message.getContact();
-                    pushName = user.pushname;
-                } catch (error) {
-                    logger.warn(`Failed to get contact info for message ${message.id._serialized}: ${error}`);
-                }
-            } else if (contact) {
-                // Para mensajes del bot, usar el pushName del contacto si está disponible
+            if (contact) {
                 pushName = contact.pushName;
             }
 

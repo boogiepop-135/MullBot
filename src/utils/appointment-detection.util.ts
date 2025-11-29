@@ -47,8 +47,9 @@ export async function detectAppointmentProposal(message: Message): Promise<{ isA
     });
 
     // Verificar si el contacto está en un estado relevante para citas
-    const user = await message.getContact();
-    const contact = await ContactModel.findOne({ phoneNumber: user.number });
+    // Extraer número del mensaje sin usar getContact (para evitar errores)
+    const phoneNumber = message.from.split('@')[0];
+    const contact = await ContactModel.findOne({ phoneNumber });
     
     // Solo considerar propuestas de cita si el contacto está en payment_pending o appointment_scheduled
     if (contact && (contact.saleStatus === 'payment_pending' || contact.saleStatus === 'appointment_scheduled')) {
@@ -66,8 +67,9 @@ export async function detectAppointmentProposal(message: Message): Promise<{ isA
  */
 export async function handleAppointmentProposal(message: Message, proposedDates?: string[]): Promise<void> {
     try {
-        const user = await message.getContact();
-        const contact = await ContactModel.findOne({ phoneNumber: user.number });
+        // Extraer número del mensaje sin usar getContact (para evitar errores)
+        const phoneNumber = message.from.split('@')[0];
+        const contact = await ContactModel.findOne({ phoneNumber });
 
         if (!contact) {
             return;
@@ -87,7 +89,7 @@ export async function handleAppointmentProposal(message: Message, proposedDates?
             read: false
         });
 
-        logger.info(`Appointment proposal notification created for ${user.number}`);
+        logger.info(`Appointment proposal notification created for ${phoneNumber}`);
     } catch (error) {
         logger.error(`Error handling appointment proposal: ${error}`);
     }
