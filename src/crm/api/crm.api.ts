@@ -1002,6 +1002,11 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             // Ordenar por timestamp ascendente para mostrar en orden cronológico
             messages.reverse();
 
+            // Evitar caching para tener mensajes siempre actualizados
+            res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.set('Pragma', 'no-cache');
+            res.set('Expires', '0');
+            
             res.json({ messages });
         } catch (error) {
             logger.error('Failed to fetch messages:', error);

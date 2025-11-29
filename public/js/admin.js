@@ -817,10 +817,17 @@ async function loadChatMessages() {
   }
   
   try {
-    const response = await fetch(`/crm/contacts/${currentChatPhoneNumber}/messages`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    // Agregar timestamp para evitar cache del navegador
+    const cacheBuster = `_t=${Date.now()}`;
+    const response = await fetch(`/crm/contacts/${currentChatPhoneNumber}/messages?${cacheBuster}`, {
+      headers: { 
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Cache-Control': 'no-cache'
+      }
     });
+    
     if (!response.ok) throw new Error('Failed to load messages');
+    
     const data = await response.json();
     chatMessages = data.messages || [];
     renderChatMessages();
