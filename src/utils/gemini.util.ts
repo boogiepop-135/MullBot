@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
-import BotConfigModel from "../crm/models/bot-config.model";
+import { BotConfigModel } from "../crm/models/bot-config.model";
 
 export type GeminiModel = "gemini-2.0-flash-exp";
 const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
