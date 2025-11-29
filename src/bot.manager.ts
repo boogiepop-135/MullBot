@@ -35,7 +35,7 @@ export class BotManager {
         return BotManager.instance;
     }
 
-    public async initializeClient() {
+    public async initializeClient(skipSessionClear: boolean = false) {
         // Verificar si el cliente ya existe
         if (this.client) {
             logger.info("Client already initialized");
@@ -46,9 +46,11 @@ export class BotManager {
             logger.info("Initializing WhatsApp client...");
 
             // Limpiar sesión anterior de MongoDB antes de crear nuevo cliente
-            // Esto asegura que no haya conflictos con sesiones previas cuando se vincula un nuevo número
-            await this.clearSessionFromMongoDB();
-            logger.info("Previous session cleared from MongoDB");
+            // Solo si no se especifica saltar (ej: después de logout ya se limpió)
+            if (!skipSessionClear) {
+                await this.clearSessionFromMongoDB();
+                logger.info("Previous session cleared from MongoDB");
+            }
 
             // Obtener configuración del cliente (incluye RemoteAuth con MongoStore)
             const clientConfig = await getClientConfig();
@@ -138,12 +140,10 @@ export class BotManager {
                 await this.initializeClient();
             }
 
-            // Limpiar sesión anterior antes de inicializar (por si acaso)
-            // Esto asegura que cuando se genera un nuevo QR, no hay sesiones viejas interfiriendo
-            await this.clearSessionFromMongoDB();
-
             // Inicializar el cliente de WhatsApp
+            logger.info("Starting WhatsApp client initialization...");
             await this.client.initialize();
+            logger.info("WhatsApp client.initialize() completed");
         } catch (error) {
             logger.error(`Client initialization error: ${error}`);
             throw error;

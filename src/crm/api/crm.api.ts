@@ -1014,10 +1014,16 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             // Reiniciar el cliente para generar nuevo QR
             logger.info('Reinitializing WhatsApp client after logout...');
-            await botManager.initializeClient();
-            await botManager.initialize();
             
-            res.json({ message: 'WhatsApp session disconnected successfully. You can now scan a new QR code.' });
+            // Crear nuevo cliente (skip session clear porque logout ya lo hizo)
+            await botManager.initializeClient(true);
+            
+            // Inicializar en background (no esperar) para que la respuesta sea rápida
+            botManager.initialize().catch(err => {
+                logger.error('Error during background initialization:', err);
+            });
+            
+            res.json({ message: 'WhatsApp session disconnected. Generating new QR code...' });
         } catch (error) {
             logger.error('Failed to logout WhatsApp:', error);
             res.status(500).json({ error: 'Failed to logout WhatsApp' });
