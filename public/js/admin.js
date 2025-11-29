@@ -810,44 +810,112 @@ window.closeChatModal = function () {
 
 async function loadChatMessages() {
   if (!currentChatPhoneNumber) return;
+  
+  const container = document.getElementById('messages-container');
+  if (container) {
+    container.innerHTML = '<div class="flex justify-center items-center h-full"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
+  }
+  
   try {
     const response = await fetch(`/crm/contacts/${currentChatPhoneNumber}/messages`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     });
-    if (!response.ok) throw new Error('Failed');
+    if (!response.ok) throw new Error('Failed to load messages');
     const data = await response.json();
-    chatMessages = data.messages;
+    chatMessages = data.messages || [];
     renderChatMessages();
-  } catch (e) { console.error(e); }
+  } catch (e) { 
+    console.error('Error loading messages:', e);
+    if (container) {
+      container.innerHTML = '<div class="flex justify-center items-center h-full text-red-500"><i class="fas fa-exclamation-triangle mr-2"></i>Error al cargar mensajes</div>';
+    }
+  }
 }
 
 function renderChatMessages() {
   const container = document.getElementById('messages-container');
   if (!container) return;
+  
   container.innerHTML = '';
+  
+  if (!chatMessages || chatMessages.length === 0) {
+    container.innerHTML = '<div class="flex justify-center items-center h-full text-gray-400">No hay mensajes aún</div>';
+    return;
+  }
+  
   chatMessages.forEach(msg => {
+    if (!msg) return;
     const div = document.createElement('div');
-    div.className = `flex ${msg.isFromBot ? 'justify-end' : 'justify-start'} mb-2`;
-    div.innerHTML = `<div class="max-w-[70%] px-4 py-2 rounded-lg shadow-sm ${msg.isFromBot ? 'bg-indigo-100 text-gray-800' : 'bg-white text-gray-800'}"><p class="text-sm">${msg.body}</p></div>`;
+    const isFromBot = msg.isFromBot === true;
+    div.className = `flex ${isFromBot ? 'justify-end' : 'justify-start'} mb-2`;
+    
+    // Escapar HTML para evitar XSS
+    const safeBody = (msg.body || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    const timestamp = msg.timestamp ? formatDate(msg.timestamp) : '';
+    
+    div.innerHTML = `
+      <div class="max-w-[70%] px-4 py-2 rounded-lg shadow-sm ${isFromBot ? 'bg-indigo-100 text-gray-800' : 'bg-white text-gray-800'}">
+        <p class="text-sm whitespace-pre-wrap">${safeBody}</p>
+        ${timestamp ? `<p class="text-xs text-gray-400 mt-1">${timestamp}</p>` : ''}
+      </div>
+    `;
     container.appendChild(div);
   });
+  
   container.scrollTop = container.scrollHeight;
 }
 
 window.sendChatMessage = async function () {
   const input = document.getElementById('chat-message-input');
+  const sendBtn = document.querySelector('#chat-modal button[onclick="sendChatMessage()"]');
   const msg = input.value.trim();
+  
   if (!msg || !currentChatPhoneNumber) return;
 
+  // Deshabilitar botón y mostrar spinner
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
+
   try {
-    await fetch('/crm/send-message', {
+    const response = await fetch('/crm/send-message', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${localStorage.getItem('token')}`, 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({ phoneNumber: currentChatPhoneNumber, message: msg })
     });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al enviar');
+    }
+    
     input.value = '';
-    loadChatMessages();
-  } catch (e) { alert('Error sending message'); }
+    
+    // Agregar mensaje localmente para feedback inmediato
+    chatMessages.push({
+      body: msg,
+      isFromBot: true,
+      timestamp: new Date().toISOString()
+    });
+    renderChatMessages();
+    
+    // Recargar después de un momento para sincronizar
+    setTimeout(loadChatMessages, 1000);
+    
+  } catch (e) { 
+    console.error('Error sending message:', e);
+    alert('Error al enviar mensaje: ' + e.message); 
+  } finally {
+    // Restaurar botón
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+    }
+  }
 };
 
 // --- Notifications (Simplified) ---
