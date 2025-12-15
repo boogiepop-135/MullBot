@@ -12,6 +12,10 @@ import { NotificationModel } from '../models/notification.model';
 import { MessageModel } from '../models/message.model';
 import { UserModel } from '../models/user.model';
 import { ProductModel } from '../models/product.model';
+import { sendCampaignMessages } from '../../crons/campaign.cron';
+import { CustomStatusModel } from '../models/custom-status.model';
+import { AutomationModel } from '../models/automation.model';
+import { AutomationService } from '../utils/automation.util';
 
 export const router = express.Router();
 
@@ -71,6 +75,10 @@ export default function (botManager: BotManager) {
                 return res.status(400).json({ error: `Invalid sale status. Must be one of: ${validStatuses.join(', ')}` });
             }
 
+            // Obtener estado anterior para disparar automatizaciones
+            const previousContact = await ContactModel.findOne({ phoneNumber });
+            const previousStatus = previousContact?.saleStatus || 'lead';
+
             const updateData: any = { saleStatus };
             if (saleStatusNotes !== undefined) {
                 updateData.saleStatusNotes = saleStatusNotes;
@@ -109,6 +117,16 @@ export default function (botManager: BotManager) {
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
+            }
+
+            // Disparar automatizaciones de cambio de estado
+            if (previousStatus !== saleStatus) {
+                AutomationService.triggerStatusChangeAutomations(
+                    botManager,
+                    phoneNumber,
+                    previousStatus,
+                    saleStatus
+                ).catch(err => logger.error('Error triggering status change automations:', err));
             }
 
             res.json(contact);
@@ -278,28 +296,234 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
+    // Exportar contactos a XLSX
+    router.get('/contacts/export/xlsx', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const XLSX = require('xlsx');
+
+            // Obtener todos los contactos
+            const contacts = await ContactModel.find().sort({ lastInteraction: -1 });
+
+            // Preparar datos para exportación
+            const exportData = contacts.map(contact => ({
+                Teléfono: contact.phoneNumber,
+                Nombre: contact.name || contact.pushName || '',
+                Estado: contact.saleStatus || 'lead',
+                'Última interacción': contact.lastInteraction ?
+                    new Date(contact.lastInteraction).toLocaleString('es-MX', {
+                        timeZone: 'America/Mexico_City',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) : 'Sin registro',
+                Acciones: contact.isPaused ? 'Pausar' : ''
+            }));
+
+            // Crear libro de trabajo
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Contactos');
+
+            // Generar buffer
+            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+            // Enviar archivo
+            res.setHeader('Content-Disposition', 'attachment; filename=contactos.xlsx');
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.send(buffer);
+        } catch (error) {
+            logger.error('Failed to export contacts:', error);
+            res.status(500).json({ error: 'Failed to export contacts' });
+        }
+    });
+
+    // Importar contactos desde XLSX
+    router.post('/contacts/import/xlsx', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const multer = require('multer');
+            const XLSX = require('xlsx');
+
+            // Configurar multer para recibir archivos en memoria
+            const upload = multer({ storage: multer.memoryStorage() }).single('file');
+
+            upload(req, res, async function (err: any) {
+                if (err) {
+                    logger.error('File upload error:', err);
+                    return res.status(400).json({ error: 'File upload failed' });
+                }
+
+                try {
+                    if (!req.file) {
+                        return res.status(400).json({ error: 'No file uploaded' });
+                    }
+
+                    // Leer archivo XLSX
+                    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const data = XLSX.utils.sheet_to_json(worksheet);
+
+                    let imported = 0;
+                    let updated = 0;
+                    let errors = 0;
+
+                    for (const row: any of data) {
+                        try {
+                            // Obtener valores de las columnas (soportar variaciones de nombres)
+                            const phoneNumber = (row['Teléfono'] || row['Telefono'] || row['Número'] || row['Numero'] || row['Phone'] || '').toString().trim();
+                            const name = (row['Nombre'] || row['Name'] || '').toString().trim();
+                            const saleStatus = (row['Estado'] || row['Status'] || 'lead').toString().trim().toLowerCase();
+                            const actions = (row['Acciones'] || row['Actions'] || '').toString().trim().toLowerCase();
+
+                            if (!phoneNumber) {
+                                errors++;
+                                continue;
+                            }
+
+                            // Verificar si el contacto ya existe
+                            const existingContact = await ContactModel.findOne({ phoneNumber });
+
+                            const updateData: any = {
+                                lastInteraction: row['Última interacción'] && row['Última interacción'] !== 'Sin registro'
+                                    ? new Date(row['Última interacción'])
+                                    : new Date(),
+                                saleStatus: ['lead', 'interested', 'info_requested', 'payment_pending', 'appointment_scheduled', 'appointment_confirmed', 'completed'].includes(saleStatus)
+                                    ? saleStatus
+                                    : 'lead'
+                            };
+
+                            // Manejar nombre: si está vacío, intentar obtener pushName del perfil de WhatsApp
+                            if (name) {
+                                updateData.name = name;
+                            } else if (!existingContact || !existingContact.pushName) {
+                                // Si no hay nombre y no tenemos pushName, intentar obtenerlo de WhatsApp
+                                try {
+                                    if (botManager.client) {
+                                        const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
+                                        const contact = await botManager.client.getContactById(formattedNumber);
+                                        if (contact && contact.pushname) {
+                                            updateData.pushName = contact.pushname;
+                                        }
+                                    }
+                                } catch (waError) {
+                                    logger.warn(`Could not get WhatsApp profile for ${phoneNumber}`);
+                                }
+                            }
+
+                            // Manejar acciones de pausa
+                            if (actions.includes('pausar') || actions.includes('pause')) {
+                                updateData.isPaused = true;
+                            }
+
+                            if (existingContact) {
+                                // Actualizar contacto existente
+                                await ContactModel.findOneAndUpdate(
+                                    { phoneNumber },
+                                    { $set: updateData },
+                                    { new: true }
+                                );
+                                updated++;
+                            } else {
+                                // Crear nuevo contacto
+                                await ContactModel.create({
+                                    phoneNumber,
+                                    ...updateData
+                                });
+                                imported++;
+                            }
+                        } catch (rowError) {
+                            logger.error(`Error processing row:`, rowError);
+                            errors++;
+                        }
+                    }
+
+                    res.json({
+                        success: true,
+                        summary: {
+                            total: data.length,
+                            imported,
+                            updated,
+                            errors
+                        },
+                        message: `Importación completada: ${imported} nuevos, ${updated} actualizados, ${errors} errores`
+                    });
+                } catch (processError) {
+                    logger.error('Error processing file:', processError);
+                    res.status(500).json({ error: 'Failed to process file' });
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to import contacts:', error);
+            res.status(500).json({ error: 'Failed to import contacts' });
+        }
+    });
+
     // Campaigns API
     router.post('/campaigns', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { name, message, scheduledAt, contacts } = req.body;
+            const {
+                name,
+                message,
+                scheduledAt,
+                contacts,
+                isBatchCampaign,
+                batchSize,
+                batchInterval,
+                saleStatusFilter
+            } = req.body;
+
+            // Si es campaña por lotes, calcular el total de lotes
+            let totalBatches = 1;
+            let actualContacts = contacts || [];
+
+            // Si se especifica filtro por estado, obtener contactos
+            if (saleStatusFilter && saleStatusFilter.length > 0) {
+                const query: any = {};
+                if (saleStatusFilter.length > 0) {
+                    query.saleStatus = { $in: saleStatusFilter };
+                }
+
+                const filteredContacts = await ContactModel.find(query).select('phoneNumber');
+                actualContacts = filteredContacts.map(c => c.phoneNumber);
+            }
+
+            if (isBatchCampaign && batchSize && actualContacts.length > 0) {
+                totalBatches = Math.ceil(actualContacts.length / batchSize);
+            }
 
             const campaign = new CampaignModel({
                 name,
                 message,
                 scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                contacts,
+                contacts: actualContacts,
                 createdBy: req.user.userId,
-                status: scheduledAt ? 'scheduled' : 'draft'
+                status: scheduledAt ? 'scheduled' : 'draft',
+                isBatchCampaign: isBatchCampaign || false,
+                batchSize: batchSize || actualContacts.length,
+                batchInterval: batchInterval || 0,
+                currentBatchIndex: 0,
+                totalBatches: totalBatches,
+                saleStatusFilter: saleStatusFilter || [],
+                nextBatchAt: scheduledAt ? new Date(scheduledAt) : new Date()
             });
 
             await campaign.save();
 
             if (!scheduledAt) {
-                // Send immediately
+                // Send immediately (first batch if it's a batch campaign)
                 await sendCampaignMessages(botManager, campaign);
             }
 
-            res.status(201).json(campaign);
+            res.status(201).json({
+                campaign,
+                summary: {
+                    totalContacts: actualContacts.length,
+                    totalBatches: totalBatches,
+                    contactsPerBatch: batchSize || actualContacts.length
+                }
+            });
         } catch (error) {
             logger.error('Failed to create campaign:', error);
             res.status(500).json({ error: 'Failed to create campaign' });
@@ -559,6 +783,56 @@ Tu solicitud ha sido registrada correctamente.
         } catch (error) {
             logger.error('Failed to fetch users:', error);
             res.status(500).json({ error: 'Failed to fetch users' });
+        }
+    });
+
+    // Actualizar nombre de usuario (admin only)
+    router.put('/auth/users/:userId', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const { username } = req.body;
+
+            // Validación
+            if (!username) {
+                return res.status(400).json({ error: 'Username is required' });
+            }
+
+            const user = await AuthService.updateUsername(userId, username);
+
+            // No devolver la contraseña
+            const userResponse = {
+                _id: user._id,
+                username: user.username,
+                role: user.role,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            };
+
+            logger.info(`Username updated by admin ${req.user.username} for user: ${userId}`);
+            res.json({ message: 'Username updated successfully', user: userResponse });
+        } catch (error) {
+            logger.error('Username update failed:', error);
+            res.status(400).json({ error: error.message });
+        }
+    });
+
+    // Eliminar usuario (admin only)
+    router.delete('/auth/users/:userId', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { userId } = req.params;
+
+            // No permitir que un admin se elimine a sí mismo
+            if (userId === req.user.userId) {
+                return res.status(400).json({ error: 'Cannot delete your own account' });
+            }
+
+            const user = await AuthService.deleteUser(userId);
+
+            logger.info(`User deleted by admin ${req.user.username}: ${user.username}`);
+            res.json({ message: 'User deleted successfully', username: user.username });
+        } catch (error) {
+            logger.error('User deletion failed:', error);
+            res.status(400).json({ error: error.message });
         }
     });
 
@@ -1191,45 +1465,156 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         });
     });
 
-    return router;
-}
-
-async function sendCampaignMessages(botManager: BotManager, campaign: any) {
-    try {
-        // Asegurar que el cliente esté inicializado
-        if (!botManager.client) {
-            await botManager.initializeClient();
+    // Custom Statuses API
+    router.get('/custom-statuses', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const statuses = await CustomStatusModel.find().sort({ order: 1 });
+            res.json({ statuses });
+        } catch (error) {
+            logger.error('Failed to fetch custom statuses:', error);
+            res.status(500).json({ error: 'Failed to fetch custom statuses' });
         }
+    });
 
-        campaign.status = 'sending';
-        await campaign.save();
+    router.post('/custom-statuses', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { name, value, color, description, order } = req.body;
 
-        let sentCount = 0;
-        let failedCount = 0;
-
-        for (const phoneNumber of campaign.contacts) {
-            try {
-                const formattedNumber = phoneNumber.includes('@')
-                    ? phoneNumber
-                    : `${phoneNumber}@c.us`;
-
-                await botManager.client.sendMessage(formattedNumber, campaign.message);
-                sentCount++;
-            } catch (error) {
-                logger.error(`Failed to send message to ${phoneNumber}:`, error);
-                failedCount++;
+            if (!name || !value) {
+                return res.status(400).json({ error: 'Name and value are required' });
             }
+
+            const status = await CustomStatusModel.create({
+                name,
+                value,
+                color,
+                description,
+                order: order || 0,
+                createdBy: req.user.userId
+            });
+
+            res.status(201).json({ status });
+        } catch (error) {
+            logger.error('Failed to create custom status:', error);
+            res.status(500).json({ error: 'Failed to create custom status' });
         }
+    });
 
-        campaign.sentCount = sentCount;
-        campaign.failedCount = failedCount;
-        campaign.status = sentCount > 0 ? 'sent' : 'failed';
-        campaign.sentAt = new Date();
-        await campaign.save();
+    router.put('/custom-statuses/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { name, value, color, description, order, isActive } = req.body;
 
-    } catch (error) {
-        logger.error('Failed to send campaign:', error);
-        campaign.status = 'failed';
-        await campaign.save();
-    }
+            const status = await CustomStatusModel.findByIdAndUpdate(
+                id,
+                { name, value, color, description, order, isActive },
+                { new: true }
+            );
+
+            if (!status) {
+                return res.status(404).json({ error: 'Custom status not found' });
+            }
+
+            res.json({ status });
+        } catch (error) {
+            logger.error('Failed to update custom status:', error);
+            res.status(500).json({ error: 'Failed to update custom status' });
+        }
+    });
+
+    router.delete('/custom-statuses/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const status = await CustomStatusModel.findByIdAndDelete(id);
+
+            if (!status) {
+                return res.status(404).json({ error: 'Custom status not found' });
+            }
+
+            res.json({ message: 'Custom status deleted successfully' });
+        } catch (error) {
+            logger.error('Failed to delete custom status:', error);
+            res.status(500).json({ error: 'Failed to delete custom status' });
+        }
+    });
+
+    // Automations API
+    router.get('/automations', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const automations = await AutomationModel.find()
+                .sort({ createdAt: -1 })
+                .populate('createdBy', 'username');
+
+            res.json({ automations });
+        } catch (error) {
+            logger.error('Failed to fetch automations:', error);
+            res.status(500).json({ error: 'Failed to fetch automations' });
+        }
+    });
+
+    router.post('/automations', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { name, description, triggerType, triggerConditions, actions } = req.body;
+
+            if (!name || !triggerType || !actions || actions.length === 0) {
+                return res.status(400).json({ error: 'Name, triggerType, and actions are required' });
+            }
+
+            const automation = await AutomationModel.create({
+                name,
+                description,
+                triggerType,
+                triggerConditions: triggerConditions || {},
+                actions,
+                createdBy: req.user.userId
+            });
+
+            res.status(201).json({ automation });
+        } catch (error) {
+            logger.error('Failed to create automation:', error);
+            res.status(500).json({ error: 'Failed to create automation' });
+        }
+    });
+
+    router.put('/automations/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { name, description, triggerType, triggerConditions, actions, isActive } = req.body;
+
+            const automation = await AutomationModel.findByIdAndUpdate(
+                id,
+                { name, description, triggerType, triggerConditions, actions, isActive },
+                { new: true }
+            );
+
+            if (!automation) {
+                return res.status(404).json({ error: 'Automation not found' });
+            }
+
+            res.json({ automation });
+        } catch (error) {
+            logger.error('Failed to update automation:', error);
+            res.status(500).json({ error: 'Failed to update automation' });
+        }
+    });
+
+    router.delete('/automations/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const automation = await AutomationModel.findByIdAndDelete(id);
+
+            if (!automation) {
+                return res.status(404).json({ error: 'Automation not found' });
+            }
+
+            res.json({ message: 'Automation deleted successfully' });
+        } catch (error) {
+            logger.error('Failed to delete automation:', error);
+            res.status(500).json({ error: 'Failed to delete automation' });
+        }
+    });
+
+    return router;
 }

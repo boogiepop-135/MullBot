@@ -103,4 +103,54 @@ export class AuthService {
     logger.info(`Password changed by admin for user: ${user.username}`);
     return user;
   }
+
+  /**
+   * Actualizar nombre de usuario (admin only)
+   */
+  static async updateUsername(userId: string, newUsername: string) {
+    // Verificar que el nuevo nombre de usuario no exista
+    const existingUser = await UserModel.findOne({ username: newUsername });
+    if (existingUser && existingUser._id.toString() !== userId) {
+      throw new Error('Username already exists');
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Validar nuevo nombre de usuario
+    if (!newUsername || newUsername.trim().length < 3) {
+      throw new Error('Username must be at least 3 characters long');
+    }
+
+    const oldUsername = user.username;
+    user.username = newUsername.trim();
+    await user.save();
+
+    logger.info(`Username changed by admin from ${oldUsername} to ${newUsername}`);
+    return user;
+  }
+
+  /**
+   * Eliminar usuario (admin only)
+   */
+  static async deleteUser(userId: string) {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verificar que no sea el único admin
+    if (user.role === 'admin') {
+      const adminCount = await UserModel.countDocuments({ role: 'admin' });
+      if (adminCount <= 1) {
+        throw new Error('Cannot delete the last admin user');
+      }
+    }
+
+    await UserModel.findByIdAndDelete(userId);
+    logger.info(`User deleted: ${user.username}`);
+    return user;
+  }
 }

@@ -37,6 +37,14 @@ export class AppConfig {
         return "🌱";
     }
 
+    public getBotLogo(): string {
+        return "public/Logo_cara.png";
+    }
+
+    public getBotLogoUrl(): string {
+        return "/Logo_cara.png";
+    }
+
     public getBotAvatar(reaction: BotReactionType = "friendly"): string {
         switch (reaction) {
             case "neutral":

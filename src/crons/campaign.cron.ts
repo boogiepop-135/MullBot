@@ -6,9 +6,14 @@ import { CampaignModel } from '../crm/models/campaign.model';
 export async function checkScheduledCampaigns(botManager: BotManager) {
   try {
     const now = new Date();
+
+    // Buscar campañas programadas que deben ejecutarse ahora
     const campaigns = await CampaignModel.find({
       status: 'scheduled',
-      scheduledAt: { $lte: now }
+      $or: [
+        { scheduledAt: { $lte: now } },
+        { nextBatchAt: { $lte: now }, isBatchCampaign: true }
+      ]
     });
 
     for (const campaign of campaigns) {
@@ -19,28 +24,42 @@ export async function checkScheduledCampaigns(botManager: BotManager) {
   }
 }
 
-async function sendCampaignMessages(botManager: BotManager, campaign: any) {
+export async function sendCampaignMessages(botManager: BotManager, campaign: any) {
   try {
     // Asegurar que el cliente esté inicializado
     if (!botManager.client) {
       await botManager.initializeClient();
     }
-    
+
     campaign.status = 'sending';
     await campaign.save();
 
-    let sentCount = 0;
-    let failedCount = 0;
+    let sentCount = campaign.sentCount || 0;
+    let failedCount = campaign.failedCount || 0;
 
-    for (const phoneNumber of campaign.contacts) {
+    // Determinar qué contactos enviar (lote actual o todos)
+    let contactsToSend = campaign.contacts;
+
+    if (campaign.isBatchCampaign && campaign.batchSize) {
+      const startIndex = campaign.currentBatchIndex * campaign.batchSize;
+      const endIndex = startIndex + campaign.batchSize;
+      contactsToSend = campaign.contacts.slice(startIndex, endIndex);
+
+      logger.info(
+        `Sending batch ${campaign.currentBatchIndex + 1}/${campaign.totalBatches} ` +
+        `(${contactsToSend.length} contacts) for campaign: ${campaign.name}`
+      );
+    }
+
+    // Enviar mensajes del lote actual
+    for (const phoneNumber of contactsToSend) {
       try {
-        const formattedNumber = phoneNumber.includes('@') 
-          ? phoneNumber 
+        const formattedNumber = phoneNumber.includes('@')
+          ? phoneNumber
           : `${phoneNumber}@c.us`;
 
         const sentMsg = await botManager.client.sendMessage(formattedNumber, campaign.message);
-        // Los mensajes enviados se guardan automáticamente por handleSentMessage
-        // Pero también podemos guardarlos explícitamente por si acaso
+
         if (sentMsg) {
           try {
             await botManager.saveSentMessage(phoneNumber, campaign.message, sentMsg.id._serialized);
@@ -55,10 +74,39 @@ async function sendCampaignMessages(botManager: BotManager, campaign: any) {
       }
     }
 
+    // Actualizar contadores
     campaign.sentCount = sentCount;
     campaign.failedCount = failedCount;
-    campaign.status = sentCount > 0 ? 'sent' : 'failed';
-    campaign.sentAt = new Date();
+
+    // Determinar si hay más lotes por enviar
+    if (campaign.isBatchCampaign && campaign.batchSize) {
+      const nextBatchIndex = campaign.currentBatchIndex + 1;
+
+      if (nextBatchIndex < campaign.totalBatches) {
+        // Hay más lotes, programar el siguiente
+        const nextBatchDate = new Date();
+        nextBatchDate.setMinutes(nextBatchDate.getMinutes() + (campaign.batchInterval || 0));
+
+        campaign.currentBatchIndex = nextBatchIndex;
+        campaign.nextBatchAt = nextBatchDate;
+        campaign.status = 'scheduled';
+
+        logger.info(
+          `Scheduled next batch ${nextBatchIndex + 1}/${campaign.totalBatches} ` +
+          `for ${nextBatchDate.toISOString()} for campaign: ${campaign.name}`
+        );
+      } else {
+        // Todos los lotes enviados
+        campaign.status = sentCount > 0 ? 'sent' : 'failed';
+        campaign.sentAt = new Date();
+        logger.info(`Campaign completed: ${campaign.name}`);
+      }
+    } else {
+      // Campaña normal (no por lotes)
+      campaign.status = sentCount > 0 ? 'sent' : 'failed';
+      campaign.sentAt = new Date();
+    }
+
     await campaign.save();
 
   } catch (error) {

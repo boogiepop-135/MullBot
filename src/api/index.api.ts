@@ -86,6 +86,49 @@ export default function (botManager: BotManager) {
         });
     });
 
+    // Endpoint para regenerar QR manualmente
+    router.post("/qr/regenerate", async (_req, res) => {
+        try {
+            logger.info("POST /qr/regenerate - Manual QR regeneration requested");
+
+            // Si el cliente no está autenticado, intentar regenerar
+            if (!qrData.qrScanned) {
+                // Destruir cliente actual si existe
+                if (botManager.client) {
+                    try {
+                        await botManager.client.destroy();
+                    } catch (error) {
+                        logger.warn("Error destroying client during regeneration:", error);
+                    }
+                }
+
+                // Resetear qrData
+                qrData.qrCodeData = "";
+                qrData.qrScanned = false;
+
+                // Inicializar nuevo cliente (esto generará un nuevo QR)
+                await botManager.initializeClient(true);
+                await botManager.initialize();
+
+                res.json({
+                    success: true,
+                    message: "QR regeneration initiated. Please wait for new QR code."
+                });
+            } else {
+                res.json({
+                    success: false,
+                    message: "Client is already authenticated. No need to regenerate QR."
+                });
+            }
+        } catch (error) {
+            logger.error("Failed to regenerate QR:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to regenerate QR code. Please try logging out and reconnecting."
+            });
+        }
+    });
+
     router.use("/crm", crmRouter(botManager));
 
     return router;
