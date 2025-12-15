@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="UTF-8">
@@ -8,162 +8,330 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+    * {
+      font-family: 'Poppins', sans-serif;
+    }
+
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #0f172a;
       position: relative;
       overflow: hidden;
     }
 
-    body::before {
+    /* Fondo animado con partículas */
+    .bg-particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      animation: float 20s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.3;
+      }
+      33% {
+        transform: translate(50px, -50px) rotate(120deg);
+        opacity: 0.6;
+      }
+      66% {
+        transform: translate(-30px, 40px) rotate(240deg);
+        opacity: 0.4;
+      }
+    }
+
+    /* Gradiente de fondo dinámico */
+    .gradient-bg {
+      background: linear-gradient(135deg,
+        #1e293b 0%,
+        #0f172a 25%,
+        #1e3a5f 50%,
+        #0f172a 75%,
+        #1e293b 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* Card con glassmorphism */
+    .glass-card {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow:
+        0 8px 32px 0 rgba(0, 0, 0, 0.37),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Logo con efecto brillante */
+    .logo-glow {
+      background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+      box-shadow:
+        0 0 30px rgba(16, 185, 129, 0.6),
+        0 0 60px rgba(16, 185, 129, 0.3),
+        inset 0 0 20px rgba(52, 211, 153, 0.2);
+      position: relative;
+    }
+
+    .logo-glow::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, #10b981, #34d399, #6ee7b7, #34d399, #10b981);
+      background-size: 400%;
+      border-radius: inherit;
+      z-index: -1;
+      animation: glow 3s linear infinite;
+      opacity: 0.7;
+    }
+
+    @keyframes glow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* Input con neumorphism */
+    .input-neumorphic {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow:
+        inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+        inset -4px -4px 8px rgba(30, 41, 59, 0.3);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: #e2e8f0;
+    }
+
+    .input-neumorphic::placeholder {
+      color: #64748b;
+    }
+
+    .input-neumorphic:focus {
+      background: rgba(15, 23, 42, 0.8);
+      border-color: #10b981;
+      box-shadow:
+        0 0 0 3px rgba(16, 185, 129, 0.2),
+        inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+        inset -4px -4px 8px rgba(30, 41, 59, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Botón con efecto holográfico */
+    .btn-holographic {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 4px 15px rgba(16, 185, 129, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-holographic::before {
       content: '';
       position: absolute;
       top: -50%;
       left: -50%;
       width: 200%;
       height: 200%;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-      background-size: 50px 50px;
-      animation: moveBackground 20s linear infinite;
+      background: linear-gradient(
+        45deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+      );
+      transform: rotate(45deg);
+      transition: all 0.5s;
     }
 
-    @keyframes moveBackground {
-      0% {
-        transform: translate(0, 0);
-      }
-      100% {
-        transform: translate(50px, 50px);
-      }
+    .btn-holographic:hover::before {
+      left: 100%;
     }
 
-    .login-card {
-      backdrop-filter: blur(10px);
-      background: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-      position: relative;
-      z-index: 1;
+    .btn-holographic:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        0 7px 25px rgba(16, 185, 129, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
 
-    .logo-container {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
-    }
-
-    .input-field {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 2px solid #e2e8f0;
-      background: #f8fafc;
-    }
-
-    .input-field:focus {
-      border-color: #667eea;
-      background: white;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    .btn-holographic:active {
       transform: translateY(-1px);
     }
 
-    .btn-login {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    /* Animación de entrada */
+    .slide-in {
+      animation: slideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-    }
-
-    .btn-login:active {
-      transform: translateY(0);
-    }
-
-    .fade-in {
-      animation: fadeIn 0.6s ease-out;
-    }
-
-    @keyframes fadeIn {
+    @keyframes slideIn {
       from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(30px) scale(0.95);
       }
       to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
       }
     }
 
-    .input-icon {
-      transition: color 0.2s;
+    /* Efecto de brillo en el título */
+    .text-gradient {
+      background: linear-gradient(135deg, #ffffff 0%, #10b981 50%, #34d399 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      background-size: 200% auto;
+      animation: shine 3s linear infinite;
     }
 
-    .input-field:focus ~ .input-icon {
-      color: #667eea;
+    @keyframes shine {
+      to {
+        background-position: 200% center;
+      }
+    }
+
+    /* Iconos con brillo */
+    .icon-glow {
+      filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+      transition: all 0.3s;
+    }
+
+    .input-neumorphic:focus ~ .icon-container .icon-glow {
+      filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.9));
+      color: #10b981;
+    }
+
+    /* Mensaje de error mejorado */
+    .error-card {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Decoraciones */
+    .decoration-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+      filter: blur(40px);
     }
   </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-4">
-  <div class="login-card fade-in bg-white p-12 rounded-2xl w-full max-w-md">
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+  <!-- Partículas de fondo -->
+  <div class="bg-particles">
+    <div class="particle" style="width: 300px; height: 300px; background: rgba(16, 185, 129, 0.1); top: 10%; left: 10%; animation-delay: 0s;"></div>
+    <div class="particle" style="width: 200px; height: 200px; background: rgba(52, 211, 153, 0.1); top: 60%; left: 70%; animation-delay: 5s;"></div>
+    <div class="particle" style="width: 250px; height: 250px; background: rgba(16, 185, 129, 0.08); top: 80%; left: 20%; animation-delay: 10s;"></div>
+    <div class="particle" style="width: 180px; height: 180px; background: rgba(110, 231, 183, 0.1); top: 30%; left: 80%; animation-delay: 7s;"></div>
+  </div>
+
+  <!-- Decoraciones -->
+  <div class="decoration-circle" style="width: 500px; height: 500px; top: -250px; right: -250px;"></div>
+  <div class="decoration-circle" style="width: 400px; height: 400px; bottom: -200px; left: -200px;"></div>
+
+  <!-- Card de Login -->
+  <div class="glass-card slide-in rounded-3xl p-10 w-full max-w-md relative z-10">
     <!-- Logo y Header -->
-    <div class="text-center mb-10">
+    <div class="text-center mb-8">
       <div class="flex justify-center mb-6">
-        <div class="logo-container w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center p-1 transform hover:scale-105 transition-transform duration-300">
-          <div class="w-full h-full bg-white rounded-xl overflow-hidden flex items-center justify-center">
-            <img src="/public/Logo_cara.png" alt="MüllBot Logo" class="w-16 h-16 object-cover">
+        <div class="logo-glow w-24 h-24 rounded-3xl overflow-hidden flex items-center justify-center p-1.5 transform hover:scale-110 hover:rotate-3 transition-all duration-500 cursor-pointer">
+          <div class="w-full h-full bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center">
+            <img src="/public/Logo_cara.png" alt="MüllBot Logo" class="w-20 h-20 object-cover">
           </div>
         </div>
       </div>
-      <h1 class="text-3xl font-bold text-gray-800 mb-2">Müllblue CRM</h1>
-      <p class="text-gray-500 text-sm">Inicia sesión para continuar</p>
+      <h1 class="text-4xl font-bold mb-2">
+        <span class="text-gradient">Müllblue CRM</span>
+      </h1>
+      <p class="text-slate-400 text-sm font-medium">
+        <i class="fas fa-leaf text-green-400 mr-2"></i>
+        Portal de Administración
+      </p>
+      <div class="mt-4 h-1 w-20 mx-auto bg-gradient-to-r from-transparent via-green-400 to-transparent rounded-full"></div>
     </div>
 
     <!-- Formulario -->
     <form id="login-form" class="space-y-6">
       <!-- Campo de Usuario -->
-      <div>
-        <label for="username" class="block text-sm font-semibold text-gray-700 mb-2">Usuario</label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <i class="fas fa-user text-gray-400 input-icon"></i>
+      <div class="space-y-2">
+        <label for="username" class="block text-sm font-semibold text-slate-300 ml-1">
+          Usuario
+        </label>
+        <div class="relative group">
+          <div class="icon-container absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <i class="fas fa-user text-slate-500 icon-glow"></i>
           </div>
           <input type="text" id="username" name="username" required
-            class="input-field pl-12 w-full rounded-xl px-4 py-3 focus:outline-none text-gray-700 font-medium"
+            class="input-neumorphic pl-12 w-full rounded-2xl px-4 py-3.5 focus:outline-none text-slate-100 font-medium"
             placeholder="Ingresa tu usuario">
         </div>
       </div>
 
       <!-- Campo de Contraseña -->
-      <div>
-        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Contraseña</label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <i class="fas fa-lock text-gray-400 input-icon"></i>
+      <div class="space-y-2">
+        <label for="password" class="block text-sm font-semibold text-slate-300 ml-1">
+          Contraseña
+        </label>
+        <div class="relative group">
+          <div class="icon-container absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <i class="fas fa-lock text-slate-500 icon-glow"></i>
           </div>
           <input type="password" id="password" name="password" required
-            class="input-field pl-12 w-full rounded-xl px-4 py-3 focus:outline-none text-gray-700 font-medium"
+            class="input-neumorphic pl-12 w-full rounded-2xl px-4 py-3.5 focus:outline-none text-slate-100 font-medium"
             placeholder="Ingresa tu contraseña">
         </div>
       </div>
 
       <!-- Botón de Login -->
       <button type="submit"
-        class="btn-login w-full text-white py-3 rounded-xl font-semibold transition duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-purple-300">
+        class="btn-holographic w-full text-white py-4 rounded-2xl font-bold text-lg transition duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50 mt-8">
         <span class="flex items-center justify-center">
-          <i class="fas fa-sign-in-alt mr-2"></i>
+          <i class="fas fa-sign-in-alt mr-3"></i>
           Iniciar Sesión
         </span>
       </button>
 
       <!-- Mensaje de Error -->
-      <div id="error-message" class="text-red-600 text-center text-sm hidden py-3 px-4 bg-red-50 rounded-xl border border-red-200">
+      <div id="error-message" class="error-card text-red-400 text-center text-sm hidden py-3 px-4 rounded-2xl">
       </div>
     </form>
 
     <!-- Footer -->
-    <div class="mt-8 text-center">
-      <p class="text-xs text-gray-400">
-        <i class="fas fa-leaf mr-1"></i>
-        MüllBot - Sistema de Gestión Sostenible
-      </p>
+    <div class="mt-8 pt-6 border-t border-slate-700/50">
+      <div class="flex items-center justify-center space-x-2 text-slate-500 text-xs">
+        <i class="fas fa-shield-alt text-green-400"></i>
+        <span>Sistema Seguro</span>
+        <span class="text-slate-600">•</span>
+        <i class="fas fa-leaf text-green-400"></i>
+        <span>Gestión Sostenible</span>
+      </div>
+      <div class="text-center mt-3">
+        <p class="text-xs text-slate-600">
+          MüllBot © 2025 - Tecnología Verde
+        </p>
+      </div>
     </div>
   </div>
 
@@ -176,9 +344,17 @@
       const errorElement = document.getElementById('error-message');
       const submitButton = e.target.querySelector('button[type="submit"]');
 
-      // Agregar estado de carga
+      // Estado de carga con animación
       submitButton.disabled = true;
-      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Iniciando sesión...';
+      submitButton.innerHTML = `
+        <span class="flex items-center justify-center">
+          <svg class="animate-spin h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Autenticando...
+        </span>
+      `;
 
       try {
         const response = await fetch('/crm/auth/login', {
@@ -189,30 +365,62 @@
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || 'Login failed');
+          throw new Error(error.error || 'Error de autenticación');
         }
 
         const { token } = await response.json();
         localStorage.setItem('token', token);
 
-        // Mostrar éxito
-        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i>¡Bienvenido!';
+        // Animación de éxito
+        submitButton.classList.add('bg-green-600');
+        submitButton.innerHTML = `
+          <span class="flex items-center justify-center">
+            <i class="fas fa-check-circle mr-3 text-xl"></i>
+            ¡Acceso Concedido!
+          </span>
+        `;
 
         setTimeout(() => {
           window.location.href = '/admin';
-        }, 500);
+        }, 600);
       } catch (error) {
-        errorElement.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>' + error.message;
+        errorElement.innerHTML = `
+          <div class="flex items-center justify-center">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <span>${error.message}</span>
+          </div>
+        `;
         errorElement.classList.remove('hidden');
+
+        // Efecto de vibración en error
+        submitButton.classList.add('animate-pulse');
 
         // Restaurar botón
         submitButton.disabled = false;
-        submitButton.innerHTML = '<span class="flex items-center justify-center"><i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión</span>';
+        submitButton.innerHTML = `
+          <span class="flex items-center justify-center">
+            <i class="fas fa-sign-in-alt mr-3"></i>
+            Iniciar Sesión
+          </span>
+        `;
 
         setTimeout(() => {
           errorElement.classList.add('hidden');
-        }, 5000);
+          submitButton.classList.remove('animate-pulse');
+        }, 4000);
       }
+    });
+
+    // Efecto parallax sutil al mover el mouse
+    document.addEventListener('mousemove', (e) => {
+      const particles = document.querySelectorAll('.particle');
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+
+      particles.forEach((particle, index) => {
+        const speed = (index + 1) * 10;
+        particle.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+      });
     });
   </script>
 </body>
