@@ -9,68 +9,162 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     body {
-      background-color: #f8fafc;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: moveBackground 20s linear infinite;
+    }
+
+    @keyframes moveBackground {
+      0% {
+        transform: translate(0, 0);
+      }
+      100% {
+        transform: translate(50px, 50px);
+      }
     }
 
     .login-card {
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-      border: 1px solid rgba(0, 0, 0, 0.05);
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-container {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
     }
 
     .input-field {
-      transition: all 0.2s ease;
-      border: 1px solid #e2e8f0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid #e2e8f0;
+      background: #f8fafc;
     }
 
     .input-field:focus {
-      border-color: #cbd5e0;
-      box-shadow: 0 0 0 3px rgba(203, 213, 224, 0.2);
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-login {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn-login:active {
+      transform: translateY(0);
+    }
+
+    .fade-in {
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .input-icon {
+      transition: color 0.2s;
+    }
+
+    .input-field:focus ~ .input-icon {
+      color: #667eea;
     }
   </style>
 </head>
 
 <body class="min-h-screen flex items-center justify-center p-4">
-  <div class="login-card bg-white p-10 rounded-lg w-full max-w-md">
-    <div class="text-center mb-8">
-      <div class="flex justify-center mb-4">
-        <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">
-          <img src="/public/Logo_cara.png" alt="MüllBot Logo" class="w-full h-full object-cover">
+  <div class="login-card fade-in bg-white p-12 rounded-2xl w-full max-w-md">
+    <!-- Logo y Header -->
+    <div class="text-center mb-10">
+      <div class="flex justify-center mb-6">
+        <div class="logo-container w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center p-1 transform hover:scale-105 transition-transform duration-300">
+          <div class="w-full h-full bg-white rounded-xl overflow-hidden flex items-center justify-center">
+            <img src="/public/Logo_cara.png" alt="MüllBot Logo" class="w-16 h-16 object-cover">
+          </div>
         </div>
       </div>
-      <h1 class="text-2xl font-light text-gray-800">Müllblue CRM</h1>
-      <p class="text-gray-500 mt-1">Administration Panel</p>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Müllblue CRM</h1>
+      <p class="text-gray-500 text-sm">Inicia sesión para continuar</p>
     </div>
 
-    <form id="login-form" class="space-y-5">
+    <!-- Formulario -->
+    <form id="login-form" class="space-y-6">
+      <!-- Campo de Usuario -->
       <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <label for="username" class="block text-sm font-semibold text-gray-700 mb-2">Usuario</label>
         <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="fas fa-user text-gray-400"></i>
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <i class="fas fa-user text-gray-400 input-icon"></i>
           </div>
           <input type="text" id="username" name="username" required
-            class="input-field pl-10 w-full rounded-md px-3 py-2 focus:outline-none">
+            class="input-field pl-12 w-full rounded-xl px-4 py-3 focus:outline-none text-gray-700 font-medium"
+            placeholder="Ingresa tu usuario">
         </div>
       </div>
 
+      <!-- Campo de Contraseña -->
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Contraseña</label>
         <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="fas fa-lock text-gray-400"></i>
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <i class="fas fa-lock text-gray-400 input-icon"></i>
           </div>
           <input type="password" id="password" name="password" required
-            class="input-field pl-10 w-full rounded-md px-3 py-2 focus:outline-none">
+            class="input-field pl-12 w-full rounded-xl px-4 py-3 focus:outline-none text-gray-700 font-medium"
+            placeholder="Ingresa tu contraseña">
         </div>
       </div>
 
+      <!-- Botón de Login -->
       <button type="submit"
-        class="w-full bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-md transition duration-150 ease-in-out">
-        Sign In
+        class="btn-login w-full text-white py-3 rounded-xl font-semibold transition duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-purple-300">
+        <span class="flex items-center justify-center">
+          <i class="fas fa-sign-in-alt mr-2"></i>
+          Iniciar Sesión
+        </span>
       </button>
 
-      <div id="error-message" class="text-red-500 text-center text-sm hidden py-2 px-3 bg-red-50 rounded-md"></div>
+      <!-- Mensaje de Error -->
+      <div id="error-message" class="text-red-600 text-center text-sm hidden py-3 px-4 bg-red-50 rounded-xl border border-red-200">
+      </div>
     </form>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center">
+      <p class="text-xs text-gray-400">
+        <i class="fas fa-leaf mr-1"></i>
+        MüllBot - Sistema de Gestión Sostenible
+      </p>
+    </div>
   </div>
 
   <script>
@@ -80,6 +174,11 @@
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       const errorElement = document.getElementById('error-message');
+      const submitButton = e.target.querySelector('button[type="submit"]');
+
+      // Agregar estado de carga
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Iniciando sesión...';
 
       try {
         const response = await fetch('/crm/auth/login', {
@@ -95,10 +194,21 @@
 
         const { token } = await response.json();
         localStorage.setItem('token', token);
-        window.location.href = '/admin';
+
+        // Mostrar éxito
+        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i>¡Bienvenido!';
+
+        setTimeout(() => {
+          window.location.href = '/admin';
+        }, 500);
       } catch (error) {
-        errorElement.textContent = error.message;
+        errorElement.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>' + error.message;
         errorElement.classList.remove('hidden');
+
+        // Restaurar botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<span class="flex items-center justify-center"><i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión</span>';
+
         setTimeout(() => {
           errorElement.classList.add('hidden');
         }, 5000);
