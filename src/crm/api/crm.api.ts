@@ -369,7 +369,7 @@ Tu solicitud ha sido registrada correctamente.
                     let updated = 0;
                     let errors = 0;
 
-                    for (const row: any of data) {
+                    for (const row of data) {
                         try {
                             // Obtener valores de las columnas (soportar variaciones de nombres)
                             const phoneNumber = (row['Teléfono'] || row['Telefono'] || row['Número'] || row['Numero'] || row['Phone'] || '').toString().trim();
