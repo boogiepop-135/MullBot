@@ -504,10 +504,126 @@
       background: #4c1d95;
       color: white;
     }
+
+    /* Dark text mode */
+    body.dark-text-mode {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode .nav-item {
+      color: rgba(31, 41, 55, 0.9) !important;
+    }
+
+    body.dark-text-mode .nav-item i {
+      color: rgba(31, 41, 55, 0.7) !important;
+    }
+
+    body.dark-text-mode .nav-item:hover,
+    body.dark-text-mode .nav-item.active {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode .stat-card p,
+    body.dark-text-mode .stat-card .text-gray-800,
+    body.dark-text-mode .stat-card .text-gray-500 {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode .content-card .text-gray-800,
+    body.dark-text-mode .content-card .text-gray-600,
+    body.dark-text-mode .content-card .text-gray-500,
+    body.dark-text-mode .content-card .text-gray-400 {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode .page-header h1 {
+      background: linear-gradient(135deg, #1f2937 30%, #059669 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    body.dark-text-mode .page-header .text-gray-600 {
+      color: #374151 !important;
+    }
+
+    body.dark-text-mode table thead th,
+    body.dark-text-mode table tbody td {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode input,
+    body.dark-text-mode textarea,
+    body.dark-text-mode select,
+    body.dark-text-mode label,
+    body.dark-text-mode .text-gray-500 {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode input::placeholder,
+    body.dark-text-mode textarea::placeholder {
+      color: rgba(31, 41, 55, 0.6) !important;
+    }
+
+    body.dark-text-mode .text-white {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode #user-name,
+    body.dark-text-mode #user-role {
+      color: #1f2937 !important;
+    }
+
+    body.dark-text-mode .settings-tab {
+      color: rgba(31, 41, 55, 0.8) !important;
+    }
+
+    /* Text mode toggle button */
+    .text-mode-toggle {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 20px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    }
+
+    .text-mode-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .text-mode-toggle i {
+      font-size: 18px;
+      margin-right: 8px;
+    }
+
+    .text-mode-toggle span {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    body.dark-text-mode .text-mode-toggle {
+      color: #1f2937 !important;
+    }
   </style>
 </head>
 
 <body class="text-white">
+
+  <!-- Text Mode Toggle Button -->
+  <button class="text-mode-toggle text-white" onclick="toggleTextMode()" id="text-mode-btn">
+    <i class="fas fa-adjust"></i>
+    <span id="text-mode-label">Texto Negro</span>
+  </button>
 
   <!-- Círculos flotantes decorativos -->
   <div class="floating-shape bg-white" style="width: 300px; height: 300px; top: 10%; left: 60%; animation-delay: 0s;"></div>
@@ -1670,6 +1786,37 @@
 
         // Initialize preview
         document.addEventListener('DOMContentLoaded', updateWhatsAppPreview);
+
+        // Text mode toggle
+        function toggleTextMode() {
+          const body = document.body;
+          const btn = document.getElementById('text-mode-btn');
+          const label = document.getElementById('text-mode-label');
+
+          if (body.classList.contains('dark-text-mode')) {
+            // Switch to white text
+            body.classList.remove('dark-text-mode');
+            label.textContent = 'Texto Negro';
+            localStorage.setItem('textMode', 'white');
+          } else {
+            // Switch to dark text
+            body.classList.add('dark-text-mode');
+            label.textContent = 'Texto Blanco';
+            localStorage.setItem('textMode', 'dark');
+          }
+        }
+
+        // Load saved text mode preference
+        document.addEventListener('DOMContentLoaded', function() {
+          const savedMode = localStorage.getItem('textMode');
+          const body = document.body;
+          const label = document.getElementById('text-mode-label');
+
+          if (savedMode === 'dark') {
+            body.classList.add('dark-text-mode');
+            label.textContent = 'Texto Blanco';
+          }
+        });
       </script>
 </body>
 
