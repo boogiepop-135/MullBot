@@ -15,7 +15,7 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
     if (!cleanQuery || cleanQuery.length === 0) {
         throw new Error("Query vacío");
     }
-    //HOLA SOY ALDAIR woooh
+    
     // Intentar primero con Gemini
     try {
         if (EnvConfig.GEMINI_API_KEY) {
@@ -142,10 +142,11 @@ TÉCNICAS: Beneficios naturales, sin presión. Si dicen "no", ofrece ver otras o
             model: 'claude-3-haiku-20240307', // Modelo más económico de Claude (muy bajo costo)
             max_tokens: 200, // Reducido para ahorrar tokens (~$0.00025 por 1K tokens output)
             temperature: 0.6, // Mismo que Gemini para consistencia
+            system: systemPrompt, // System prompt separado (más eficiente)
             messages: [
                 {
                     role: 'user',
-                    content: `${systemPrompt}\n\nUsuario: ${query}`
+                    content: query
                 }
             ]
         })

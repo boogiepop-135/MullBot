@@ -27,72 +27,30 @@
     }
 
     :root {
-      --primary: #10b981;
-      --primary-dark: #059669;
+      --primary: #000000;
+      --primary-dark: #333333;
       --sidebar-width: 280px;
     }
 
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #f5f5f5;
       min-height: 100vh;
-      position: relative;
-      overflow-x: hidden;
     }
 
-    /* Patrón de fondo animado */
-    body::before {
-      content: '';
-      position: absolute;
-      width: 200%;
-      height: 200%;
-      top: -50%;
-      left: -50%;
-      background-image:
-        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-      background-size: 50px 50px;
-      animation: drift 20s linear infinite;
-      z-index: 0;
-    }
-
-    @keyframes drift {
-      from { transform: translate(0, 0); }
-      to { transform: translate(50px, 50px); }
-    }
-
-    /* Círculos decorativos flotantes */
-    .floating-shape {
-      position: fixed;
-      border-radius: 50%;
-      opacity: 0.08;
-      animation: float 15s ease-in-out infinite;
-      z-index: 0;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0px) scale(1); }
-      50% { transform: translateY(-20px) scale(1.1); }
-    }
-
-    /* Sidebar glassmorphism */
+    /* Sidebar simple */
     .sidebar {
       width: var(--sidebar-width);
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border-right: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow:
-        4px 0 32px rgba(31, 38, 135, 0.37),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
-      transition: all 0.3s ease;
+      background: #ffffff;
+      border-right: 2px solid #000000;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
       position: relative;
       z-index: 10;
     }
 
     .nav-item {
       position: relative;
-      transition: all 0.3s ease;
-      color: rgba(255, 255, 255, 0.8);
+      transition: all 0.2s ease;
+      color: #000000;
     }
 
     .nav-item::before {
@@ -102,10 +60,9 @@
       top: 0;
       bottom: 0;
       width: 3px;
-      background: linear-gradient(135deg, #10b981, #34d399);
+      background: #000000;
       transform: scaleY(0);
-      transition: transform 0.3s ease;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+      transition: transform 0.2s ease;
     }
 
     .nav-item.active::before {
@@ -113,15 +70,14 @@
     }
 
     .nav-item.active {
-      background: rgba(16, 185, 129, 0.2);
-      color: #ffffff;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      background: #e5e5e5;
+      color: #000000;
+      font-weight: 600;
     }
 
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: translateX(4px);
-      color: #ffffff;
+      background: #f0f0f0;
+      color: #000000;
     }
 
     /* Main content */
@@ -139,164 +95,155 @@
     }
 
     ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
+      background: #e5e5e5;
     }
 
     ::-webkit-scrollbar-thumb {
-      background: rgba(16, 185, 129, 0.5);
+      background: #666666;
       border-radius: 5px;
-      border: 2px solid transparent;
-      background-clip: padding-box;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(16, 185, 129, 0.7);
-      background-clip: padding-box;
+      background: #000000;
     }
 
-    /* Stats cards with gradient */
+    /* Stats cards simple */
     .stat-card {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border-radius: 20px;
+      background: #ffffff;
+      border-radius: 8px;
       padding: 24px;
-      box-shadow:
-        0 8px 32px rgba(31, 38, 135, 0.37),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 2px solid #000000;
+      transition: all 0.2s ease;
     }
 
     .stat-card:hover {
-      transform: translateY(-6px);
-      box-shadow:
-        0 12px 40px rgba(31, 38, 135, 0.5),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
-      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .stat-card p {
-      color: rgba(255, 255, 255, 0.9);
+      color: #000000;
     }
 
     .stat-card .text-gray-800 {
-      color: #ffffff !important;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      color: #000000 !important;
     }
 
     .stat-card .text-gray-500 {
-      color: rgba(255, 255, 255, 0.8) !important;
+      color: #666666 !important;
     }
 
     .stat-icon {
       width: 48px;
       height: 48px;
-      border-radius: 12px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-center;
       font-size: 20px;
-      background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+      background: #000000;
       color: white;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
 
     /* Badge styles */
     .badge {
       font-size: 0.75rem;
       padding: 0.25rem 0.75rem;
-      border-radius: 12px;
+      border-radius: 4px;
       font-weight: 600;
       letter-spacing: 0.3px;
+      border: 1px solid #000000;
     }
 
     .badge-sent {
-      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-      color: #065f46;
+      background: #000000;
+      color: #ffffff;
     }
 
     .badge-scheduled {
-      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-      color: #1e40af;
+      background: #666666;
+      color: #ffffff;
     }
 
     .badge-failed {
-      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-      color: #991b1b;
+      background: #ffffff;
+      color: #000000;
+      border: 2px solid #000000;
     }
 
     .badge-draft {
-      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-      color: #1f2937;
+      background: #e5e5e5;
+      color: #000000;
     }
 
-    /* Modern table */
+    /* Simple table */
     table {
       border-collapse: separate;
       border-spacing: 0;
     }
 
     table thead {
-      background: rgba(255, 255, 255, 0.1);
+      background: #e5e5e5;
+      border-bottom: 2px solid #000000;
     }
 
     table thead th {
-      color: rgba(255, 255, 255, 0.95) !important;
+      color: #000000 !important;
       font-weight: 700;
     }
 
     table tbody tr {
       transition: all 0.2s ease;
+      border-bottom: 1px solid #cccccc;
     }
 
     table tbody tr:hover {
-      background: rgba(16, 185, 129, 0.15);
-      transform: scale(1.005);
+      background: #f5f5f5;
     }
 
     table tbody td {
-      color: rgba(255, 255, 255, 0.9) !important;
+      color: #000000 !important;
     }
 
-    /* Modern buttons */
+    /* Simple buttons */
     .btn-primary {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      background: #000000;
       color: white;
       padding: 10px 20px;
-      border-radius: 12px;
+      border-radius: 4px;
       font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-      border: none;
+      transition: all 0.2s ease;
+      border: 2px solid #000000;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+      background: #333333;
     }
 
     .btn-secondary {
       background: white;
-      color: #059669;
+      color: #000000;
       padding: 10px 20px;
-      border-radius: 12px;
+      border-radius: 4px;
       font-weight: 600;
-      transition: all 0.3s ease;
-      border: 2px solid #10b981;
+      transition: all 0.2s ease;
+      border: 2px solid #000000;
     }
 
     .btn-secondary:hover {
-      background: rgba(16, 185, 129, 0.1);
+      background: #f0f0f0;
     }
 
     /* WhatsApp message */
     .whatsapp-message {
       position: relative;
-      background: linear-gradient(135deg, #dcf8c6 0%, #c8e6c9 100%);
+      background: #e5e5e5;
       padding: 12px 18px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      border: 1px solid #000000;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      color: #000000;
     }
 
     .whatsapp-message::after {
@@ -308,104 +255,90 @@
       height: 0;
       border-top: 8px solid transparent;
       border-bottom: 8px solid transparent;
-      border-right: 8px solid #dcf8c6;
+      border-right: 8px solid #e5e5e5;
     }
 
     /* Card container */
     .content-card {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border-radius: 20px;
-      box-shadow:
-        0 8px 32px rgba(31, 38, 135, 0.37),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 2px solid #000000;
       overflow: hidden;
     }
 
     .content-card .text-gray-800 {
-      color: #ffffff !important;
+      color: #000000 !important;
     }
 
     .content-card .text-gray-600 {
-      color: rgba(255, 255, 255, 0.9) !important;
+      color: #333333 !important;
     }
 
     .content-card .text-gray-500 {
-      color: rgba(255, 255, 255, 0.8) !important;
+      color: #666666 !important;
     }
 
     .content-card .text-gray-400 {
-      color: rgba(255, 255, 255, 0.6) !important;
+      color: #999999 !important;
     }
 
     .content-card .border-gray-100 {
-      border-color: rgba(255, 255, 255, 0.15) !important;
+      border-color: #cccccc !important;
     }
 
     .content-card .bg-gray-50 {
-      background: rgba(255, 255, 255, 0.05) !important;
+      background: #f5f5f5 !important;
     }
 
     .content-card .divide-gray-100 > * + * {
-      border-color: rgba(255, 255, 255, 0.1) !important;
+      border-color: #e5e5e5 !important;
     }
 
-    /* Input modern */
+    /* Input simple */
     input, textarea, select {
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      color: #ffffff;
-      transition: all 0.3s ease;
+      background: #ffffff;
+      border: 2px solid #000000;
+      color: #000000;
+      transition: all 0.2s ease;
     }
 
     input::placeholder, textarea::placeholder {
-      color: rgba(255, 255, 255, 0.6);
+      color: #666666;
     }
 
     input:focus, textarea:focus, select:focus {
       outline: none;
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(16, 185, 129, 0.6);
-      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
-      transform: translateY(-2px);
+      background: #ffffff;
+      border-color: #000000;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
     }
 
-    /* Logo glow */
+    /* Logo simple */
     .logo-glow {
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
     }
 
     .logo-glow:hover {
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
       transform: scale(1.05);
     }
 
     /* Page header */
     .page-header {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border-radius: 24px;
+      background: #ffffff;
+      border-radius: 8px;
       padding: 28px;
       margin-bottom: 24px;
-      box-shadow:
-        0 8px 32px rgba(31, 38, 135, 0.37),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 2px solid #000000;
     }
 
     .page-header h1 {
-      background: linear-gradient(135deg, #ffffff 30%, #a7f3d0 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #000000 !important;
     }
 
     .page-header .text-gray-600 {
-      color: rgba(255, 255, 255, 0.85) !important;
+      color: #666666 !important;
     }
 
     /* Animation */
@@ -436,10 +369,9 @@
     #template-modal .inline-block,
     #create-user-modal .inline-block,
     #bot-content-modal .inline-block {
-      background: rgba(255, 255, 255, 0.15) !important;
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #ffffff !important;
+      border: 2px solid #000000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
     #chat-modal .bg-white,
@@ -449,7 +381,7 @@
     #template-modal .bg-white,
     #create-user-modal .bg-white,
     #bot-content-modal .bg-white {
-      background: transparent !important;
+      background: #ffffff !important;
     }
 
     #chat-modal .text-gray-900,
@@ -459,7 +391,7 @@
     #template-modal .text-gray-900,
     #create-user-modal .text-gray-900,
     #bot-content-modal .text-gray-900 {
-      color: #ffffff !important;
+      color: #000000 !important;
     }
 
     #chat-modal .text-gray-700,
@@ -469,7 +401,7 @@
     #template-modal .text-gray-700,
     #create-user-modal .text-gray-700,
     #bot-content-modal .text-gray-700 {
-      color: rgba(255, 255, 255, 0.9) !important;
+      color: #333333 !important;
     }
 
     #chat-modal .border-gray-200,
@@ -479,167 +411,47 @@
     #template-modal .border-gray-200,
     #create-user-modal .border-gray-200,
     #bot-content-modal .border-gray-200 {
-      border-color: rgba(255, 255, 255, 0.3) !important;
+      border-color: #cccccc !important;
     }
 
     /* Global text color adjustments */
     .text-gray-500 {
-      color: rgba(255, 255, 255, 0.8) !important;
+      color: #666666 !important;
     }
 
     label {
-      color: rgba(255, 255, 255, 0.95) !important;
+      color: #000000 !important;
     }
 
     .settings-tab {
-      color: rgba(255, 255, 255, 0.7) !important;
+      color: #666666 !important;
     }
 
-    .settings-tab.text-green-600 {
-      color: #10b981 !important;
-      border-color: #10b981 !important;
+    .settings-tab.text-black {
+      color: #000000 !important;
+      border-color: #000000 !important;
     }
 
     option {
-      background: #4c1d95;
-      color: white;
-    }
-
-    /* Dark text mode */
-    body.dark-text-mode {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode .nav-item {
-      color: rgba(31, 41, 55, 0.9) !important;
-    }
-
-    body.dark-text-mode .nav-item i {
-      color: rgba(31, 41, 55, 0.7) !important;
-    }
-
-    body.dark-text-mode .nav-item:hover,
-    body.dark-text-mode .nav-item.active {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode .stat-card p,
-    body.dark-text-mode .stat-card .text-gray-800,
-    body.dark-text-mode .stat-card .text-gray-500 {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode .content-card .text-gray-800,
-    body.dark-text-mode .content-card .text-gray-600,
-    body.dark-text-mode .content-card .text-gray-500,
-    body.dark-text-mode .content-card .text-gray-400 {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode .page-header h1 {
-      background: linear-gradient(135deg, #1f2937 30%, #059669 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    body.dark-text-mode .page-header .text-gray-600 {
-      color: #374151 !important;
-    }
-
-    body.dark-text-mode table thead th,
-    body.dark-text-mode table tbody td {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode input,
-    body.dark-text-mode textarea,
-    body.dark-text-mode select,
-    body.dark-text-mode label,
-    body.dark-text-mode .text-gray-500 {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode input::placeholder,
-    body.dark-text-mode textarea::placeholder {
-      color: rgba(31, 41, 55, 0.6) !important;
-    }
-
-    body.dark-text-mode .text-white {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode #user-name,
-    body.dark-text-mode #user-role {
-      color: #1f2937 !important;
-    }
-
-    body.dark-text-mode .settings-tab {
-      color: rgba(31, 41, 55, 0.8) !important;
-    }
-
-    /* Text mode toggle button */
-    .text-mode-toggle {
-      position: fixed;
-      top: 24px;
-      right: 24px;
-      z-index: 50;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 12px 20px;
-      border-radius: 50px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-    }
-
-    .text-mode-toggle:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .text-mode-toggle i {
-      font-size: 18px;
-      margin-right: 8px;
-    }
-
-    .text-mode-toggle span {
-      font-weight: 600;
-      font-size: 14px;
-    }
-
-    body.dark-text-mode .text-mode-toggle {
-      color: #1f2937 !important;
+      background: #ffffff;
+      color: #000000;
     }
   </style>
 </head>
 
-<body class="text-white">
+<body class="text-black">
 
-  <!-- Text Mode Toggle Button -->
-  <button class="text-mode-toggle text-white" onclick="toggleTextMode()" id="text-mode-btn">
-    <i class="fas fa-adjust"></i>
-    <span id="text-mode-label">Texto Negro</span>
-  </button>
-
-  <!-- Círculos flotantes decorativos -->
-  <div class="floating-shape bg-white" style="width: 300px; height: 300px; top: 10%; left: 60%; animation-delay: 0s;"></div>
-  <div class="floating-shape bg-green-300" style="width: 200px; height: 200px; top: 60%; right: 15%; animation-delay: 3s;"></div>
-  <div class="floating-shape bg-purple-300" style="width: 250px; height: 250px; bottom: 15%; left: 70%; animation-delay: 6s;"></div>
 
   <!-- Sidebar -->
   <aside class="sidebar fixed inset-y-0 left-0 z-30 flex flex-col">
     <!-- Logo -->
-    <div class="h-20 flex items-center px-6 border-b border-white/20">
+    <div class="h-20 flex items-center px-6 border-b border-gray-300">
       <div class="w-12 h-12 rounded-2xl flex items-center justify-center mr-3 overflow-hidden logo-glow">
-        <img src="/public/Logo_cara.png" alt="MüllBot Logo" class="w-full h-full object-cover">
+        <img src="/Logo_cara.png" alt="MüllBot Logo" class="w-full h-full object-cover">
       </div>
       <div>
         <span class="text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">MüllBot</span>
-        <p class="text-xs text-white/70">CRM Dashboard</p>
+        <p class="text-xs text-gray-600">CRM Dashboard</p>
       </div>
     </div>
 
@@ -647,64 +459,64 @@
     <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
       <a href="#" onclick="showSection('dashboard')" id="nav-dashboard"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-home w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-home w-7 text-center transition-colors text-lg"></i>
         <span class="ml-3">Dashboard</span>
       </a>
 
       <a href="#" onclick="showSection('contacts')" id="nav-contacts"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-address-book w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-address-book w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Contactos</span>
       </a>
 
       <a href="#" onclick="showSection('campaigns')" id="nav-campaigns"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-bullhorn w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-bullhorn w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Campañas</span>
       </a>
 
       <a href="#" onclick="showSection('templates')" id="nav-templates"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-file-alt w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-file-alt w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Plantillas</span>
       </a>
 
       <a href="#" onclick="showSection('products')" id="nav-products"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-box w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-box w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Productos</span>
       </a>
 
       <a href="#" onclick="showSection('users')" id="nav-users"
         class="nav-item hidden flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-users w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-users w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Usuarios</span>
       </a>
 
       <a href="#" onclick="showSection('bot-content')" id="nav-bot-content"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-comment-dots w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-comment-dots w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Contenido Bot</span>
       </a>
 
       <a href="#" onclick="showSection('settings')" id="nav-settings"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
-        <i class="fas fa-cog w-7 text-center text-white/70 group-hover:text-green-300 transition-colors text-lg"></i>
+        <i class="fas fa-cog w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Configuración</span>
       </a>
     </nav>
 
     <!-- User Info & Logout -->
-    <div class="border-t border-white/20 p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20">
+    <div class="border-t border-gray-300 p-4 bg-gray-100">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-lg" id="user-initials">?</div>
           <div class="ml-3">
             <p class="text-sm font-semibold text-white" id="user-name">Usuario</p>
-            <p class="text-xs text-white/70" id="user-role">-</p>
+            <p class="text-xs text-gray-600" id="user-role">-</p>
           </div>
         </div>
-        <button onclick="logout()" class="text-white/70 hover:text-red-400 transition-colors p-2 hover:bg-red-500/20 rounded-lg" title="Cerrar sesión">
+        <button onclick="logout()" class="hover:bg-gray-200 transition-colors p-2 rounded-lg" title="Cerrar sesión">
           <i class="fas fa-sign-out-alt text-lg"></i>
         </button>
       </div>
@@ -739,7 +551,7 @@
               <p class="text-sm text-gray-500 font-medium mb-1">Interesados</p>
               <p class="text-3xl font-bold text-gray-800" id="interested-contacts">0</p>
             </div>
-            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
+            <div class="stat-icon">
               <i class="fas fa-star"></i>
             </div>
           </div>
@@ -750,7 +562,7 @@
               <p class="text-sm text-gray-500 font-medium mb-1">Info Solicitada</p>
               <p class="text-3xl font-bold text-gray-800" id="info-requested-count">0</p>
             </div>
-            <div class="stat-icon" style="background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);">
+            <div class="stat-icon">
               <i class="fas fa-info-circle"></i>
             </div>
           </div>
@@ -761,7 +573,7 @@
               <p class="text-sm text-gray-500 font-medium mb-1">Pago Pendiente</p>
               <p class="text-3xl font-bold text-gray-800" id="payment-pending-count">0</p>
             </div>
-            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+            <div class="stat-icon">
               <i class="fas fa-clock"></i>
             </div>
           </div>
@@ -772,7 +584,7 @@
               <p class="text-sm text-gray-500 font-medium mb-1">Cita Agendada</p>
               <p class="text-3xl font-bold text-gray-800" id="appointment-scheduled-count">0</p>
             </div>
-            <div class="stat-icon" style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);">
+            <div class="stat-icon">
               <i class="fas fa-calendar"></i>
             </div>
           </div>
@@ -805,7 +617,7 @@
               <p class="text-sm text-gray-500 font-medium mb-1">Pausados</p>
               <p class="text-3xl font-bold text-gray-800" id="paused-contacts">0</p>
             </div>
-            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+            <div class="stat-icon">
               <i class="fas fa-pause"></i>
             </div>
           </div>
@@ -888,14 +700,23 @@
           <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Contactos</h1>
           <p class="text-gray-600 mt-1">Gestiona tus contactos</p>
         </div>
+        <div class="flex gap-3">
+          <button onclick="exportContacts()" class="btn-primary">
+            <i class="fas fa-download mr-2"></i>Exportar (XLSX)
+          </button>
+          <label for="import-file-input" class="btn-primary cursor-pointer">
+            <i class="fas fa-upload mr-2"></i>Importar (XLSX)
+          </label>
+          <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="importContacts(event)">
+        </div>
       </div>
 
       <!-- Filters -->
       <div class="content-card p-6 mb-6">
         <div class="flex flex-wrap gap-4">
           <input type="text" id="contact-search" placeholder="Buscar contactos..."
-            class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none w-64 transition-all">
-          <select id="sale-status-filter" class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+            class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none w-64 transition-all">
+          <select id="sale-status-filter" class="border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
             <option value="">Todos los estados</option>
             <option value="lead">Lead</option>
             <option value="interested">Interesado</option>
@@ -981,18 +802,63 @@
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Nombre de la Campaña</label>
                 <input type="text" name="name" required
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Mensaje</label>
                 <textarea name="message" id="campaign-message" rows="5" required
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all"
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"
                   oninput="updateWhatsAppPreview()"></textarea>
               </div>
               <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Programar envío (opcional)</label>
-                <input type="datetime-local" name="scheduledAt"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Filtro por Estado</label>
+                <select name="saleStatusFilter" id="campaign-status-filter" multiple
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                  <option value="lead">Lead</option>
+                  <option value="interested">Interesado</option>
+                  <option value="info_requested">Info Solicitada</option>
+                  <option value="payment_pending">Pago Pendiente</option>
+                  <option value="appointment_scheduled">Cita Agendada</option>
+                  <option value="appointment_confirmed">Cita Confirmada</option>
+                  <option value="completed">Completado</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Mantén presionado Ctrl/Cmd para seleccionar múltiples estados</p>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="is-batch-campaign" name="isBatchCampaign" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                  <span class="text-sm font-bold text-gray-700">Campaña por Lotes</span>
+                </label>
+              </div>
+              <div id="batch-campaign-options" class="hidden space-y-3">
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Lote Máximo</label>
+                  <input type="number" id="batch-size" name="batchSize" min="1" value="25"
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Intervalo de Pausa (minutos)</label>
+                  <input type="number" id="batch-interval" name="batchInterval" min="0" value="15"
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Programar Envío Inicial</label>
+                  <input type="datetime-local" id="campaign-scheduled-at" name="scheduledAt"
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                </div>
+                <div id="campaign-summary" class="p-3 bg-blue-50 rounded-lg text-sm text-blue-800 hidden">
+                  <p class="font-semibold mb-1">Resumen de la Campaña:</p>
+                  <p id="total-contacts-info">-</p>
+                  <p id="total-batches-info">-</p>
+                  <p id="contacts-per-batch-info">-</p>
+                </div>
+              </div>
+              <div id="normal-campaign-options">
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Programar envío (opcional)</label>
+                  <input type="datetime-local" name="scheduledAt"
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                </div>
               </div>
               <button type="submit" class="btn-primary w-full py-3">
                 Crear Campaña
@@ -1127,7 +993,7 @@
           <div class="content-card">
           <div class="border-b border-gray-200">
             <nav class="flex -mb-px">
-              <button onclick="showSettingsTab('general')" id="tab-general" class="settings-tab px-6 py-4 text-sm font-semibold text-green-600 border-b-2 border-green-600">General</button>
+              <button onclick="showSettingsTab('general')" id="tab-general" class="settings-tab px-6 py-4 text-sm font-semibold text-black border-b-2 border-black">General</button>
               <button onclick="showSettingsTab('business')" id="tab-business" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Negocio</button>
               <button onclick="showSettingsTab('messages')" id="tab-messages" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Mensajes</button>
               <button onclick="showSettingsTab('payments')" id="tab-payments" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Pagos</button>
@@ -1142,25 +1008,25 @@
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Bot</label>
                 <input type="text" id="bot-name-input" placeholder="MüllBot"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Emoji del Bot</label>
                 <input type="text" id="bot-emoji-input" placeholder="🌱"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Delay de Respuesta (ms)</label>
                 <div class="flex items-center gap-2">
                   <input type="number" id="bot-delay-input" min="0" step="1000" placeholder="10000"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
                   <span class="text-xs text-gray-500 whitespace-nowrap" id="current-delay-text"></span>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">Tiempo de espera antes de responder (1000ms = 1s)</p>
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Modelo de IA</label>
-                <select id="ai-model-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                <select id="ai-model-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
                   <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
                   <option value="gpt-4o-mini">GPT-4o Mini</option>
                   <option value="gpt-4o">GPT-4o</option>
@@ -1169,7 +1035,7 @@
               <div class="md:col-span-2">
                 <label class="block text-sm font-bold text-gray-700 mb-2">Prompt del Sistema (IA)</label>
                 <textarea id="ai-system-prompt-input" rows="4" placeholder="Instrucciones personalizadas para la IA..."
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all"></textarea>
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
                 <p class="text-xs text-gray-500 mt-2">Deja vacío para usar el prompt predeterminado</p>
             </div>
           </div>
@@ -1180,7 +1046,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Personalidad del Vendedor</label>
-                  <select id="seller-personality-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  <select id="seller-personality-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
                     <option value="experto">🧠 Experto - Profesional y capacitado</option>
                     <option value="amigable">😊 Amigable - Cercano y genera confianza</option>
                     <option value="formal">👔 Formal - Corporativo y profesional</option>
@@ -1192,11 +1058,11 @@
                   <label class="block text-sm font-bold text-gray-700 mb-2">¿Puede ofrecer descuentos?</label>
                   <div class="flex items-center gap-4 mt-2">
                     <label class="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="can-offer-discounts" id="discounts-yes" value="true" class="text-green-600 focus:ring-green-500">
+                      <input type="radio" name="can-offer-discounts" id="discounts-yes" value="true" class="text-black focus:ring-green-500">
                       <span class="text-sm">Sí</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="can-offer-discounts" id="discounts-no" value="false" checked class="text-green-600 focus:ring-green-500">
+                      <input type="radio" name="can-offer-discounts" id="discounts-no" value="false" checked class="text-black focus:ring-green-500">
                       <span class="text-sm">No</span>
                     </label>
                   </div>
@@ -1204,13 +1070,13 @@
                 <div id="discount-options" class="hidden">
                   <label class="block text-sm font-bold text-gray-700 mb-2">Descuento Máximo (%)</label>
                   <input type="number" id="max-discount-input" min="1" max="50" value="10"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
                   <p class="text-xs text-gray-500 mt-2">Porcentaje máximo que el bot puede ofrecer</p>
                 </div>
                 <div id="discount-conditions-container" class="md:col-span-2 hidden">
                   <label class="block text-sm font-bold text-gray-700 mb-2">Condiciones para Ofrecer Descuentos</label>
                   <textarea id="discount-conditions-input" rows="3" placeholder="Ej: Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones..."
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all"></textarea>
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
                 </div>
               </div>
             </div>
@@ -1222,37 +1088,37 @@
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Negocio</label>
                 <input type="text" id="business-name-input" placeholder="Müllblue"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Horario de Atención</label>
                 <input type="text" id="business-hours-input" placeholder="Lunes a Viernes 9am - 7pm"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div class="md:col-span-2">
                 <label class="block text-sm font-bold text-gray-700 mb-2">Descripción del Negocio</label>
                 <textarea id="business-description-input" rows="2" placeholder="Descripción corta del negocio..."
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all"></textarea>
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Teléfono</label>
                 <input type="text" id="business-phone-input" placeholder="+52 123 456 7890"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Email</label>
                 <input type="email" id="business-email-input" placeholder="contacto@ejemplo.com"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Sitio Web</label>
                 <input type="url" id="business-website-input" placeholder="https://ejemplo.com"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Dirección</label>
                 <input type="text" id="business-address-input" placeholder="Calle, Ciudad, País"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div class="md:col-span-2 border-t pt-4 mt-2">
                 <h4 class="text-sm font-bold text-gray-700 mb-3">Redes Sociales</h4>
@@ -1260,17 +1126,17 @@
                   <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fab fa-facebook text-blue-600 mr-1"></i>Facebook</label>
                     <input type="url" id="social-facebook-input" placeholder="https://facebook.com/..."
-                      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-green-500 outline-none transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-black outline-none transition-all">
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fab fa-instagram text-pink-600 mr-1"></i>Instagram</label>
                     <input type="url" id="social-instagram-input" placeholder="https://instagram.com/..."
-                      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-green-500 outline-none transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-black outline-none transition-all">
                   </div>
                   <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fab fa-tiktok mr-1"></i>TikTok</label>
                     <input type="url" id="social-tiktok-input" placeholder="https://tiktok.com/..."
-                      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-green-500 outline-none transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-black outline-none transition-all">
                   </div>
                 </div>
               </div>
@@ -1283,17 +1149,17 @@
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Mensaje de Bienvenida</label>
                 <textarea id="welcome-message-input" rows="4" placeholder="Mensaje inicial cuando alguien escribe por primera vez..."
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all font-mono text-sm"></textarea>
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all font-mono text-sm"></textarea>
                 <p class="text-xs text-gray-500 mt-2">Deja vacío para usar el mensaje predeterminado</p>
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Mensaje de Pausa (Atención Humana)</label>
                 <textarea id="pause-message-input" rows="4" placeholder="Mensaje cuando se pausa el bot para atención humana..."
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all font-mono text-sm"></textarea>
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all font-mono text-sm"></textarea>
                 <p class="text-xs text-gray-500 mt-2">Usa {businessHours} para insertar el horario automáticamente</p>
               </div>
-              <div class="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-2 border-green-400/40 rounded-xl p-4">
-                <p class="text-sm text-white/90"><i class="fas fa-info-circle mr-2"></i>Para editar las respuestas del menú y otras respuestas automáticas, ve a la sección <strong>Contenido del Bot</strong> en el menú lateral.</p>
+              <div class="bg-gray-100 border-2 border-green-400/40 rounded-xl p-4">
+                <p class="text-sm text-gray-800"><i class="fas fa-info-circle mr-2"></i>Para editar las respuestas del menú y otras respuestas automáticas, ve a la sección <strong>Contenido del Bot</strong> en el menú lateral.</p>
               </div>
             </div>
           </div>
@@ -1304,13 +1170,13 @@
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Información Bancaria</label>
                 <textarea id="bank-info-input" rows="5" placeholder="Banco: ...&#10;Cuenta: ...&#10;CLABE: ...&#10;Titular: ..."
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all font-mono text-sm"></textarea>
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all font-mono text-sm"></textarea>
                 <p class="text-xs text-gray-500 mt-2">Esta información se mostrará cuando pregunten por métodos de pago</p>
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Email de PayPal</label>
                 <input type="email" id="paypal-email-input" placeholder="pagos@ejemplo.com"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
             </div>
           </div>
@@ -1318,20 +1184,21 @@
           <!-- Tab: WhatsApp -->
           <div id="settings-whatsapp" class="settings-panel hidden p-6">
             <div class="space-y-6">
-              <div class="flex items-center justify-between p-6 bg-gradient-to-r from-white/10 to-white/5 rounded-2xl border-2 border-white/20">
+              <div class="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border-2 border-gray-300">
                 <div>
                   <p class="font-bold text-white">Estado de la conexión</p>
-                  <p class="text-sm text-white/80 mt-1" id="whatsapp-connected-status">Verificando...</p>
+                  <p class="text-sm text-gray-700 mt-1" id="whatsapp-connected-status">Verificando...</p>
                 </div>
                 <button onclick="logoutWhatsApp()"
-                  class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
+                  class="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
                   <i class="fas fa-unlink mr-2"></i>Desvincular
                 </button>
               </div>
-              <div id="qr-display" class="hidden p-8 bg-gradient-to-br from-white/10 to-white/5 rounded-2xl border-2 border-white/20 flex flex-col items-center">
-                <p class="text-sm font-bold text-white mb-6">Escanea el código QR con WhatsApp para vincular:</p>
+              <div id="qr-display" class="hidden p-8 bg-gray-50 rounded-2xl border-2 border-gray-300 flex flex-col items-center">
+                <p class="text-sm font-bold text-gray-800 mb-6">Escanea el código QR con WhatsApp para vincular:</p>
                 <div id="qr-code-container" class="bg-white p-6 rounded-2xl shadow-xl"></div>
-                <p class="text-xs text-white/70 mt-6">El código se actualiza automáticamente cada 20 segundos</p>
+                <p class="text-xs text-gray-600 mt-6">El código se actualiza automáticamente cada 20 segundos</p>
+                <div id="qr-instructions" class="mt-4 text-xs text-gray-500 text-center max-w-md"></div>
               </div>
 
               <!-- Gestión de Contactos Pausados -->
@@ -1339,10 +1206,10 @@
                 <div class="flex items-center justify-between">
                   <div>
                     <p class="font-bold text-white flex items-center"><i class="fas fa-volume-mute mr-2"></i>Contactos Pausados</p>
-                    <p class="text-sm text-white/90 mt-1">Despausar todos los contactos para que el bot pueda responderles</p>
+                    <p class="text-sm text-gray-800 mt-1">Despausar todos los contactos para que el bot pueda responderles</p>
             </div>
                   <button onclick="unpauseAllContacts()"
-                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
+                    class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
                     <i class="fas fa-play mr-2"></i>Despausar Todos
                   </button>
           </div>
@@ -1357,17 +1224,17 @@
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Contraseña Actual</label>
                 <input type="password" id="current-password-input"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Nueva Contraseña</label>
                 <input type="password" id="new-password-input"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Confirmar Nueva Contraseña</label>
                 <input type="password" id="confirm-password-input"
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all">
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
               <button onclick="changePassword()" class="btn-primary w-full py-3">
                 Actualizar Contraseña
@@ -1376,7 +1243,7 @@
           </div>
 
           <!-- Save Button -->
-          <div class="p-6 bg-gradient-to-r from-white/5 to-white/10 border-t-2 border-white/20 flex justify-end">
+          <div class="p-6 bg-gray-50 border-t-2 border-gray-300 flex justify-end">
             <button onclick="saveBotConfig()" class="btn-primary px-8 py-3">
               <i class="fas fa-save mr-2"></i>Guardar Configuración
               </button>
@@ -1422,7 +1289,7 @@
             <!-- Header -->
             <div class="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4 border-b border-green-400 flex justify-between items-center">
               <div class="flex items-center">
-                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-green-600 mr-3 shadow-lg">
+                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-black mr-3 shadow-lg">
                   <i class="fas fa-user text-lg"></i>
                 </div>
                 <div>
@@ -1432,7 +1299,7 @@
               </div>
               <div class="flex items-center space-x-2">
                 <button type="button" onclick="pauseBotFromChat(currentChatPhoneNumber)" id="pause-bot-btn"
-                  class="bg-yellow-500 text-white hover:bg-yellow-600 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md">
+                  class="bg-gray-600 text-white hover:bg-yellow-600 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md">
                   <i class="fas fa-pause mr-1"></i>Pausar Bot
                 </button>
                 <button type="button" onclick="closeChatModal()"
@@ -1449,7 +1316,7 @@
             <!-- Input -->
             <div class="bg-white px-6 py-4 border-t-2 border-gray-200 flex items-center gap-3">
               <textarea id="chat-message-input" rows="1"
-                class="flex-1 border-2 border-gray-200 rounded-2xl px-4 py-3 focus:border-green-500 focus:outline-none resize-none transition-all"
+                class="flex-1 border-2 border-gray-200 rounded-2xl px-4 py-3 focus:border-black focus:outline-none resize-none transition-all"
                 placeholder="Escribe un mensaje..."
                 onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"></textarea>
               <button onclick="sendChatMessage()"
@@ -1483,14 +1350,14 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Contenido del Mensaje</label>
                   <textarea id="content-text" rows="10"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none font-mono text-sm transition-all"></textarea>
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black focus:outline-none font-mono text-sm transition-all"></textarea>
                   <p class="text-xs text-gray-500 mt-2">Puedes usar formato de WhatsApp (*negrita*, _cursiva_,
                     ~tachado~, etc.)</p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Ruta de Imagen (Opcional)</label>
                   <input type="text" id="content-media-path"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black focus:outline-none transition-all">
                 </div>
               </div>
             </div>
@@ -1521,7 +1388,7 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Nuevo Estado</label>
                   <select id="status-select"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                     <option value="lead">Lead</option>
                     <option value="interested">Interesado</option>
                     <option value="info_requested">Info Solicitada</option>
@@ -1534,12 +1401,12 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Fecha (si aplica)</label>
                   <input type="datetime-local" id="appointment-date"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Notas</label>
                   <textarea id="status-notes" rows="3"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all"></textarea>
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all"></textarea>
                 </div>
               </div>
             </div>
@@ -1571,43 +1438,43 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Nombre</label>
                   <input type="text" id="product-name"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Descripción</label>
                   <textarea id="product-description" rows="3"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all"></textarea>
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all"></textarea>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Precio</label>
                     <input type="number" id="product-price" step="0.01"
-                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                   </div>
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Categoría</label>
                     <input type="text" id="product-category"
-                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                   </div>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Tamaños (separados por coma)</label>
                   <input type="text" id="product-sizes" placeholder="S, M, L"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Promociones</label>
                   <input type="text" id="product-promotions"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">URL Imagen</label>
                   <input type="text" id="product-image-url"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div class="flex items-center">
                   <input type="checkbox" id="product-in-stock"
-                    class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                    class="h-5 w-5 text-black focus:ring-green-500 border-gray-300 rounded">
                   <label for="product-in-stock" class="ml-3 block text-sm font-medium text-gray-900">En Stock</label>
                 </div>
               </div>
@@ -1640,12 +1507,12 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Nombre</label>
                   <input type="text" id="template-name"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Contenido</label>
                   <textarea id="template-content" rows="5"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all"></textarea>
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all"></textarea>
                 </div>
               </div>
             </div>
@@ -1676,17 +1543,17 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Usuario</label>
                   <input type="text" id="create-username-input"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Contraseña</label>
                   <input type="password" id="create-password-input"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Rol</label>
                   <select id="create-role-select"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                     <option value="user">Usuario</option>
                     <option value="admin">Administrador</option>
                   </select>
@@ -1721,13 +1588,13 @@
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Clave (ID único)</label>
                     <input type="text" id="bot-content-key-input" placeholder="main_menu"
-                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                     <p class="text-xs text-gray-500 mt-2">Identificador único para este contenido</p>
                   </div>
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Categoría</label>
                     <select id="bot-content-category-input"
-                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                      class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                       <option value="quick_response">Respuesta Rápida</option>
                       <option value="command">Comando</option>
                       <option value="other">Otro</option>
@@ -1737,18 +1604,18 @@
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Descripción</label>
                   <input type="text" id="bot-content-description-input" placeholder="Descripción de este contenido..."
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Contenido del Mensaje</label>
                   <textarea id="bot-content-text-input" rows="10" placeholder="Escribe el mensaje aquí..."
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none font-mono text-sm transition-all"></textarea>
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black focus:outline-none font-mono text-sm transition-all"></textarea>
                   <p class="text-xs text-gray-500 mt-2">Puedes usar formato de WhatsApp: *negrita*, _cursiva_, ~tachado~</p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Ruta de Media (opcional)</label>
                   <input type="text" id="bot-content-media-input" placeholder="public/images/ejemplo.jpg"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 transition-all">
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
               </div>
             </div>
@@ -1786,37 +1653,6 @@
 
         // Initialize preview
         document.addEventListener('DOMContentLoaded', updateWhatsAppPreview);
-
-        // Text mode toggle
-        function toggleTextMode() {
-          const body = document.body;
-          const btn = document.getElementById('text-mode-btn');
-          const label = document.getElementById('text-mode-label');
-
-          if (body.classList.contains('dark-text-mode')) {
-            // Switch to white text
-            body.classList.remove('dark-text-mode');
-            label.textContent = 'Texto Negro';
-            localStorage.setItem('textMode', 'white');
-          } else {
-            // Switch to dark text
-            body.classList.add('dark-text-mode');
-            label.textContent = 'Texto Blanco';
-            localStorage.setItem('textMode', 'dark');
-          }
-        }
-
-        // Load saved text mode preference
-        document.addEventListener('DOMContentLoaded', function() {
-          const savedMode = localStorage.getItem('textMode');
-          const body = document.body;
-          const label = document.getElementById('text-mode-label');
-
-          if (savedMode === 'dark') {
-            body.classList.add('dark-text-mode');
-            label.textContent = 'Texto Blanco';
-          }
-        });
       </script>
 </body>
 

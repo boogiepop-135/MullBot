@@ -23,182 +23,85 @@
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #ffffff;
       min-height: 100vh;
-      position: relative;
-      overflow-x: hidden;
     }
 
-    /* Patrón de fondo animado */
-    body::before {
-      content: '';
-      position: absolute;
-      width: 200%;
-      height: 200%;
-      top: -50%;
-      left: -50%;
-      background-image:
-        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-      background-size: 50px 50px;
-      animation: drift 20s linear infinite;
-      z-index: 0;
+    /* Card simple */
+    .login-card {
+      background: #ffffff;
+      border: 2px solid #000000;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    @keyframes drift {
-      from { transform: translate(0, 0); }
-      to { transform: translate(50px, 50px); }
+    /* Inputs simples */
+    .input-simple {
+      background: #ffffff;
+      border: 2px solid #000000;
+      color: #000000;
+      transition: all 0.2s ease;
     }
 
-    /* Círculos decorativos flotantes */
-    .floating-shape {
-      position: absolute;
-      border-radius: 50%;
-      opacity: 0.1;
-      animation: float 15s ease-in-out infinite;
+    .input-simple:focus {
+      outline: none;
+      border-color: #000000;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
     }
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0px) scale(1); }
-      50% { transform: translateY(-20px) scale(1.1); }
+    .input-simple::placeholder {
+      color: #666666;
     }
 
-    /* Card con glassmorphism mejorado */
-    .glass-morphism {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow:
-        0 8px 32px 0 rgba(31, 38, 135, 0.37),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+    /* Botón simple */
+    .btn-simple {
+      background: #000000;
+      color: #ffffff;
+      transition: all 0.2s ease;
     }
 
-    /* Animación de entrada */
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .btn-simple:hover {
+      background: #333333;
     }
 
-    .animate-slide-up {
-      animation: slideUp 0.6s ease-out;
+    .btn-simple:active {
+      background: #000000;
     }
 
-    /* Inputs con estilo mejorado */
-    .input-glass {
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-
-    .input-glass:focus {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.6);
-      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .input-glass::placeholder {
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    /* Botón con gradiente y hover */
-    .btn-gradient {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .btn-gradient::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-      transition: left 0.5s;
-    }
-
-    .btn-gradient:hover::before {
-      left: 100%;
-    }
-
-    .btn-gradient:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
-    }
-
-    .btn-gradient:active {
-      transform: translateY(0);
-    }
-
-    /* Logo con efecto de brillo */
-    .logo-shine {
-      background: linear-gradient(135deg, #10b981, #34d399);
-      box-shadow:
-        0 10px 40px rgba(16, 185, 129, 0.5),
-        0 0 0 3px rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
-    }
-
-    .logo-shine:hover {
-      transform: scale(1.05) rotate(5deg);
-      box-shadow:
-        0 15px 60px rgba(16, 185, 129, 0.6),
-        0 0 0 4px rgba(255, 255, 255, 0.3);
-    }
-
-    /* Texto con gradiente */
-    .text-shine {
-      background: linear-gradient(135deg, #ffffff 30%, #a7f3d0 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    /* Logo simple */
+    .logo-container {
+      background: #000000;
+      border: 2px solid #000000;
     }
   </style>
 </head>
 
 <body class="flex items-center justify-center p-4">
 
-  <!-- Círculos flotantes decorativos -->
-  <div class="floating-shape bg-white" style="width: 300px; height: 300px; top: 10%; left: 5%; animation-delay: 0s;"></div>
-  <div class="floating-shape bg-green-300" style="width: 200px; height: 200px; top: 60%; right: 10%; animation-delay: 3s;"></div>
-  <div class="floating-shape bg-purple-300" style="width: 250px; height: 250px; bottom: 10%; left: 15%; animation-delay: 6s;"></div>
-
   <!-- Contenedor principal -->
-  <div class="relative z-10 w-full max-w-md">
+  <div class="w-full max-w-md">
 
     <!-- Card de Login -->
-    <div class="glass-morphism rounded-3xl p-8 md:p-10 animate-slide-up">
+    <div class="login-card rounded-lg p-8 md:p-10">
 
       <!-- Logo -->
       <div class="flex justify-center mb-6">
-        <div class="logo-shine w-24 h-24 rounded-3xl p-2 cursor-pointer">
-          <div class="w-full h-full bg-white rounded-2xl flex items-center justify-center overflow-hidden">
-            <img src="/public/Logo_cara.png" alt="MüllBot" class="w-20 h-20 object-cover">
+        <div class="logo-container w-24 h-24 rounded-lg p-2">
+          <div class="w-full h-full bg-white rounded flex items-center justify-center overflow-hidden">
+            <img src="/Logo_cara.png" alt="MüllBot" class="w-20 h-20 object-cover">
           </div>
         </div>
       </div>
 
       <!-- Título -->
       <div class="text-center mb-8">
-        <h1 class="text-4xl md:text-5xl font-bold mb-2">
-          <span class="text-shine">Müllblue</span>
+        <h1 class="text-4xl md:text-5xl font-bold mb-2 text-black">
+          Müllblue
         </h1>
-        <p class="text-white/80 text-lg font-medium">
-          <i class="fas fa-leaf text-green-300 mr-2"></i>
+        <p class="text-gray-700 text-lg font-medium">
+          <i class="fas fa-leaf mr-2"></i>
           Portal de Administración
         </p>
-        <div class="mt-4 h-1 w-24 mx-auto bg-gradient-to-r from-transparent via-white/50 to-transparent rounded-full"></div>
+        <div class="mt-4 h-1 w-24 mx-auto bg-black rounded-full"></div>
       </div>
 
       <!-- Formulario -->
@@ -206,7 +109,7 @@
 
         <!-- Usuario -->
         <div>
-          <label class="block text-white/90 font-semibold mb-2 ml-1">
+          <label class="block text-black font-semibold mb-2 ml-1">
             <i class="fas fa-user mr-2"></i>Usuario
           </label>
           <div class="relative">
@@ -215,14 +118,14 @@
               id="username"
               name="username"
               required
-              class="input-glass w-full px-4 py-3.5 rounded-2xl text-white placeholder-white/60 focus:outline-none"
+              class="input-simple w-full px-4 py-3.5 rounded-lg focus:outline-none"
               placeholder="Tu nombre de usuario">
           </div>
         </div>
 
         <!-- Contraseña -->
         <div>
-          <label class="block text-white/90 font-semibold mb-2 ml-1">
+          <label class="block text-black font-semibold mb-2 ml-1">
             <i class="fas fa-lock mr-2"></i>Contraseña
           </label>
           <div class="relative">
@@ -231,7 +134,7 @@
               id="password"
               name="password"
               required
-              class="input-glass w-full px-4 py-3.5 rounded-2xl text-white placeholder-white/60 focus:outline-none"
+              class="input-simple w-full px-4 py-3.5 rounded-lg focus:outline-none"
               placeholder="Tu contraseña">
           </div>
         </div>
@@ -239,26 +142,26 @@
         <!-- Botón -->
         <button
           type="submit"
-          class="btn-gradient w-full py-4 rounded-2xl text-white font-bold text-lg mt-6 shadow-lg focus:outline-none focus:ring-4 focus:ring-green-300/50">
+          class="btn-simple w-full py-4 rounded-lg font-bold text-lg mt-6 focus:outline-none">
           <i class="fas fa-sign-in-alt mr-2"></i>
           Iniciar Sesión
         </button>
 
         <!-- Error -->
-        <div id="error-message" class="hidden mt-4 p-4 bg-red-500/20 border-2 border-red-300/50 backdrop-blur-lg rounded-2xl text-white text-center">
+        <div id="error-message" class="hidden mt-4 p-4 bg-white border-2 border-black rounded-lg text-black text-center">
         </div>
       </form>
 
       <!-- Footer -->
-      <div class="mt-8 pt-6 border-t border-white/20">
-        <div class="flex items-center justify-center gap-3 text-white/70 text-sm">
-          <i class="fas fa-shield-alt text-green-300"></i>
+      <div class="mt-8 pt-6 border-t border-gray-300">
+        <div class="flex items-center justify-center gap-3 text-gray-700 text-sm">
+          <i class="fas fa-shield-alt"></i>
           <span>Sistema Seguro</span>
           <span>•</span>
-          <i class="fas fa-leaf text-green-300"></i>
+          <i class="fas fa-leaf"></i>
           <span>Gestión Sostenible</span>
         </div>
-        <p class="text-center text-white/50 text-xs mt-3">
+        <p class="text-center text-gray-600 text-xs mt-3">
           MüllBot © 2025 - Tecnología Verde
         </p>
       </div>
