@@ -1393,7 +1393,8 @@ async function loadWhatsAppStatus() {
     if (!response.ok) throw new Error('Failed to check status');
     const data = await response.json();
     
-    if (data.clientReady && data.qrScanned) {
+    // Si clientReady es true, el cliente está conectado (aunque qrScanned pueda ser false temporalmente)
+    if (data.clientReady) {
       if (statusEl) {
         statusEl.innerHTML = `<span class="text-green-600 font-medium">✅ Conectado</span>`;
         if (data.botContact) {
@@ -1402,6 +1403,7 @@ async function loadWhatsAppStatus() {
       }
       if (qrDisplay) qrDisplay.classList.add('hidden');
     } else {
+      // Si no está listo, verificar si hay QR disponible
       if (statusEl) statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Esperando conexión...</span>`;
       // Mostrar QR si está disponible
       await loadQRCode();

@@ -27,20 +27,27 @@ export default function (botManager: BotManager) {
 
             const client = botManager.client;
             const isClientReady = client && client.info ? true : false;
+            
+            // Si el cliente tiene info, está conectado (aunque qrScanned pueda ser false después de un reinicio)
+            // Actualizar qrScanned si el cliente está realmente conectado
+            if (isClientReady && !qrData.qrScanned) {
+                logger.info("Client is ready but qrScanned is false, updating status");
+                qrData.qrScanned = true;
+            }
 
             const healthStatus = {
                 status: isClientReady ? "healthy" : "unhealthy",
                 clientReady: isClientReady,
                 uptime: process.uptime(),
                 memoryUsage: process.memoryUsage(),
-                qrScanned: qrData.qrScanned,
+                qrScanned: isClientReady ? true : qrData.qrScanned, // Si está conectado, considerar qrScanned como true
                 botContact: client && client.info ? `<a target="_blank" href="https://wa.me/${client.info.wid.user}">wa.me/${client.info.wid.user}</a>` : null,
                 botPushName: client && client.info ? client.info.pushname : null,
                 botPlatform: client && client.info ? client.info.platform : null,
                 version: process.version,
             };
 
-            logger.info("GET /health");
+            logger.info(`GET /health - clientReady: ${isClientReady}, qrScanned: ${healthStatus.qrScanned}`);
             res.status(200).json(healthStatus);
         } catch (error) {
             logger.error("Health check failed", error);

@@ -1291,29 +1291,34 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             // Verificar que el cliente esté listo usando la misma lógica que /health
             const isClientReady = botManager.client && botManager.client.info ? true : false;
             
+            // Si el cliente está conectado pero qrScanned es false (después de reinicio), actualizarlo
+            if (isClientReady && !botManager.qrData.qrScanned) {
+                logger.info('Client is ready but qrScanned is false, updating status');
+                botManager.qrData.qrScanned = true;
+            }
+            
             if (!isClientReady) {
                 const qrScanned = botManager.qrData.qrScanned;
                 const hasInfo = !!botManager.client.info;
                 
                 logger.warn(`Send message failed: Client not ready. qrScanned: ${qrScanned}, hasInfo: ${hasInfo}`);
                 
-                if (!qrScanned) {
-                    return res.status(503).json({ 
-                        error: 'WhatsApp client is not ready. Please wait for the QR code to be scanned.',
-                        success: false,
-                        reason: 'qr_not_scanned',
-                        details: 'Go to Settings > WhatsApp to scan the QR code'
-                    });
-                }
-                
                 if (!hasInfo) {
                     return res.status(503).json({ 
                         error: 'WhatsApp client is not authenticated. Please wait for the connection to be established.',
                         success: false,
                         reason: 'client_not_authenticated',
-                        details: 'The client may be initializing. Please wait a moment and try again.'
+                        details: 'The client may be initializing. Please wait a moment and try again. If the problem persists, go to Settings > WhatsApp to check the connection status.'
                     });
                 }
+                
+                // Si no tiene info, no puede enviar mensajes
+                return res.status(503).json({ 
+                    error: 'WhatsApp client is not ready. Please wait for the connection to be established.',
+                    success: false,
+                    reason: 'client_not_ready',
+                    details: 'Go to Settings > WhatsApp to check the connection status and scan the QR code if needed.'
+                });
             }
 
             // Verificar que el cliente tenga el método sendMessage disponible
