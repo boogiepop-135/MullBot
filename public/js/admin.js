@@ -278,12 +278,31 @@ function renderTopLeads(leads) {
     return;
   }
 
+  // Función helper para escapar HTML
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  // Función helper para escapar comillas en atributos
+  const escapeAttr = (text) => {
+    if (!text) return '';
+    return String(text).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+  };
+
   leads.forEach(lead => {
     const tr = document.createElement('tr');
+    const phoneNumber = escapeAttr(lead.phoneNumber || '');
+    const name = escapeAttr(lead.name || lead.phoneNumber || 'Desconocido');
+    const displayName = escapeHtml(lead.name || 'Desconocido');
+    const displayPhone = escapeHtml(lead.phoneNumber || '');
+    
     tr.innerHTML = `
       <td class="px-6 py-4 whitespace-nowrap">
-        <div class="text-sm font-medium text-gray-900">${lead.name || 'Desconocido'}</div>
-        <div class="text-xs text-gray-500">${lead.phoneNumber}</div>
+        <div class="text-sm font-medium text-gray-900">${displayName}</div>
+        <div class="text-xs text-gray-500">${displayPhone}</div>
       </td>
       <td class="px-6 py-4 whitespace-nowrap">
         <span class="px-2 py-1 text-xs font-semibold rounded-full ${lead.score >= 10 ? 'bg-green-100 text-green-800' : lead.score >= 5 ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
@@ -291,7 +310,7 @@ function renderTopLeads(leads) {
         </span>
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        <button onclick="openChatModal('${lead.phoneNumber}', '${lead.name || lead.phoneNumber}')" class="text-indigo-600 hover:text-indigo-900 font-medium text-xs">
+        <button onclick="openChatModal('${phoneNumber}', '${name}')" class="text-indigo-600 hover:text-indigo-900 font-medium text-xs">
           Contactar
         </button>
       </td>
@@ -305,15 +324,23 @@ function renderRecentContacts(contacts) {
   if (!container) return;
   container.innerHTML = '';
 
+  // Función helper para escapar HTML
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
   contacts.forEach(contact => {
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-gray-50 transition-colors';
     tr.innerHTML = `
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-        ${contact.name || contact.pushName || 'Desconocido'}
+        ${escapeHtml(contact.name || contact.pushName || 'Desconocido')}
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        ${contact.phoneNumber}
+        ${escapeHtml(contact.phoneNumber || '')}
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         ${formatDate(contact.lastInteraction)}
@@ -381,15 +408,33 @@ function renderContacts(contacts) {
     'completed': { label: 'Completado', bg: 'bg-green-100 text-green-800' }
   };
 
+  // Función helper para escapar HTML
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  // Función helper para escapar comillas en atributos
+  const escapeAttr = (text) => {
+    if (!text) return '';
+    return String(text).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+  };
+
   contacts.forEach(contact => {
     const status = statusLabels[contact.saleStatus || 'lead'] || statusLabels['lead'];
     const isPaused = contact.isPaused || false;
+    const phoneNumber = escapeAttr(contact.phoneNumber || '');
+    const name = escapeAttr(contact.name || contact.pushName || contact.phoneNumber || '');
+    const displayPhone = escapeHtml(contact.phoneNumber || '');
+    const displayName = escapeHtml(contact.name || contact.pushName || '-');
 
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-gray-50 transition-colors';
     tr.innerHTML = `
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${contact.phoneNumber}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${contact.name || contact.pushName || '-'}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${displayPhone}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${displayName}</td>
       <td class="px-6 py-4 whitespace-nowrap">
         <span class="px-2 py-1 text-xs font-semibold rounded-full ${status.bg}">
           ${status.label}
@@ -399,7 +444,7 @@ function renderContacts(contacts) {
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(contact.lastInteraction)}</td>
       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
         <div class="flex items-center space-x-3">
-          <button onclick="openChatModal('${contact.phoneNumber}', '${contact.name || contact.phoneNumber}')" class="text-indigo-600 hover:text-indigo-900" title="Chat">
+          <button onclick="openChatModal('${phoneNumber}', '${name}')" class="text-indigo-600 hover:text-indigo-900" title="Chat">
             <i class="fas fa-comments"></i>
           </button>
           <button onclick="openStatusModal('${contact.phoneNumber}', '${contact.saleStatus || 'lead'}', '${contact.appointmentDate || ''}')" class="text-blue-600 hover:text-blue-900" title="Cambiar Estado">
@@ -798,12 +843,34 @@ function formatDate(dateString) {
 
 // --- Chat & Other Modals (Simplified for brevity, assuming existence) ---
 window.openChatModal = function (phone, name) {
-  currentChatPhoneNumber = phone;
-  currentChatContactName = name;
-  document.getElementById('chat-contact-name').textContent = name;
-  document.getElementById('chat-contact-phone').textContent = phone;
-  document.getElementById('chat-modal').classList.remove('hidden');
-  loadChatMessages();
+  if (!phone) {
+    console.error('No phone number provided to openChatModal');
+    alert('Error: No se proporcionó un número de teléfono');
+    return;
+  }
+
+  try {
+    currentChatPhoneNumber = phone;
+    currentChatContactName = name || phone;
+    
+    const nameElement = document.getElementById('chat-contact-name');
+    const phoneElement = document.getElementById('chat-contact-phone');
+    const modalElement = document.getElementById('chat-modal');
+    
+    if (!nameElement || !phoneElement || !modalElement) {
+      console.error('Chat modal elements not found');
+      alert('Error: No se pudo abrir el chat. Por favor, recarga la página.');
+      return;
+    }
+    
+    nameElement.textContent = name || phone;
+    phoneElement.textContent = phone;
+    modalElement.classList.remove('hidden');
+    loadChatMessages();
+  } catch (error) {
+    console.error('Error opening chat modal:', error);
+    alert('Error al abrir el chat. Por favor, intenta de nuevo.');
+  }
 };
 
 window.closeChatModal = function () {
@@ -812,7 +879,10 @@ window.closeChatModal = function () {
 };
 
 async function loadChatMessages() {
-  if (!currentChatPhoneNumber) return;
+  if (!currentChatPhoneNumber) {
+    console.error('No phone number provided');
+    return;
+  }
   
   const container = document.getElementById('messages-container');
   if (container) {
@@ -820,16 +890,23 @@ async function loadChatMessages() {
   }
   
   try {
+    // Codificar el número de teléfono para la URL
+    const encodedPhoneNumber = encodeURIComponent(currentChatPhoneNumber);
     // Agregar timestamp para evitar cache del navegador
     const cacheBuster = `_t=${Date.now()}`;
-    const response = await fetch(`/crm/contacts/${currentChatPhoneNumber}/messages?${cacheBuster}`, {
+    const url = `/crm/contacts/${encodedPhoneNumber}/messages?${cacheBuster}`;
+    
+    const response = await fetch(url, {
       headers: { 
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Cache-Control': 'no-cache'
       }
     });
     
-    if (!response.ok) throw new Error('Failed to load messages');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to load messages: ${response.status} ${response.statusText}`);
+    }
     
     const data = await response.json();
     chatMessages = data.messages || [];
@@ -837,7 +914,11 @@ async function loadChatMessages() {
   } catch (e) { 
     console.error('Error loading messages:', e);
     if (container) {
-      container.innerHTML = '<div class="flex justify-center items-center h-full text-red-500"><i class="fas fa-exclamation-triangle mr-2"></i>Error al cargar mensajes</div>';
+      container.innerHTML = `<div class="flex flex-col justify-center items-center h-full text-red-500 p-4">
+        <i class="fas fa-exclamation-triangle mb-2 text-2xl"></i>
+        <p class="text-sm text-center">Error al cargar mensajes</p>
+        <p class="text-xs text-gray-500 mt-1">${e.message || 'Error desconocido'}</p>
+      </div>`;
     }
   }
 }
