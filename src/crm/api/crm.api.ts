@@ -1280,33 +1280,49 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             }
 
             if (!botManager.client) {
+                logger.warn('Send message failed: Client is null after initialization attempt');
                 return res.status(503).json({ 
                     error: 'WhatsApp client is not available. Please try again later.',
-                    success: false 
+                    success: false,
+                    reason: 'client_not_initialized'
                 });
             }
 
-            // Verificar que el cliente esté listo (autenticado y completamente inicializado)
-            if (!botManager.qrData.qrScanned) {
-                return res.status(503).json({ 
-                    error: 'WhatsApp client is not ready. Please wait for the QR code to be scanned.',
-                    success: false 
-                });
-            }
-
-            // Verificar que el cliente tenga info (esté autenticado)
-            if (!botManager.client.info) {
-                return res.status(503).json({ 
-                    error: 'WhatsApp client is not authenticated. Please wait for the connection to be established.',
-                    success: false 
-                });
+            // Verificar que el cliente esté listo usando la misma lógica que /health
+            const isClientReady = botManager.client && botManager.client.info ? true : false;
+            
+            if (!isClientReady) {
+                const qrScanned = botManager.qrData.qrScanned;
+                const hasInfo = !!botManager.client.info;
+                
+                logger.warn(`Send message failed: Client not ready. qrScanned: ${qrScanned}, hasInfo: ${hasInfo}`);
+                
+                if (!qrScanned) {
+                    return res.status(503).json({ 
+                        error: 'WhatsApp client is not ready. Please wait for the QR code to be scanned.',
+                        success: false,
+                        reason: 'qr_not_scanned',
+                        details: 'Go to Settings > WhatsApp to scan the QR code'
+                    });
+                }
+                
+                if (!hasInfo) {
+                    return res.status(503).json({ 
+                        error: 'WhatsApp client is not authenticated. Please wait for the connection to be established.',
+                        success: false,
+                        reason: 'client_not_authenticated',
+                        details: 'The client may be initializing. Please wait a moment and try again.'
+                    });
+                }
             }
 
             // Verificar que el cliente tenga el método sendMessage disponible
             if (typeof botManager.client.sendMessage !== 'function') {
+                logger.warn('Send message failed: sendMessage method not available');
                 return res.status(503).json({ 
                     error: 'WhatsApp client sendMessage method is not available. The client may not be fully initialized.',
-                    success: false 
+                    success: false,
+                    reason: 'sendMessage_not_available'
                 });
             }
 

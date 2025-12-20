@@ -994,8 +994,22 @@ window.sendChatMessage = async function () {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al enviar');
+      const error = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      
+      // Mensajes más específicos según el tipo de error
+      let errorMessage = error.error || 'Error al enviar mensaje';
+      
+      if (response.status === 503) {
+        if (error.reason === 'qr_not_scanned') {
+          errorMessage = 'WhatsApp no está conectado. Por favor, ve a Configuración > WhatsApp y escanea el código QR.';
+        } else if (error.reason === 'client_not_authenticated') {
+          errorMessage = 'WhatsApp está conectándose. Por favor, espera unos momentos e intenta de nuevo.';
+        } else if (error.details) {
+          errorMessage = error.error + '\n\n' + error.details;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
     
     input.value = '';
