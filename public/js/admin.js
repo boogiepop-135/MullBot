@@ -143,11 +143,31 @@ window.showSettingsTab = function(tabName) {
   if (activePanel) {
     activePanel.classList.remove('hidden');
   }
+  
+  // Cargar datos específicos según el tab
+  if (tabName === 'whatsapp') {
+    loadWhatsAppStatus();
+    loadQRCode();
+  }
 };
 
 // Initialization
 document.addEventListener('DOMContentLoaded', function () {
   checkAuth();
+
+  // Verificar que las funciones estén disponibles después de cargar
+  setTimeout(() => {
+    if (typeof window.clearAllSessions === 'function') {
+      console.log('✓ clearAllSessions is available');
+    } else {
+      console.error('✗ clearAllSessions is NOT available');
+    }
+    if (typeof window.logoutWhatsApp === 'function') {
+      console.log('✓ logoutWhatsApp is available');
+    } else {
+      console.error('✗ logoutWhatsApp is NOT available');
+    }
+  }, 1000);
 
   // Initial navigation based on hash
   const hash = window.location.hash.substring(1);
@@ -1443,29 +1463,49 @@ async function loadQRCode() {
 }
 
 window.clearAllSessions = async function() {
+  console.log('clearAllSessions called');
+  
   if (!confirm('¿Estás seguro de que deseas LIMPIAR TODAS las sesiones de WhatsApp?\n\nEsto eliminará completamente todas las sesiones guardadas en la base de datos y generará un nuevo QR. Tendrás que escanear el QR nuevamente.')) {
+    console.log('User cancelled clearAllSessions');
     return;
   }
   
   const statusEl = document.getElementById('whatsapp-connected-status');
-  if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-medium">⏳ Limpiando todas las sesiones...</span>`;
+  if (!statusEl) {
+    console.error('whatsapp-connected-status element not found');
+    alert('Error: No se pudo encontrar el elemento de estado');
+    return;
+  }
+  
+  statusEl.innerHTML = `<span class="text-red-600 font-medium">⏳ Limpiando todas las sesiones...</span>`;
   
   try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
+    }
+    
+    console.log('Sending clear-sessions request...');
     const response = await fetch('/crm/whatsapp/clear-sessions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
+    
+    console.log('Response status:', response.status);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to clear sessions');
+      console.error('Error response:', errorData);
+      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
     }
     
     const result = await response.json();
+    console.log('Clear sessions result:', result);
     
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
-    }
+    statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
     
     alert(result.message || `Sesiones limpiadas. Se eliminaron ${result.deletedCount || 0} sesiones. Generando nuevo QR...`);
     
@@ -1490,36 +1530,57 @@ window.clearAllSessions = async function() {
   } catch (error) {
     console.error('Error clearing sessions:', error);
     alert('Error al limpiar sesiones: ' + (error.message || 'Error desconocido'));
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="text-red-600 font-medium">❌ Error al limpiar sesiones</span>`;
+    }
     loadWhatsAppStatus();
   }
 };
 
 window.logoutWhatsApp = async function() {
+  console.log('logoutWhatsApp called');
+  
   if (!confirm('¿Estás seguro de que deseas desvincular WhatsApp? Tendrás que escanear el QR nuevamente.')) {
+    console.log('User cancelled logout');
     return;
   }
   
   const statusEl = document.getElementById('whatsapp-connected-status');
-  const qrDisplay = document.getElementById('qr-display');
+  if (!statusEl) {
+    console.error('whatsapp-connected-status element not found');
+    alert('Error: No se pudo encontrar el elemento de estado');
+    return;
+  }
   
-  if (statusEl) statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Desvinculando...</span>`;
+  statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Desvinculando...</span>`;
   
   try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
+    }
+    
+    console.log('Sending logout request...');
     const response = await fetch('/crm/whatsapp/logout', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
+    
+    console.log('Response status:', response.status);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to logout');
+      console.error('Error response:', errorData);
+      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
     }
     
     const result = await response.json();
+    console.log('Logout result:', result);
     
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
-    }
+    statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
     
     alert('WhatsApp desvinculado correctamente. Generando nuevo código QR...');
     
