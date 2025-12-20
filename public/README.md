@@ -2,9 +2,21 @@
 
 Esta guía explica cómo utilizar todas las mejoras y funcionalidades del panel de administración del CRM.
 
+## 📑 Índice
+
+- [🎨 Cambiar el Logo](#cambiar-el-logo)
+- [💬 Enviar y Recibir Mensajes](#enviar-y-recibir-mensajes)
+- [🔄 QR de Sincronización](#qr-de-sincronización)
+- [👥 Gestión de Usuarios (Rol de Administrador)](#gestión-de-usuarios-rol-de-administrador)
+- [🔐 Modificar Contraseña Propia](#modificar-contraseña-propia)
+- [🏷️ Personalizar Estado y Automatizaciones](#personalizar-estado-y-automatizaciones)
+- [📢 Campañas por Lotes](#campañas-por-lotes)
+- [📥📤 Importación y Exportación Masiva de Contactos](#importación-y-exportación-masiva-de-contactos)
+- [📞 Soporte](#soporte)
+
 ---
 
-## 🎨 Cambiar el Logo
+## 🎨 Cambiar el Logo {#cambiar-el-logo}
 
 El logo del CRM se muestra en la barra lateral y en la pantalla de login. El sistema utiliza automáticamente el archivo `Logo_cara.png` ubicado en la carpeta `public/`.
 
@@ -25,7 +37,7 @@ El logo del CRM se muestra en la barra lateral y en la pantalla de login. El sis
 
 ---
 
-## 💬 Enviar y Recibir Mensajes
+## 💬 Enviar y Recibir Mensajes {#enviar-y-recibir-mensajes}
 
 El CRM permite enviar y recibir mensajes directamente desde el panel de administración, manteniendo una comunicación en tiempo real con los contactos.
 
@@ -64,7 +76,7 @@ Los mensajes entrantes se muestran automáticamente en el CRM:
 
 ---
 
-## 🔄 QR de Sincronización
+## 🔄 QR de Sincronización {#qr-de-sincronización}
 
 El código QR es necesario para sincronizar el bot de WhatsApp con el CRM. El sistema intenta actualizar automáticamente el QR cada 20 segundos.
 
@@ -111,7 +123,7 @@ Si el QR no se actualiza automáticamente o no se puede escanear:
 
 ---
 
-## 👥 Gestión de Usuarios (Rol de Administrador)
+## 👥 Gestión de Usuarios (Rol de Administrador) {#gestión-de-usuarios-rol-de-administrador}
 
 Los administradores pueden gestionar todos los usuarios del sistema, incluyendo crear, editar, eliminar y modificar permisos.
 
@@ -161,7 +173,7 @@ Como administrador, puedes cambiar la contraseña de cualquier usuario:
 
 ---
 
-## 🔐 Modificar Contraseña Propia
+## 🔐 Modificar Contraseña Propia {#modificar-contraseña-propia}
 
 Todos los usuarios pueden modificar su propia contraseña desde su perfil.
 
@@ -190,7 +202,7 @@ Todos los usuarios pueden modificar su propia contraseña desde su perfil.
 
 ---
 
-## 🏷️ Personalizar Estado y Automatizaciones
+## 🏷️ Personalizar Estado y Automatizaciones {#personalizar-estado-y-automatizaciones}
 
 El CRM permite crear y gestionar estados personalizados para tus contactos, así como configurar automatizaciones que ejecuten acciones en momentos específicos.
 
@@ -261,7 +273,7 @@ Las automatizaciones permiten ejecutar acciones automáticas basadas en condicio
 
 ---
 
-## 📢 Campañas por Lotes
+## 📢 Campañas por Lotes {#campañas-por-lotes}
 
 Las campañas por lotes permiten enviar mensajes masivos a múltiples contactos de manera controlada, dividiendo el envío en lotes con intervalos de tiempo entre cada uno.
 
@@ -355,7 +367,7 @@ Si necesitas detener una campaña:
 
 ---
 
-## 📥📤 Importación y Exportación Masiva de Contactos
+## 📥📤 Importación y Exportación Masiva de Contactos {#importación-y-exportación-masiva-de-contactos}
 
 El CRM permite importar y exportar contactos de manera masiva usando archivos Excel (.xlsx) o CSV (.csv).
 
@@ -459,7 +471,7 @@ Después de importar, verás un resumen:
 
 ---
 
-## 📞 Soporte
+## 📞 Soporte {#soporte}
 
 Si tienes dudas o problemas con alguna funcionalidad:
 

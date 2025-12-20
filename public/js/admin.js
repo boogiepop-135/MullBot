@@ -1794,20 +1794,35 @@ function convertMarkdownToHTML(markdown) {
       continue;
     }
     
-    // Headers
+    // Headers with ID support
     if (line.startsWith('### ')) {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<h3 class="text-xl font-bold mt-6 mb-3" style="color: var(--primary);">${line.substring(4)}</h3>`;
+      const headerText = line.substring(4);
+      const idMatch = headerText.match(/\{#([^}]+)\}/);
+      const id = idMatch ? idMatch[1] : null;
+      const cleanText = idMatch ? headerText.replace(/\{#([^}]+)\}/, '').trim() : headerText;
+      const headerId = id || cleanText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      html += `<h3 id="${headerId}" class="text-xl font-bold mt-6 mb-3" style="color: var(--primary); scroll-margin-top: 2rem;">${escapeHtml(cleanText)}</h3>`;
       continue;
     }
     if (line.startsWith('## ')) {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<h2 class="text-2xl font-bold mt-8 mb-4" style="color: var(--text-primary); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">${line.substring(3)}</h2>`;
+      const headerText = line.substring(3);
+      const idMatch = headerText.match(/\{#([^}]+)\}/);
+      const id = idMatch ? idMatch[1] : null;
+      const cleanText = idMatch ? headerText.replace(/\{#([^}]+)\}/, '').trim() : headerText;
+      const headerId = id || cleanText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      html += `<h2 id="${headerId}" class="text-2xl font-bold mt-8 mb-4" style="color: var(--text-primary); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; scroll-margin-top: 2rem;">${escapeHtml(cleanText)}</h2>`;
       continue;
     }
     if (line.startsWith('# ')) {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<h1 class="text-3xl font-bold mt-10 mb-5" style="color: var(--text-primary);">${line.substring(2)}</h1>`;
+      const headerText = line.substring(2);
+      const idMatch = headerText.match(/\{#([^}]+)\}/);
+      const id = idMatch ? idMatch[1] : null;
+      const cleanText = idMatch ? headerText.replace(/\{#([^}]+)\}/, '').trim() : headerText;
+      const headerId = id || cleanText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      html += `<h1 id="${headerId}" class="text-3xl font-bold mt-10 mb-5" style="color: var(--text-primary); scroll-margin-top: 2rem;">${escapeHtml(cleanText)}</h1>`;
       continue;
     }
     
@@ -1921,8 +1936,14 @@ function processInlineMarkdown(text) {
   // Process bold
   processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: var(--text-primary); font-weight: 600;">$1</strong>');
   
-  // Process links
-  processed = processed.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--primary); text-decoration: underline;">$1</a>');
+  // Process links (including anchor links)
+  processed = processed.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, (match, text, url) => {
+    // If it's an anchor link (starts with #), don't open in new tab
+    if (url.startsWith('#')) {
+      return `<a href="${url}" style="color: var(--primary); text-decoration: underline; cursor: pointer;" onclick="document.getElementById('${url.substring(1)}')?.scrollIntoView({behavior: 'smooth', block: 'start'}); return false;">${text}</a>`;
+    }
+    return `<a href="${url}" target="_blank" style="color: var(--primary); text-decoration: underline;">${text}</a>`;
+  });
   
   return processed;
 }
