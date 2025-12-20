@@ -865,7 +865,16 @@ window.openChatModal = function (phone, name) {
     
     nameElement.textContent = name || phone;
     phoneElement.textContent = phone;
+    
+    // Remover hidden y asegurar que el modal sea visible
     modalElement.classList.remove('hidden');
+    modalElement.style.display = 'flex';
+    modalElement.style.alignItems = 'center';
+    modalElement.style.justifyContent = 'center';
+    
+    // Forzar reflow para asegurar que los estilos se apliquen
+    void modalElement.offsetHeight;
+    
     loadChatMessages();
   } catch (error) {
     console.error('Error opening chat modal:', error);
@@ -874,7 +883,11 @@ window.openChatModal = function (phone, name) {
 };
 
 window.closeChatModal = function () {
-  document.getElementById('chat-modal').classList.add('hidden');
+  const modalElement = document.getElementById('chat-modal');
+  if (modalElement) {
+    modalElement.classList.add('hidden');
+    modalElement.style.display = '';
+  }
   currentChatPhoneNumber = null;
 };
 
