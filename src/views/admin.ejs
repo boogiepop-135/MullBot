@@ -27,27 +27,30 @@
     }
 
     :root {
-      --primary: #1a472a;
-      --primary-dark: #0f2818;
-      --primary-light: #2d5a3d;
-      --secondary: #4a7c59;
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --primary-light: #34d399;
+      --secondary: #6ee7b7;
       --sidebar-width: 280px;
-      --text-primary: #1f2937;
-      --text-secondary: #4b5563;
-      --border-color: #d1d5db;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --border-color: #e5e7eb;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f9fafb;
+      --bg-hover: #f3f4f6;
     }
 
     body {
-      background: #f9fafb;
+      background: linear-gradient(to bottom, #f0fdf4, #ffffff);
       min-height: 100vh;
     }
 
     /* Sidebar simple */
     .sidebar {
       width: var(--sidebar-width);
-      background: #ffffff;
+      background: linear-gradient(to bottom, #ffffff, #f9fafb);
       border-right: 1px solid var(--border-color);
-      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
       position: relative;
       z-index: 10;
     }
@@ -75,14 +78,16 @@
     }
 
     .nav-item.active {
-      background: #f0f9f4;
+      background: linear-gradient(to right, #ecfdf5, #f0fdf4);
       color: var(--primary);
       font-weight: 600;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
     }
 
     .nav-item:hover {
-      background: #f9fafb;
+      background: var(--bg-hover);
       color: var(--primary);
+      transform: translateX(2px);
     }
 
     /* Main content */
@@ -115,16 +120,17 @@
     /* Stats cards simple */
     .stat-card {
       background: #ffffff;
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
       border: 1px solid var(--border-color);
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
     }
 
     .stat-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
       border-color: var(--primary);
     }
 
@@ -143,13 +149,14 @@
     .stat-icon {
       width: 48px;
       height: 48px;
-      border-radius: 8px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-center;
       font-size: 20px;
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
       color: white;
+      box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
     }
 
     /* Badge styles */
@@ -216,18 +223,20 @@
 
     /* Simple buttons */
     .btn-primary {
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
       color: white;
       padding: 10px 20px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-weight: 600;
-      transition: all 0.2s ease;
-      border: 1px solid var(--primary);
+      transition: all 0.3s ease;
+      border: none;
+      box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
     }
 
     .btn-primary:hover {
-      background: var(--primary-dark);
-      border-color: var(--primary-dark);
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      box-shadow: 0 6px 12px rgba(16, 185, 129, 0.35);
+      transform: translateY(-1px);
     }
 
     .btn-secondary {
@@ -272,8 +281,8 @@
     /* Card container */
     .content-card {
       background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
       border: 1px solid var(--border-color);
       overflow: hidden;
     }
@@ -336,11 +345,11 @@
 
     /* Page header */
     .page-header {
-      background: #ffffff;
-      border-radius: 8px;
+      background: linear-gradient(135deg, #ffffff, #f9fafb);
+      border-radius: 12px;
       padding: 28px;
       margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
       border: 1px solid var(--border-color);
     }
 
@@ -515,19 +524,27 @@
         <i class="fas fa-cog w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Configuración</span>
       </a>
+
+      <div class="pt-4 mt-4 border-t" style="border-color: var(--border-color);">
+        <a href="#" onclick="showSection('readme')" id="nav-readme"
+          class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
+          <i class="fas fa-book w-7 text-center transition-colors text-lg"></i>
+          <span class="ml-3">Guía de Uso</span>
+        </a>
+      </div>
     </nav>
 
     <!-- User Info & Logout -->
-    <div class="border-t border-gray-300 p-4 bg-gray-100">
+    <div class="border-t p-4" style="border-color: var(--border-color); background: linear-gradient(to top, #ffffff, #f9fafb);">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-lg" id="user-initials">?</div>
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-md" id="user-initials">?</div>
           <div class="ml-3">
-            <p class="text-sm font-semibold text-white" id="user-name">Usuario</p>
-            <p class="text-xs text-gray-600" id="user-role">-</p>
+            <p class="text-sm font-semibold" style="color: var(--text-primary);" id="user-name">Usuario</p>
+            <p class="text-xs" style="color: var(--text-secondary);" id="user-role">-</p>
           </div>
         </div>
-        <button onclick="logout()" class="hover:bg-gray-200 transition-colors p-2 rounded-lg" title="Cerrar sesión">
+        <button onclick="logout()" class="hover:bg-gray-200 transition-colors p-2 rounded-lg" style="color: var(--text-primary);" title="Cerrar sesión">
           <i class="fas fa-sign-out-alt text-lg"></i>
         </button>
       </div>
@@ -539,8 +556,8 @@
     <!-- Dashboard Section -->
     <div id="dashboard-section" class="section-content p-8">
       <div class="page-header">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Dashboard</h1>
-        <p class="text-gray-600 mt-1">Vista general de tu CRM</p>
+        <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Dashboard</h1>
+        <p class="mt-1" style="color: var(--text-secondary);">Vista general de tu CRM</p>
       </div>
 
       <!-- Stats Grid -->
@@ -708,7 +725,7 @@
     <div id="contacts-section" class="section-content hidden p-8">
       <div class="page-header flex justify-between items-center">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Contactos</h1>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Contactos</h1>
           <p class="text-gray-600 mt-1">Gestiona tus contactos</p>
         </div>
       </div>
@@ -761,7 +778,7 @@
     <div id="campaigns-section" class="section-content hidden p-8">
       <div class="page-header flex justify-between items-center">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Campañas</h1>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Campañas</h1>
           <p class="text-gray-600 mt-1">Gestiona tus campañas de mensajes</p>
         </div>
         <button onclick="showSection('new-campaign')" class="btn-primary">
@@ -793,7 +810,7 @@
     <!-- New Campaign Section -->
     <div id="new-campaign-section" class="section-content hidden p-8">
       <div class="page-header">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Nueva Campaña</h1>
+        <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Nueva Campaña</h1>
         <p class="text-gray-600 mt-1">Crea una nueva campaña de mensajes</p>
       </div>
 
@@ -862,7 +879,7 @@
     <div id="templates-section" class="section-content hidden p-8">
       <div class="page-header flex justify-between items-center">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Plantillas</h1>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Plantillas</h1>
           <p class="text-gray-600 mt-1">Gestiona tus plantillas de mensajes</p>
         </div>
         <button onclick="openCreateTemplateModal()" class="btn-primary">
@@ -879,7 +896,7 @@
     <div id="products-section" class="section-content hidden p-8">
       <div class="page-header flex justify-between items-center">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Productos</h1>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Productos</h1>
           <p class="text-gray-600 mt-1">Gestiona tu catálogo de productos</p>
         </div>
         <button onclick="openCreateProductModal()" class="btn-primary">
@@ -911,7 +928,7 @@
     <div id="users-section" class="section-content hidden p-8">
       <div class="page-header flex justify-between items-center">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Gestión de Usuarios</h1>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Gestión de Usuarios</h1>
           <p class="text-gray-600 mt-1">Administra los usuarios del sistema</p>
         </div>
         <button onclick="openCreateUserModal()" class="btn-primary">
@@ -941,7 +958,7 @@
       <!-- Settings Section -->
       <div id="settings-section" class="section-content hidden p-8">
       <div class="page-header">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Configuración</h1>
+        <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Configuración</h1>
         <p class="text-gray-600 mt-1">Administra la configuración del bot y del negocio</p>
       </div>
 
@@ -1209,10 +1226,40 @@
       </div>
 
     <!-- Bot Content Section -->
+    <!-- README Section -->
+    <div id="readme-section" class="section-content hidden p-8">
+      <div class="page-header">
+        <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Guía de Uso del CRM</h1>
+        <p class="mt-1" style="color: var(--text-secondary);">Documentación completa de todas las funcionalidades</p>
+      </div>
+
+      <div class="content-card p-8">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-2xl font-bold" style="color: var(--text-primary);">📖 Guía de Uso del CRM MüllBot</h2>
+            <p class="mt-2" style="color: var(--text-secondary);">Esta guía explica cómo utilizar todas las mejoras y funcionalidades del panel de administración del CRM.</p>
+          </div>
+          <a href="/public/README.md" target="_blank" class="btn-primary flex items-center gap-2">
+            <i class="fas fa-external-link-alt"></i>
+            Abrir en Nueva Pestaña
+          </a>
+        </div>
+
+        <div id="readme-content" class="max-w-none" style="color: var(--text-primary);">
+          <div class="flex justify-center items-center py-12">
+            <div class="text-center">
+              <i class="fas fa-spinner fa-spin text-4xl mb-4" style="color: var(--primary);"></i>
+              <p style="color: var(--text-secondary);">Cargando guía...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="bot-content-section" class="section-content hidden p-8">
       <div class="page-header flex justify-between items-center">
           <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Contenido del Bot</h1>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Contenido del Bot</h1>
           <p class="text-gray-600 mt-1">Edita las respuestas automáticas y mensajes del bot</p>
           </div>
         <div class="flex gap-3">

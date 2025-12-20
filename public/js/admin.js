@@ -107,6 +107,9 @@ window.showSection = function (sectionId) {
     case 'users':
       if (typeof loadUsers === 'function') loadUsers();
       break;
+    case 'readme':
+      loadReadmeContent();
+      break;
     case 'bot-content':
       loadBotContent();
       break;
@@ -1711,6 +1714,133 @@ window.useTemplate = function(id) {
     });
   }
 };
+
+// --- README Functions ---
+async function loadReadmeContent() {
+  const contentContainer = document.getElementById('readme-content');
+  if (!contentContainer) return;
+
+  try {
+    const response = await fetch('/public/README.md');
+    if (!response.ok) throw new Error('Failed to load README');
+    
+    const markdown = await response.text();
+    // Convert markdown to HTML (simple conversion)
+    const html = convertMarkdownToHTML(markdown);
+    contentContainer.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading README:', error);
+    contentContainer.innerHTML = `
+      <div class="text-center py-12">
+        <i class="fas fa-exclamation-triangle text-4xl mb-4" style="color: var(--primary);"></i>
+        <p style="color: var(--text-secondary);">Error al cargar la guía. Por favor, intenta abrirla en una nueva pestaña.</p>
+        <a href="/public/README.md" target="_blank" class="btn-primary mt-4 inline-block">
+          <i class="fas fa-external-link-alt mr-2"></i>Abrir en Nueva Pestaña
+        </a>
+      </div>
+    `;
+  }
+}
+
+function convertMarkdownToHTML(markdown) {
+  // Split into lines for better processing
+  const lines = markdown.split('\n');
+  let html = '';
+  let inList = false;
+  let inCodeBlock = false;
+  let codeBlockContent = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Code blocks
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        html += `<pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4 border border-gray-300"><code class="text-sm">${codeBlockContent}</code></pre>`;
+        codeBlockContent = '';
+        inCodeBlock = false;
+      } else {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        inCodeBlock = true;
+      }
+      continue;
+    }
+    
+    if (inCodeBlock) {
+      codeBlockContent += line + '\n';
+      continue;
+    }
+    
+    // Headers
+    if (line.startsWith('### ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h3 class="text-xl font-bold mt-6 mb-3" style="color: var(--primary);">${line.substring(4)}</h3>`;
+      continue;
+    }
+    if (line.startsWith('## ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h2 class="text-2xl font-bold mt-8 mb-4" style="color: var(--text-primary); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">${line.substring(3)}</h2>`;
+      continue;
+    }
+    if (line.startsWith('# ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h1 class="text-3xl font-bold mt-10 mb-5" style="color: var(--text-primary);">${line.substring(2)}</h1>`;
+      continue;
+    }
+    
+    // Horizontal rules
+    if (line.trim() === '---') {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<hr class="my-6" style="border-color: var(--border-color);">';
+      continue;
+    }
+    
+    // Lists
+    if (line.match(/^[\*\-] /) || line.match(/^\d+\. /)) {
+      if (!inList) {
+        html += '<ul class="list-disc mb-4 ml-6 space-y-2">';
+        inList = true;
+      }
+      const content = line.replace(/^[\*\-]\s+/, '').replace(/^\d+\.\s+/, '');
+      html += `<li class="mb-1" style="color: var(--text-secondary);">${processInlineMarkdown(content)}</li>`;
+      continue;
+    }
+    
+    // Regular paragraphs
+    if (line.trim() === '') {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      continue;
+    }
+    
+    if (inList) {
+      html += '</ul>';
+      inList = false;
+    }
+    
+    html += `<p class="mb-4" style="color: var(--text-secondary); line-height: 1.8;">${processInlineMarkdown(line)}</p>`;
+  }
+  
+  if (inList) html += '</ul>';
+  if (inCodeBlock) html += `<pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto my-4 border border-gray-300"><code class="text-sm">${codeBlockContent}</code></pre>`;
+  
+  return html;
+}
+
+function processInlineMarkdown(text) {
+  return text
+    // Bold
+    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color: var(--text-primary); font-weight: 600;">$1</strong>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-2 py-1 rounded text-sm font-mono" style="color: var(--primary);">$1</code>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--primary); text-decoration: underline;">$1</a>');
+}
 
 // --- Logout Function ---
 window.logout = function() {
