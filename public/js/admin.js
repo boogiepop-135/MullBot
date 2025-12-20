@@ -1749,6 +1749,8 @@ function convertMarkdownToHTML(markdown) {
   let inList = false;
   let inCodeBlock = false;
   let codeBlockContent = '';
+  let inTable = false;
+  let isTableHeader = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -1756,13 +1758,31 @@ function convertMarkdownToHTML(markdown) {
     // Code blocks
     if (line.startsWith('```')) {
       if (inCodeBlock) {
-        html += `<pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4 border border-gray-300"><code class="text-sm">${codeBlockContent}</code></pre>`;
+        // Close table if open
+        if (inTable) {
+          html += '</tbody></table></div>';
+          inTable = false;
+          isTableHeader = false;
+        }
+        // Close list if open
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        // Render code block with dark background and light text
+        const codeLines = codeBlockContent.trim().split('\n').map(l => escapeHtml(l)).join('<br>');
+        html += `<pre class="p-4 rounded-lg overflow-x-auto my-4" style="background: #1f2937; color: #f9fafb; border: 1px solid #374151; font-family: 'Courier New', monospace; font-size: 0.875rem; line-height: 1.6;"><code style="color: #f9fafb;">${codeLines}</code></pre>`;
         codeBlockContent = '';
         inCodeBlock = false;
       } else {
         if (inList) {
           html += '</ul>';
           inList = false;
+        }
+        if (inTable) {
+          html += '</tbody></table></div>';
+          inTable = false;
+          isTableHeader = false;
         }
         inCodeBlock = true;
       }
@@ -1809,6 +1829,50 @@ function convertMarkdownToHTML(markdown) {
       continue;
     }
     
+    // Tables (detect simple table format)
+    if (line.includes('|') && line.split('|').length > 2) {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      // This is a table row - process it
+      if (!inTable) {
+        html += '<div class="overflow-x-auto my-4"><table class="min-w-full border-collapse border border-gray-300 rounded-lg" style="background: #ffffff;"><thead style="background: #f9fafb;"><tr>';
+        inTable = true;
+        isTableHeader = true;
+      }
+      
+      const cells = line.split('|').filter(cell => cell.trim() !== '');
+      const rowContent = cells.map(cell => {
+        const cellContent = cell.trim();
+        // Skip separator rows
+        if (cellContent.match(/^[-:]+$/)) {
+          isTableHeader = false;
+          return null;
+        }
+        return `<${isTableHeader ? 'th' : 'td'} class="border border-gray-300 px-4 py-2 text-left" style="color: ${isTableHeader ? 'var(--text-primary)' : 'var(--text-secondary)'}; font-weight: ${isTableHeader ? '600' : '400'};">${escapeHtml(cellContent)}</${isTableHeader ? 'th' : 'td'}>`;
+      }).filter(c => c !== null).join('');
+      
+      if (rowContent) {
+        html += `<tr>${rowContent}</tr>`;
+      }
+      
+      // Close header and open body if we just passed the separator
+      if (isTableHeader && line.match(/^\|[\s-:]+/)) {
+        html += '</tr></thead><tbody>';
+        isTableHeader = false;
+      }
+      
+      continue;
+    }
+    
+    // Close table if we're in one and hit a non-table line
+    if (inTable && !line.includes('|')) {
+      html += '</tbody></table></div>';
+      inTable = false;
+      isTableHeader = false;
+    }
+    
     // Regular paragraphs
     if (line.trim() === '') {
       if (inList) {
@@ -1827,19 +1891,66 @@ function convertMarkdownToHTML(markdown) {
   }
   
   if (inList) html += '</ul>';
-  if (inCodeBlock) html += `<pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto my-4 border border-gray-300"><code class="text-sm">${codeBlockContent}</code></pre>`;
+  if (inTable) html += '</tbody></table></div>';
+  if (inCodeBlock) {
+    const codeLines = codeBlockContent.trim().split('\n').map(l => escapeHtml(l)).join('<br>');
+    html += `<pre class="p-4 rounded-lg overflow-x-auto my-4" style="background: #1f2937; color: #f9fafb; border: 1px solid #374151; font-family: 'Courier New', monospace; font-size: 0.875rem; line-height: 1.6;"><code style="color: #f9fafb;">${codeLines}</code></pre>`;
+  }
   
   return html;
 }
 
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function processInlineMarkdown(text) {
-  return text
-    // Bold
-    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color: var(--text-primary); font-weight: 600;">$1</strong>')
-    // Inline code
-    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-2 py-1 rounded text-sm font-mono" style="color: var(--primary);">$1</code>')
-    // Links
-    .replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--primary); text-decoration: underline;">$1</a>');
+  if (!text) return '';
+  
+  // Escape HTML first to prevent XSS
+  let processed = escapeHtml(text);
+  
+  // Process inline code (after escaping to avoid double processing)
+  processed = processed.replace(/`([^`]+)`/g, (match, content) => {
+    return `<code class="px-2 py-1 rounded text-sm font-mono" style="color: #059669; background: #f0fdf4; padding: 0.125rem 0.375rem; border: 1px solid #d1fae5; font-weight: 500;">${content}</code>`;
+  });
+  
+  // Process bold
+  processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: var(--text-primary); font-weight: 600;">$1</strong>');
+  
+  // Process links
+  processed = processed.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--primary); text-decoration: underline;">$1</a>');
+  
+  return processed;
+}
+
+// Helper to escape HTML but preserve code tags
+function escapeHtmlPreserveCode(text) {
+  if (!text) return '';
+  // First protect code blocks
+  const codePlaceholders = [];
+  let counter = 0;
+  text = text.replace(/`([^`]+)`/g, (match, content) => {
+    const placeholder = `__CODE_${counter}__`;
+    codePlaceholders[counter] = content;
+    counter++;
+    return placeholder;
+  });
+  
+  // Escape HTML
+  const div = document.createElement('div');
+  div.textContent = text;
+  let escaped = div.innerHTML;
+  
+  // Restore code blocks
+  codePlaceholders.forEach((content, index) => {
+    escaped = escaped.replace(`__CODE_${index}__`, `\`${content}\``);
+  });
+  
+  return escaped;
 }
 
 // --- Logout Function ---
