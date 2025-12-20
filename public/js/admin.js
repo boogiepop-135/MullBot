@@ -10,6 +10,7 @@ let notificationStream = null;
 let currentChatPhoneNumber = null;
 let currentChatContactName = null;
 let chatMessages = [];
+let chatMessagesInterval = null; // Interval para actualizar mensajes automáticamente
 let currentStatusPhone = null;
 let currentProductId = null;
 let currentTemplateId = null;
@@ -895,7 +896,18 @@ window.openChatModal = function (phone, name) {
     // Forzar reflow para asegurar que los estilos se apliquen
     void modalElement.offsetHeight;
     
+    // Cargar mensajes iniciales
     loadChatMessages();
+    
+    // Iniciar polling automático para actualizar mensajes cada 3 segundos
+    if (chatMessagesInterval) {
+      clearInterval(chatMessagesInterval);
+    }
+    chatMessagesInterval = setInterval(() => {
+      if (currentChatPhoneNumber) {
+        loadChatMessages();
+      }
+    }, 3000);
   } catch (error) {
     console.error('Error opening chat modal:', error);
     alert('Error al abrir el chat. Por favor, intenta de nuevo.');
@@ -909,7 +921,15 @@ window.closeChatModal = function () {
   }
   // Restaurar scroll del body
   document.body.classList.remove('modal-open');
+  
+  // Detener el polling de mensajes
+  if (chatMessagesInterval) {
+    clearInterval(chatMessagesInterval);
+    chatMessagesInterval = null;
+  }
+  
   currentChatPhoneNumber = null;
+  chatMessages = [];
 };
 
 async function loadChatMessages() {
@@ -1035,15 +1055,27 @@ window.sendChatMessage = async function () {
     input.value = '';
     
     // Agregar mensaje localmente para feedback inmediato
-    chatMessages.push({
+    const tempMessage = {
       body: msg,
       isFromBot: true,
       timestamp: new Date().toISOString()
-    });
+    };
+    chatMessages.push(tempMessage);
     renderChatMessages();
     
-    // Recargar después de un momento para sincronizar
-    setTimeout(loadChatMessages, 1000);
+    // Recargar mensajes después de un momento para sincronizar con el backend
+    // Hacerlo múltiples veces para asegurar que se actualice
+    setTimeout(() => {
+      loadChatMessages();
+    }, 500);
+    
+    setTimeout(() => {
+      loadChatMessages();
+    }, 1500);
+    
+    setTimeout(() => {
+      loadChatMessages();
+    }, 3000);
     
   } catch (e) { 
     console.error('Error sending message:', e);
