@@ -866,11 +866,11 @@ window.openChatModal = function (phone, name) {
     nameElement.textContent = name || phone;
     phoneElement.textContent = phone;
     
+    // Prevenir scroll del body
+    document.body.classList.add('modal-open');
+    
     // Remover hidden y asegurar que el modal sea visible
     modalElement.classList.remove('hidden');
-    modalElement.style.display = 'flex';
-    modalElement.style.alignItems = 'center';
-    modalElement.style.justifyContent = 'center';
     
     // Forzar reflow para asegurar que los estilos se apliquen
     void modalElement.offsetHeight;
@@ -886,8 +886,9 @@ window.closeChatModal = function () {
   const modalElement = document.getElementById('chat-modal');
   if (modalElement) {
     modalElement.classList.add('hidden');
-    modalElement.style.display = '';
   }
+  // Restaurar scroll del body
+  document.body.classList.remove('modal-open');
   currentChatPhoneNumber = null;
 };
 

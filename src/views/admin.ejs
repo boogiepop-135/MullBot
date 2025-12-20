@@ -384,7 +384,13 @@
 
     /* Chat modal specific styles */
     #chat-modal:not(.hidden) {
-      display: flex !important;
+      display: block !important;
+      overflow: hidden !important;
+    }
+    
+    /* Prevenir scroll del body cuando el modal está abierto */
+    body.modal-open {
+      overflow: hidden !important;
     }
 
     #chat-modal .inline-block,
@@ -1288,14 +1294,13 @@
       <!-- Modals -->
 
       <!-- Chat Modal -->
-      <div id="chat-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
-        aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity backdrop-blur-sm z-40" aria-hidden="true"
-            onclick="closeChatModal()"></div>
-          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div id="chat-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true" style="overflow: hidden;">
+        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity backdrop-blur-sm z-40" aria-hidden="true"
+          onclick="closeChatModal()"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
           <div
-            class="relative z-50 inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full h-[80vh] flex flex-col">
+            class="relative bg-white rounded-3xl text-left overflow-hidden shadow-2xl w-full max-w-2xl h-[80vh] max-h-[90vh] flex flex-col pointer-events-auto">
             <!-- Header -->
             <div class="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4 border-b border-green-400 flex justify-between items-center">
               <div class="flex items-center">
