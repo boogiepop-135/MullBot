@@ -1458,6 +1458,59 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         }
     });
 
+    // Endpoint para limpiar completamente todas las sesiones de WhatsApp
+    router.post('/whatsapp/clear-sessions', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            logger.info('Clear all sessions request received');
+            
+            // Destruir cliente actual si existe
+            if (botManager.client) {
+                try {
+                    botManager.client.removeAllListeners();
+                    await botManager.client.destroy();
+                } catch (error) {
+                    logger.warn(`Error destroying client: ${error}`);
+                }
+                botManager.client = null;
+            }
+            
+            // Limpiar TODAS las sesiones de MongoDB
+            const deletedCount = await botManager.clearAllSessions();
+            logger.info(`Cleared ${deletedCount} sessions from MongoDB`);
+            
+            // Resetear estado del QR
+            botManager.qrData = {
+                qrCodeData: "",
+                qrScanned: false
+            };
+            
+            // Esperar un momento
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Crear nuevo cliente limpio
+            logger.info('Creating new clean client...');
+            await botManager.initializeClient(true);
+            
+            // Inicializar para generar nuevo QR
+            botManager.initialize().catch(err => {
+                logger.error('Error during initialization after clear:', err);
+            });
+            
+            res.json({ 
+                message: `Todas las sesiones han sido eliminadas (${deletedCount} sesiones). Generando nuevo QR...`,
+                success: true,
+                deletedCount
+            });
+        } catch (error: any) {
+            logger.error('Failed to clear sessions:', error);
+            res.status(500).json({ 
+                error: 'Failed to clear sessions',
+                details: error.message || 'Unknown error',
+                success: false
+            });
+        }
+    });
+
     // WhatsApp logout endpoint
     router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
         try {

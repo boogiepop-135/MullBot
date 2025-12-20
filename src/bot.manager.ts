@@ -288,6 +288,63 @@ export class BotManager {
     }
 
     /**
+     * Limpiar TODAS las sesiones de WhatsApp de MongoDB
+     * Limpia completamente todas las colecciones relacionadas con sesiones
+     */
+    public async clearAllSessions(): Promise<number> {
+        try {
+            const mongoose = require('mongoose');
+            const db = mongoose.connection.db;
+            if (!db) {
+                logger.warn("MongoDB connection not available");
+                return 0;
+            }
+
+            let totalDeleted = 0;
+
+            // Limpiar todas las sesiones de 'authsessions' (colección usada por RemoteAuth)
+            try {
+                const authsessionsResult = await db.collection('authsessions').deleteMany({});
+                totalDeleted += authsessionsResult.deletedCount;
+                logger.info(`Cleared ${authsessionsResult.deletedCount} session(s) from 'authsessions' collection`);
+            } catch (error) {
+                logger.warn(`Error clearing authsessions: ${error}`);
+            }
+
+            // Limpiar todas las sesiones de 'auth_sessions' (colección usada por MongoStore/wwebjs-mongo)
+            try {
+                const authSessionsResult = await db.collection('auth_sessions').deleteMany({});
+                totalDeleted += authSessionsResult.deletedCount;
+                logger.info(`Cleared ${authSessionsResult.deletedCount} session(s) from 'auth_sessions' collection`);
+            } catch (error) {
+                logger.warn(`Error clearing auth_sessions: ${error}`);
+            }
+
+            // También limpiar cualquier otra colección que pueda contener sesiones
+            const sessionCollections = ['sessions', 'whatsapp_sessions', 'wwebjs_sessions'];
+            for (const collectionName of sessionCollections) {
+                try {
+                    const collection = db.collection(collectionName);
+                    const exists = await collection.countDocuments({}, { limit: 1 });
+                    if (exists > 0) {
+                        const result = await collection.deleteMany({});
+                        totalDeleted += result.deletedCount;
+                        logger.info(`Cleared ${result.deletedCount} session(s) from '${collectionName}' collection`);
+                    }
+                } catch (error) {
+                    // Ignorar si la colección no existe
+                }
+            }
+
+            logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB`);
+            return totalDeleted;
+        } catch (error) {
+            logger.error(`Error clearing all sessions from MongoDB: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
      * Limpiar sesión de MongoDB
      * También limpia la colección 'auth_sessions' que usa wwebjs-mongo
      */

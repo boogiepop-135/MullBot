@@ -1442,6 +1442,58 @@ async function loadQRCode() {
   }
 }
 
+window.clearAllSessions = async function() {
+  if (!confirm('¿Estás seguro de que deseas LIMPIAR TODAS las sesiones de WhatsApp?\n\nEsto eliminará completamente todas las sesiones guardadas en la base de datos y generará un nuevo QR. Tendrás que escanear el QR nuevamente.')) {
+    return;
+  }
+  
+  const statusEl = document.getElementById('whatsapp-connected-status');
+  if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-medium">⏳ Limpiando todas las sesiones...</span>`;
+  
+  try {
+    const response = await fetch('/crm/whatsapp/clear-sessions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to clear sessions');
+    }
+    
+    const result = await response.json();
+    
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
+    }
+    
+    alert(result.message || `Sesiones limpiadas. Se eliminaron ${result.deletedCount || 0} sesiones. Generando nuevo QR...`);
+    
+    // Esperar y recargar
+    setTimeout(() => {
+      loadWhatsAppStatus();
+      loadQRCode();
+      
+      // Recargar cada 5 segundos hasta que aparezca el QR
+      let attempts = 0;
+      const checkQR = setInterval(() => {
+        attempts++;
+        loadWhatsAppStatus();
+        loadQRCode();
+        
+        if (attempts >= 10) { // 50 segundos máximo
+          clearInterval(checkQR);
+        }
+      }, 5000);
+    }, 3000);
+    
+  } catch (error) {
+    console.error('Error clearing sessions:', error);
+    alert('Error al limpiar sesiones: ' + (error.message || 'Error desconocido'));
+    loadWhatsAppStatus();
+  }
+};
+
 window.logoutWhatsApp = async function() {
   if (!confirm('¿Estás seguro de que deseas desvincular WhatsApp? Tendrás que escanear el QR nuevamente.')) {
     return;

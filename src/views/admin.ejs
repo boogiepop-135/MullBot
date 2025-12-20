@@ -1176,10 +1176,16 @@
                   <p class="font-bold text-white">Estado de la conexión</p>
                   <p class="text-sm text-gray-700 mt-1" id="whatsapp-connected-status">Verificando...</p>
                 </div>
-                <button onclick="logoutWhatsApp()"
-                  class="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
-                  <i class="fas fa-unlink mr-2"></i>Desvincular
-                </button>
+                <div class="flex gap-3">
+                  <button onclick="clearAllSessions()"
+                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
+                    <i class="fas fa-trash mr-2"></i>Limpiar Sesiones
+                  </button>
+                  <button onclick="logoutWhatsApp()"
+                    class="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
+                    <i class="fas fa-unlink mr-2"></i>Desvincular
+                  </button>
+                </div>
               </div>
               <div id="qr-display" class="hidden p-8 bg-gray-50 rounded-2xl border-2 border-gray-300 flex flex-col items-center">
                 <p class="text-sm font-bold text-white mb-6">Escanea el código QR con WhatsApp para vincular:</p>
