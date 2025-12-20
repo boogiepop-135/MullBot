@@ -101,6 +101,16 @@ export class BotManager {
     private async handleReady() {
         this.qrData.qrScanned = true;
         logger.info("Client is ready!");
+        
+        // Limpiar sesiones antiguas y mantener solo la sesión actual
+        // Esto asegura que no haya conflictos con sesiones previas
+        try {
+            await this.cleanupOldSessions();
+            logger.info("Old sessions cleaned up, keeping only current active session");
+        } catch (error) {
+            logger.warn(`Failed to cleanup old sessions: ${error}`);
+        }
+        
         logger.info("WhatsApp session is now authenticated and saved in MongoDB");
         logger.info("Session will persist across Railway deployments");
 
@@ -111,12 +121,23 @@ export class BotManager {
         }
     }
 
-    private handleQr(qr: string) {
+    private async handleQr(qr: string) {
         logger.info('QR RECEIVED');
         this.qrData.qrCodeData = qr;
         this.qrData.qrScanned = false;
         logger.info("QR Code generated:", qr);
         qrcode.generate(qr, { small: true });
+        
+        // Cuando se genera un nuevo QR, limpiar sesiones anteriores
+        // Esto asegura que al escanear un nuevo celular, no haya conflictos con sesiones previas
+        try {
+            logger.info("Cleaning up old sessions before new QR scan...");
+            await this.clearSessionFromMongoDB();
+            logger.info("Old sessions cleared. Ready for new device scan.");
+        } catch (error) {
+            logger.warn(`Failed to cleanup old sessions before QR scan: ${error}`);
+            // Continuar aunque falle la limpieza
+        }
     }
 
     /**
@@ -267,6 +288,69 @@ export class BotManager {
             logger.error(`Error clearing session from MongoDB: ${error}`);
             // No lanzar error para que la inicialización continúe incluso si hay un problema limpiando sesiones
             logger.warn("Continuing with client initialization despite session cleanup error");
+        }
+    }
+
+    /**
+     * Limpiar sesiones antiguas pero mantener solo la sesión actual activa
+     * Se llama cuando se conecta un nuevo celular para evitar conflictos
+     */
+    private async cleanupOldSessions(): Promise<void> {
+        try {
+            const mongoose = require('mongoose');
+            const db = mongoose.connection.db;
+            if (!db) {
+                logger.warn("MongoDB connection not available for cleanup");
+                return;
+            }
+
+            let totalDeleted = 0;
+
+            // Limpiar todas las sesiones antiguas de 'authsessions'
+            // Mantener solo la más reciente si hay múltiples
+            const authsessionsCollection = db.collection('authsessions');
+            const authsessionsQuery: any = { _id: { $regex: /^mullbot-client/ } };
+            
+            const allAuthSessions = await authsessionsCollection.find(authsessionsQuery).sort({ _id: -1 }).toArray();
+            if (allAuthSessions.length > 1) {
+                // Mantener solo la más reciente, eliminar las demás
+                const sessionsToDelete = allAuthSessions.slice(1);
+                for (const session of sessionsToDelete) {
+                    await authsessionsCollection.deleteOne({ _id: session._id });
+                    totalDeleted++;
+                }
+                logger.info(`Cleaned up ${sessionsToDelete.length} old session(s) from 'authsessions', kept most recent`);
+            }
+
+            // Limpiar todas las sesiones antiguas de 'auth_sessions'
+            // Mantener solo la más reciente si hay múltiples
+            const authSessionsCollection = db.collection('auth_sessions');
+            const authSessionsQuery: any = {
+                $or: [
+                    { _id: { $regex: /mullbot/i } },
+                    { clientId: 'mullbot-client' }
+                ]
+            };
+
+            const allSessions = await authSessionsCollection.find(authSessionsQuery).sort({ _id: -1 }).toArray();
+            if (allSessions.length > 1) {
+                // Mantener solo la más reciente, eliminar las demás
+                const sessionsToDelete = allSessions.slice(1);
+                for (const session of sessionsToDelete) {
+                    await authSessionsCollection.deleteOne({ _id: session._id });
+                    totalDeleted++;
+                }
+                logger.info(`Cleaned up ${sessionsToDelete.length} old session(s) from 'auth_sessions', kept most recent`);
+            }
+
+            if (totalDeleted > 0) {
+                logger.info(`Total: Cleaned up ${totalDeleted} old session(s) from MongoDB`);
+            } else {
+                logger.info("No old sessions to clean up - only one session exists");
+            }
+        } catch (error) {
+            logger.error(`Error cleaning up old sessions: ${error}`);
+            // No lanzar error, solo loguear
         }
     }
 
