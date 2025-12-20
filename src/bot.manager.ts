@@ -128,16 +128,9 @@ export class BotManager {
         logger.info("QR Code generated:", qr);
         qrcode.generate(qr, { small: true });
         
-        // Cuando se genera un nuevo QR, limpiar sesiones anteriores
-        // Esto asegura que al escanear un nuevo celular, no haya conflictos con sesiones previas
-        try {
-            logger.info("Cleaning up old sessions before new QR scan...");
-            await this.clearSessionFromMongoDB();
-            logger.info("Old sessions cleared. Ready for new device scan.");
-        } catch (error) {
-            logger.warn(`Failed to cleanup old sessions before QR scan: ${error}`);
-            // Continuar aunque falle la limpieza
-        }
+        // NO limpiar sesiones aquí - esto puede interferir con la autenticación
+        // La limpieza debe hacerse explícitamente antes de generar el QR (en logout/clear-sessions)
+        logger.info("QR Code ready for scanning. Waiting for device authentication...");
     }
 
     /**
@@ -290,6 +283,7 @@ export class BotManager {
     /**
      * Limpiar TODAS las sesiones de WhatsApp de MongoDB
      * Limpia completamente todas las colecciones relacionadas con sesiones
+     * IMPORTANTE: Elimina TODAS las sesiones sin filtros para forzar nuevo QR
      */
     public async clearAllSessions(): Promise<number> {
         try {
@@ -302,41 +296,78 @@ export class BotManager {
 
             let totalDeleted = 0;
 
-            // Limpiar todas las sesiones de 'authsessions' (colección usada por RemoteAuth)
-            try {
-                const authsessionsResult = await db.collection('authsessions').deleteMany({});
-                totalDeleted += authsessionsResult.deletedCount;
-                logger.info(`Cleared ${authsessionsResult.deletedCount} session(s) from 'authsessions' collection`);
-            } catch (error) {
-                logger.warn(`Error clearing authsessions: ${error}`);
-            }
+            // Lista de todas las colecciones que pueden contener sesiones
+            const sessionCollections = [
+                'authsessions',      // Colección usada por RemoteAuth
+                'auth_sessions',     // Colección usada por MongoStore/wwebjs-mongo
+                'sessions',          // Colección genérica de sesiones
+                'whatsapp_sessions', // Sesiones de WhatsApp
+                'wwebjs_sessions'    // Sesiones de wwebjs
+            ];
 
-            // Limpiar todas las sesiones de 'auth_sessions' (colección usada por MongoStore/wwebjs-mongo)
-            try {
-                const authSessionsResult = await db.collection('auth_sessions').deleteMany({});
-                totalDeleted += authSessionsResult.deletedCount;
-                logger.info(`Cleared ${authSessionsResult.deletedCount} session(s) from 'auth_sessions' collection`);
-            } catch (error) {
-                logger.warn(`Error clearing auth_sessions: ${error}`);
-            }
-
-            // También limpiar cualquier otra colección que pueda contener sesiones
-            const sessionCollections = ['sessions', 'whatsapp_sessions', 'wwebjs_sessions'];
+            // Eliminar TODAS las sesiones de TODAS las colecciones sin filtros
             for (const collectionName of sessionCollections) {
                 try {
                     const collection = db.collection(collectionName);
-                    const exists = await collection.countDocuments({}, { limit: 1 });
-                    if (exists > 0) {
-                        const result = await collection.deleteMany({});
+                    const count = await collection.countDocuments({});
+                    if (count > 0) {
+                        const result = await collection.deleteMany({}); // Sin filtros - eliminar TODO
                         totalDeleted += result.deletedCount;
-                        logger.info(`Cleared ${result.deletedCount} session(s) from '${collectionName}' collection`);
+                        logger.info(`Cleared ${result.deletedCount} session(s) from '${collectionName}' collection (TOTAL CLEAR)`);
+                    } else {
+                        logger.info(`Collection '${collectionName}' is empty`);
                     }
-                } catch (error) {
-                    // Ignorar si la colección no existe
+                } catch (error: any) {
+                    // Si la colección no existe, continuar
+                    if (error.codeName !== 'NamespaceNotFound') {
+                        logger.warn(`Error clearing ${collectionName}: ${error}`);
+                    }
                 }
             }
 
-            logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB`);
+            // También intentar eliminar cualquier documento que pueda contener 'mullbot' o 'client' en cualquier campo
+            try {
+                const allCollections = await db.listCollections().toArray();
+                for (const collInfo of allCollections) {
+                    const collName = collInfo.name;
+                    // Solo verificar colecciones que puedan contener sesiones
+                    if (collName.includes('auth') || collName.includes('session') || collName.includes('whatsapp')) {
+                        try {
+                            const collection = db.collection(collName);
+                            // Buscar documentos que puedan ser sesiones relacionadas con nuestro cliente
+                            const relatedDocs = await collection.find({
+                                $or: [
+                                    { _id: { $regex: /mullbot/i } },
+                                    { clientId: { $regex: /mullbot/i } },
+                                    { clientId: 'mullbot-client' }
+                                ]
+                            }).toArray();
+                            
+                            if (relatedDocs.length > 0) {
+                                const result = await collection.deleteMany({
+                                    $or: [
+                                        { _id: { $regex: /mullbot/i } },
+                                        { clientId: { $regex: /mullbot/i } },
+                                        { clientId: 'mullbot-client' }
+                                    ]
+                                });
+                                totalDeleted += result.deletedCount;
+                                logger.info(`Cleared ${result.deletedCount} related session(s) from '${collName}' collection`);
+                            }
+                        } catch (error) {
+                            // Continuar con la siguiente colección
+                        }
+                    }
+                }
+            } catch (error) {
+                logger.warn(`Error scanning collections for related sessions: ${error}`);
+            }
+
+            logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB (COMPLETE CLEAR)`);
+            
+            // Esperar un momento para asegurar que MongoDB procese las eliminaciones
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             return totalDeleted;
         } catch (error) {
             logger.error(`Error clearing all sessions from MongoDB: ${error}`);

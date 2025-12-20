@@ -1463,41 +1463,69 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             logger.info('Clear all sessions request received');
             
-            // Destruir cliente actual si existe
+            // Paso 1: Desconectar y destruir cliente actual completamente
             if (botManager.client) {
                 try {
+                    logger.info('Removing all event listeners...');
                     botManager.client.removeAllListeners();
+                } catch (error) {
+                    logger.warn(`Error removing event listeners: ${error}`);
+                }
+                
+                try {
+                    logger.info('Logging out client...');
+                    await botManager.client.logout();
+                } catch (error) {
+                    logger.warn(`Error during logout (may already be logged out): ${error}`);
+                }
+                
+                try {
+                    logger.info('Destroying client...');
                     await botManager.client.destroy();
                 } catch (error) {
                     logger.warn(`Error destroying client: ${error}`);
                 }
+                
                 botManager.client = null;
+                logger.info('Client completely destroyed');
             }
             
-            // Limpiar TODAS las sesiones de MongoDB
+            // Paso 2: Esperar un momento para asegurar que el cliente se destruyó completamente
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Paso 3: Limpiar TODAS las sesiones de MongoDB (sin filtros)
+            logger.info('Clearing ALL sessions from MongoDB...');
             const deletedCount = await botManager.clearAllSessions();
             logger.info(`Cleared ${deletedCount} sessions from MongoDB`);
             
-            // Resetear estado del QR
+            // Paso 4: Resetear estado del QR
             botManager.qrData = {
                 qrCodeData: "",
                 qrScanned: false
             };
             
-            // Esperar un momento
+            // Paso 5: Esperar más tiempo para asegurar que MongoDB procesó las eliminaciones
+            logger.info('Waiting for MongoDB to process deletions...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Paso 6: Crear nuevo cliente completamente limpio
+            logger.info('Creating new clean client (skipSessionClear=true because we already cleared)...');
+            await botManager.initializeClient(true); // skipSessionClear porque ya limpiamos todo
+            
+            // Paso 7: Esperar un momento antes de inicializar
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Crear nuevo cliente limpio
-            logger.info('Creating new clean client...');
-            await botManager.initializeClient(true);
-            
-            // Inicializar para generar nuevo QR
+            // Paso 8: Inicializar para generar nuevo QR (sin sesión previa, debe generar QR)
+            logger.info('Initializing new client to generate QR...');
             botManager.initialize().catch(err => {
                 logger.error('Error during initialization after clear:', err);
             });
             
+            // Paso 9: Esperar para que el QR se genere
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
             res.json({ 
-                message: `Todas las sesiones han sido eliminadas (${deletedCount} sesiones). Generando nuevo QR...`,
+                message: `Todas las sesiones han sido eliminadas completamente (${deletedCount} sesiones). Generando nuevo QR...`,
                 success: true,
                 deletedCount
             });
@@ -1516,33 +1544,42 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             logger.info('Logout request received');
             
-            // Desvincular y limpiar sesión
+            // Paso 1: Desvincular y limpiar sesión
             await botManager.logout();
-            logger.info('Logout completed, clearing session');
+            logger.info('Logout completed, session cleared');
             
-            // Esperar un momento para asegurar que todo se limpió completamente
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Paso 2: Limpiar TODAS las sesiones de MongoDB también (por si acaso)
+            logger.info('Clearing all sessions from MongoDB as well...');
+            const deletedCount = await botManager.clearAllSessions();
+            logger.info(`Cleared ${deletedCount} additional sessions from MongoDB`);
             
-            // Reiniciar el cliente para generar nuevo QR
+            // Paso 3: Esperar más tiempo para asegurar que todo se limpió completamente
+            logger.info('Waiting for cleanup to complete...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Paso 4: Reiniciar el cliente para generar nuevo QR
             logger.info('Reinitializing WhatsApp client after logout...');
             
-            // Crear nuevo cliente (skip session clear porque logout ya lo hizo)
+            // Crear nuevo cliente (skip session clear porque ya limpiamos todo)
             await botManager.initializeClient(true);
             logger.info('New client created');
             
-            // Inicializar el cliente - esto debería generar un nuevo QR
-            // No hacerlo en background para asegurar que se inicialice correctamente
+            // Paso 5: Esperar antes de inicializar
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Paso 6: Inicializar el cliente - esto debería generar un nuevo QR
             logger.info('Initializing new client to generate QR...');
             botManager.initialize().catch(err => {
                 logger.error('Error during initialization after logout:', err);
             });
             
-            // Esperar un momento para que el QR se genere
+            // Paso 7: Esperar para que el QR se genere
             await new Promise(resolve => setTimeout(resolve, 3000));
             
             res.json({ 
-                message: 'WhatsApp session disconnected. Generating new QR code...',
-                success: true
+                message: 'WhatsApp session disconnected. All sessions cleared. Generating new QR code...',
+                success: true,
+                deletedCount
             });
         } catch (error: any) {
             logger.error('Failed to logout WhatsApp:', error);
