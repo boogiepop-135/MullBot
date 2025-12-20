@@ -76,6 +76,16 @@ export class BotManager {
         logger.info("Setting up event handlers...");
         this.client.on('ready', this.handleReady.bind(this));
         this.client.on('qr', this.handleQr.bind(this));
+        this.client.on('authenticated', () => {
+            logger.info("Client authenticated successfully");
+        });
+        this.client.on('auth_failure', (msg) => {
+            logger.error(`Authentication failure: ${msg}`);
+            this.qrData.qrScanned = false;
+        });
+        this.client.on('loading_screen', (percent, message) => {
+            logger.info(`Loading screen: ${percent}% - ${message}`);
+        });
         this.client.on('message_create', this.handleMessage.bind(this));
         this.client.on('message', this.handleSentMessage.bind(this)); // Capturar mensajes enviados
         this.client.on('disconnected', this.handleDisconnect.bind(this));
@@ -144,6 +154,15 @@ export class BotManager {
             logger.info("Starting WhatsApp client initialization...");
             await this.client.initialize();
             logger.info("WhatsApp client.initialize() completed");
+            
+            // Esperar un momento para que los eventos se emitan
+            // Si después de 10 segundos no hay QR ni ready, puede haber un problema
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+            if (!this.qrData.qrScanned && !this.client.info) {
+                logger.warn("Client initialized but no QR or ready event after 10 seconds. This may indicate a session issue.");
+                logger.warn("If this persists, you may need to clear the session and scan QR again.");
+            }
         } catch (error) {
             logger.error(`Client initialization error: ${error}`);
             throw error;
