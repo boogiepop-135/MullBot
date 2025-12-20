@@ -24,12 +24,6 @@ export interface IAutomation extends Document {
   createdBy: mongoose.Types.ObjectId;
   lastTriggered?: Date;
   triggerCount: number;
-  
-  // Programación de ejecución
-  scheduledAt?: Date; // Fecha y hora específica para ejecutar
-  scheduleType?: 'once' | 'daily' | 'weekly' | 'monthly'; // Tipo de programación
-  scheduleTime?: string; // Hora del día (HH:mm) para programaciones recurrentes
-  scheduleDays?: number[]; // Días de la semana (0-6) para programaciones semanales
 }
 
 const AutomationSchema = new Schema<IAutomation>({
@@ -58,13 +52,7 @@ const AutomationSchema = new Schema<IAutomation>({
   isActive: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   lastTriggered: Date,
-  triggerCount: { type: Number, default: 0 },
-  
-  // Programación de ejecución
-  scheduledAt: Date,
-  scheduleType: { type: String, enum: ['once', 'daily', 'weekly', 'monthly'] },
-  scheduleTime: String, // Formato HH:mm
-  scheduleDays: [Number] // Array de días (0=domingo, 6=sábado)
+  triggerCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 export const AutomationModel = mongoose.model<IAutomation>('Automation', AutomationSchema);

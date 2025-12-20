@@ -57,6 +57,9 @@
         "deploy": "npm run build && npm start",
         "type-check": "tsc --noEmit",
         "lint": "eslint src --ext .ts",
+        "lint:fix": "eslint src --ext .ts --fix",
+        "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+        "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
         "clean": "rimraf dist",
         "clean:all": "rimraf dist && rimraf node_modules",
         "prepare": "husky install"
@@ -84,8 +87,18 @@
     },
     "homepage": "https://github.com/mullblue/bot#readme",
     "devDependencies": {
+        "@jest/globals": "^30.2.0",
         "@types/cron": "^2.0.1",
+        "@types/jest": "^30.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.50.0",
+        "@typescript-eslint/parser": "^8.50.0",
         "cross-env": "^7.0.3",
-        "rimraf": "^6.0.1"
+        "eslint": "^9.39.2",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "jest": "^30.2.0",
+        "prettier": "^3.7.4",
+        "rimraf": "^6.0.1",
+        "ts-jest": "^29.4.6"
     }
 }

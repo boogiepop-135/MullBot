@@ -27,13 +27,18 @@
     }
 
     :root {
-      --primary: #000000;
-      --primary-dark: #333333;
+      --primary: #1a472a;
+      --primary-dark: #0f2818;
+      --primary-light: #2d5a3d;
+      --secondary: #4a7c59;
       --sidebar-width: 280px;
+      --text-primary: #1f2937;
+      --text-secondary: #4b5563;
+      --border-color: #d1d5db;
     }
 
     body {
-      background: #f5f5f5;
+      background: #f9fafb;
       min-height: 100vh;
     }
 
@@ -41,8 +46,8 @@
     .sidebar {
       width: var(--sidebar-width);
       background: #ffffff;
-      border-right: 2px solid #000000;
-      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+      border-right: 1px solid var(--border-color);
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
       position: relative;
       z-index: 10;
     }
@@ -50,7 +55,7 @@
     .nav-item {
       position: relative;
       transition: all 0.2s ease;
-      color: #000000;
+      color: var(--text-primary);
     }
 
     .nav-item::before {
@@ -60,7 +65,7 @@
       top: 0;
       bottom: 0;
       width: 3px;
-      background: #000000;
+      background: var(--primary);
       transform: scaleY(0);
       transition: transform 0.2s ease;
     }
@@ -70,14 +75,14 @@
     }
 
     .nav-item.active {
-      background: #e5e5e5;
-      color: #000000;
+      background: #f0f9f4;
+      color: var(--primary);
       font-weight: 600;
     }
 
     .nav-item:hover {
-      background: #f0f0f0;
-      color: #000000;
+      background: #f9fafb;
+      color: var(--primary);
     }
 
     /* Main content */
@@ -99,12 +104,12 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #666666;
+      background: #9ca3af;
       border-radius: 5px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: #000000;
+      background: var(--primary);
     }
 
     /* Stats cards simple */
@@ -112,26 +117,27 @@
       background: #ffffff;
       border-radius: 8px;
       padding: 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 2px solid #000000;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-color);
       transition: all 0.2s ease;
     }
 
     .stat-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      border-color: var(--primary);
     }
 
     .stat-card p {
-      color: #000000;
+      color: var(--text-primary);
     }
 
     .stat-card .text-gray-800 {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
     }
 
     .stat-card .text-gray-500 {
-      color: #666666 !important;
+      color: var(--text-secondary) !important;
     }
 
     .stat-icon {
@@ -142,7 +148,7 @@
       align-items: center;
       justify-center;
       font-size: 20px;
-      background: #000000;
+      background: var(--primary);
       color: white;
     }
 
@@ -153,28 +159,30 @@
       border-radius: 4px;
       font-weight: 600;
       letter-spacing: 0.3px;
-      border: 1px solid #000000;
+      border: 1px solid var(--border-color);
     }
 
     .badge-sent {
-      background: #000000;
+      background: var(--primary);
       color: #ffffff;
+      border-color: var(--primary);
     }
 
     .badge-scheduled {
-      background: #666666;
+      background: var(--secondary);
       color: #ffffff;
+      border-color: var(--secondary);
     }
 
     .badge-failed {
-      background: #ffffff;
-      color: #000000;
-      border: 2px solid #000000;
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
     }
 
     .badge-draft {
-      background: #e5e5e5;
-      color: #000000;
+      background: #f3f4f6;
+      color: var(--text-primary);
     }
 
     /* Simple table */
@@ -184,66 +192,69 @@
     }
 
     table thead {
-      background: #e5e5e5;
-      border-bottom: 2px solid #000000;
+      background: #f9fafb;
+      border-bottom: 2px solid var(--border-color);
     }
 
     table thead th {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
       font-weight: 700;
     }
 
     table tbody tr {
       transition: all 0.2s ease;
-      border-bottom: 1px solid #cccccc;
+      border-bottom: 1px solid #e5e7eb;
     }
 
     table tbody tr:hover {
-      background: #f5f5f5;
+      background: #f9fafb;
     }
 
     table tbody td {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
     }
 
     /* Simple buttons */
     .btn-primary {
-      background: #000000;
+      background: var(--primary);
       color: white;
       padding: 10px 20px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-weight: 600;
       transition: all 0.2s ease;
-      border: 2px solid #000000;
+      border: 1px solid var(--primary);
     }
 
     .btn-primary:hover {
-      background: #333333;
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
     }
 
     .btn-secondary {
       background: white;
-      color: #000000;
+      color: var(--text-primary);
       padding: 10px 20px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-weight: 600;
       transition: all 0.2s ease;
-      border: 2px solid #000000;
+      border: 1px solid var(--border-color);
     }
 
     .btn-secondary:hover {
-      background: #f0f0f0;
+      background: #f9fafb;
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
     /* WhatsApp message */
     .whatsapp-message {
       position: relative;
-      background: #e5e5e5;
+      background: #f0f9f4;
       padding: 12px 18px;
-      border-radius: 4px;
-      border: 1px solid #000000;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      color: #000000;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      color: var(--text-primary);
     }
 
     .whatsapp-message::after {
@@ -255,63 +266,63 @@
       height: 0;
       border-top: 8px solid transparent;
       border-bottom: 8px solid transparent;
-      border-right: 8px solid #e5e5e5;
+      border-right: 8px solid #f0f9f4;
     }
 
     /* Card container */
     .content-card {
       background: #ffffff;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 2px solid #000000;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-color);
       overflow: hidden;
     }
 
     .content-card .text-gray-800 {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
     }
 
     .content-card .text-gray-600 {
-      color: #333333 !important;
+      color: var(--text-secondary) !important;
     }
 
     .content-card .text-gray-500 {
-      color: #666666 !important;
+      color: var(--text-secondary) !important;
     }
 
     .content-card .text-gray-400 {
-      color: #999999 !important;
+      color: #9ca3af !important;
     }
 
     .content-card .border-gray-100 {
-      border-color: #cccccc !important;
+      border-color: var(--border-color) !important;
     }
 
     .content-card .bg-gray-50 {
-      background: #f5f5f5 !important;
+      background: #f9fafb !important;
     }
 
     .content-card .divide-gray-100 > * + * {
-      border-color: #e5e5e5 !important;
+      border-color: #e5e7eb !important;
     }
 
     /* Input simple */
     input, textarea, select {
       background: #ffffff;
-      border: 2px solid #000000;
-      color: #000000;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
       transition: all 0.2s ease;
     }
 
     input::placeholder, textarea::placeholder {
-      color: #666666;
+      color: #9ca3af;
     }
 
     input:focus, textarea:focus, select:focus {
       outline: none;
       background: #ffffff;
-      border-color: #000000;
-      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26, 71, 42, 0.1);
     }
 
     /* Logo simple */
@@ -329,16 +340,16 @@
       border-radius: 8px;
       padding: 28px;
       margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 2px solid #000000;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-color);
     }
 
     .page-header h1 {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
     }
 
     .page-header .text-gray-600 {
-      color: #666666 !important;
+      color: var(--text-secondary) !important;
     }
 
     /* Animation */
@@ -370,8 +381,8 @@
     #create-user-modal .inline-block,
     #bot-content-modal .inline-block {
       background: #ffffff !important;
-      border: 2px solid #000000;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
 
     #chat-modal .bg-white,
@@ -391,7 +402,7 @@
     #template-modal .text-gray-900,
     #create-user-modal .text-gray-900,
     #bot-content-modal .text-gray-900 {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
     }
 
     #chat-modal .text-gray-700,
@@ -401,7 +412,7 @@
     #template-modal .text-gray-700,
     #create-user-modal .text-gray-700,
     #bot-content-modal .text-gray-700 {
-      color: #333333 !important;
+      color: var(--text-secondary) !important;
     }
 
     #chat-modal .border-gray-200,
@@ -411,25 +422,25 @@
     #template-modal .border-gray-200,
     #create-user-modal .border-gray-200,
     #bot-content-modal .border-gray-200 {
-      border-color: #cccccc !important;
+      border-color: var(--border-color) !important;
     }
 
     /* Global text color adjustments */
     .text-gray-500 {
-      color: #666666 !important;
+      color: var(--text-secondary) !important;
     }
 
     label {
-      color: #000000 !important;
+      color: var(--text-primary) !important;
     }
 
     .settings-tab {
-      color: #666666 !important;
+      color: var(--text-secondary) !important;
     }
 
     .settings-tab.text-black {
-      color: #000000 !important;
-      border-color: #000000 !important;
+      color: var(--primary) !important;
+      border-color: var(--primary) !important;
     }
 
     option {
@@ -445,13 +456,13 @@
   <!-- Sidebar -->
   <aside class="sidebar fixed inset-y-0 left-0 z-30 flex flex-col">
     <!-- Logo -->
-    <div class="h-20 flex items-center px-6 border-b border-gray-300">
-      <div class="w-12 h-12 rounded-2xl flex items-center justify-center mr-3 overflow-hidden logo-glow">
-        <img src="/Logo_cara.png" alt="MüllBot Logo" class="w-full h-full object-cover">
+    <div class="h-20 flex items-center px-6 border-b" style="border-color: var(--border-color);">
+      <div class="w-12 h-12 rounded-lg flex items-center justify-center mr-3 overflow-hidden logo-glow bg-white p-1.5" style="border: 1px solid var(--border-color);">
+        <img src="/public/Logo_cara.png" alt="MüllBot Logo" class="w-full h-full object-contain">
       </div>
       <div>
-        <span class="text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">MüllBot</span>
-        <p class="text-xs text-gray-600">CRM Dashboard</p>
+        <span class="text-xl font-bold" style="color: var(--primary);">MüllBot</span>
+        <p class="text-xs" style="color: var(--text-secondary);">CRM Dashboard</p>
       </div>
     </div>
 
@@ -700,15 +711,6 @@
           <h1 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Contactos</h1>
           <p class="text-gray-600 mt-1">Gestiona tus contactos</p>
         </div>
-        <div class="flex gap-3">
-          <button onclick="exportContacts()" class="btn-primary">
-            <i class="fas fa-download mr-2"></i>Exportar (XLSX)
-          </button>
-          <label for="import-file-input" class="btn-primary cursor-pointer">
-            <i class="fas fa-upload mr-2"></i>Importar (XLSX)
-          </label>
-          <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="importContacts(event)">
-        </div>
       </div>
 
       <!-- Filters -->
@@ -811,54 +813,9 @@
                   oninput="updateWhatsAppPreview()"></textarea>
               </div>
               <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Filtro por Estado</label>
-                <select name="saleStatusFilter" id="campaign-status-filter" multiple
+                <label class="block text-sm font-bold text-gray-700 mb-2">Programar envío (opcional)</label>
+                <input type="datetime-local" name="scheduledAt"
                   class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                  <option value="lead">Lead</option>
-                  <option value="interested">Interesado</option>
-                  <option value="info_requested">Info Solicitada</option>
-                  <option value="payment_pending">Pago Pendiente</option>
-                  <option value="appointment_scheduled">Cita Agendada</option>
-                  <option value="appointment_confirmed">Cita Confirmada</option>
-                  <option value="completed">Completado</option>
-                </select>
-                <p class="text-xs text-gray-500 mt-1">Mantén presionado Ctrl/Cmd para seleccionar múltiples estados</p>
-              </div>
-              <div>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" id="is-batch-campaign" name="isBatchCampaign" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                  <span class="text-sm font-bold text-gray-700">Campaña por Lotes</span>
-                </label>
-              </div>
-              <div id="batch-campaign-options" class="hidden space-y-3">
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Lote Máximo</label>
-                  <input type="number" id="batch-size" name="batchSize" min="1" value="25"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                </div>
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Intervalo de Pausa (minutos)</label>
-                  <input type="number" id="batch-interval" name="batchInterval" min="0" value="15"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                </div>
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Programar Envío Inicial</label>
-                  <input type="datetime-local" id="campaign-scheduled-at" name="scheduledAt"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                </div>
-                <div id="campaign-summary" class="p-3 bg-blue-50 rounded-lg text-sm text-blue-800 hidden">
-                  <p class="font-semibold mb-1">Resumen de la Campaña:</p>
-                  <p id="total-contacts-info">-</p>
-                  <p id="total-batches-info">-</p>
-                  <p id="contacts-per-batch-info">-</p>
-                </div>
-              </div>
-              <div id="normal-campaign-options">
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Programar envío (opcional)</label>
-                  <input type="datetime-local" name="scheduledAt"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                </div>
               </div>
               <button type="submit" class="btn-primary w-full py-3">
                 Crear Campaña
@@ -1195,10 +1152,9 @@
                 </button>
               </div>
               <div id="qr-display" class="hidden p-8 bg-gray-50 rounded-2xl border-2 border-gray-300 flex flex-col items-center">
-                <p class="text-sm font-bold text-gray-800 mb-6">Escanea el código QR con WhatsApp para vincular:</p>
+                <p class="text-sm font-bold text-white mb-6">Escanea el código QR con WhatsApp para vincular:</p>
                 <div id="qr-code-container" class="bg-white p-6 rounded-2xl shadow-xl"></div>
                 <p class="text-xs text-gray-600 mt-6">El código se actualiza automáticamente cada 20 segundos</p>
-                <div id="qr-instructions" class="mt-4 text-xs text-gray-500 text-center max-w-md"></div>
               </div>
 
               <!-- Gestión de Contactos Pausados -->

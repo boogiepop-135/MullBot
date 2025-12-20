@@ -385,48 +385,30 @@ Tu solicitud ha sido registrada correctamente.
                             // Verificar si el contacto ya existe
                             const existingContact = await ContactModel.findOne({ phoneNumber });
 
-                            // Manejar última interacción
-                            let lastInteraction = new Date();
-                            if (row['Última interacción'] && row['Última interacción'] !== 'Sin registro') {
-                                try {
-                                    lastInteraction = new Date(row['Última interacción']);
-                                    if (isNaN(lastInteraction.getTime())) {
-                                        lastInteraction = new Date();
-                                    }
-                                } catch (e) {
-                                    lastInteraction = new Date();
-                                }
-                            }
-                            
                             const updateData: any = {
-                                lastInteraction: lastInteraction,
+                                lastInteraction: row['Última interacción'] && row['Última interacción'] !== 'Sin registro'
+                                    ? new Date(row['Última interacción'])
+                                    : new Date(),
                                 saleStatus: ['lead', 'interested', 'info_requested', 'payment_pending', 'appointment_scheduled', 'appointment_confirmed', 'completed'].includes(saleStatus)
                                     ? saleStatus
                                     : 'lead'
                             };
 
                             // Manejar nombre: si está vacío, intentar obtener pushName del perfil de WhatsApp
-                            if (name && name.trim()) {
-                                updateData.name = name.trim();
-                            } else {
-                                // Si no hay nombre en el archivo, intentar obtenerlo de WhatsApp o usar el existente
-                                if (existingContact && existingContact.pushName) {
-                                    updateData.name = existingContact.pushName;
-                                } else {
-                                    // Intentar obtener pushName de WhatsApp
-                                    try {
-                                        if (botManager.client) {
-                                            const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
-                                            const contact = await botManager.client.getContactById(formattedNumber);
-                                            if (contact && contact.pushname) {
-                                                updateData.pushName = contact.pushname;
-                                                updateData.name = contact.pushname;
-                                            }
+                            if (name) {
+                                updateData.name = name;
+                            } else if (!existingContact || !existingContact.pushName) {
+                                // Si no hay nombre y no tenemos pushName, intentar obtenerlo de WhatsApp
+                                try {
+                                    if (botManager.client) {
+                                        const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
+                                        const contact = await botManager.client.getContactById(formattedNumber);
+                                        if (contact && contact.pushname) {
+                                            updateData.pushName = contact.pushname;
                                         }
-                                    } catch (waError) {
-                                        logger.warn(`Could not get WhatsApp profile for ${phoneNumber}`);
-                                        // Si no se puede obtener, dejar sin nombre (se usará el número)
                                     }
+                                } catch (waError) {
+                                    logger.warn(`Could not get WhatsApp profile for ${phoneNumber}`);
                                 }
                             }
 
@@ -1573,7 +1555,7 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
 
     router.post('/automations', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { name, description, triggerType, triggerConditions, actions, scheduledAt, scheduleType, scheduleTime, scheduleDays } = req.body;
+            const { name, description, triggerType, triggerConditions, actions } = req.body;
 
             if (!name || !triggerType || !actions || actions.length === 0) {
                 return res.status(400).json({ error: 'Name, triggerType, and actions are required' });
@@ -1585,10 +1567,6 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 triggerType,
                 triggerConditions: triggerConditions || {},
                 actions,
-                scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
-                scheduleType,
-                scheduleTime,
-                scheduleDays: scheduleDays || [],
                 createdBy: req.user.userId
             });
 
@@ -1602,22 +1580,11 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     router.put('/automations/:id', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { id } = req.params;
-            const { name, description, triggerType, triggerConditions, actions, isActive, scheduledAt, scheduleType, scheduleTime, scheduleDays } = req.body;
-
-            const updateData: any = {
-                name, description, triggerType, triggerConditions, actions, isActive
-            };
-
-            if (scheduledAt !== undefined) {
-                updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
-            }
-            if (scheduleType !== undefined) updateData.scheduleType = scheduleType;
-            if (scheduleTime !== undefined) updateData.scheduleTime = scheduleTime;
-            if (scheduleDays !== undefined) updateData.scheduleDays = scheduleDays || [];
+            const { name, description, triggerType, triggerConditions, actions, isActive } = req.body;
 
             const automation = await AutomationModel.findByIdAndUpdate(
                 id,
-                updateData,
+                { name, description, triggerType, triggerConditions, actions, isActive },
                 { new: true }
             );
 

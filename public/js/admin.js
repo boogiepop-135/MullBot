@@ -13,7 +13,6 @@ let chatMessages = [];
 let currentStatusPhone = null;
 let currentProductId = null;
 let currentTemplateId = null;
-let chatPollingInterval = null;
 
 // Authentication check
 async function checkAuth() {
@@ -562,28 +561,18 @@ function removeContactFromCampaign(phoneNumber) {
 async function createCampaign() {
   const form = document.getElementById('campaign-form');
   const formData = new FormData(form);
-  const isBatchCampaign = document.getElementById('is-batch-campaign').checked;
-  const saleStatusFilter = Array.from(document.getElementById('campaign-status-filter').selectedOptions).map(opt => opt.value);
-  
-  let selectedContacts = Array.from(document.querySelectorAll('#selected-contacts [data-phone]')).map(el => el.dataset.phone);
-  
-  // Si hay filtro por estado, no requerir selección manual
-  if (saleStatusFilter.length > 0) {
-    selectedContacts = []; // El backend obtendrá los contactos según el filtro
-  } else if (selectedContacts.length === 0) {
-    alert('Por favor selecciona al menos un contacto o filtra por estado');
+  const selectedContacts = Array.from(document.querySelectorAll('#selected-contacts [data-phone]')).map(el => el.dataset.phone);
+
+  if (selectedContacts.length === 0) {
+    alert('Por favor selecciona al menos un contacto');
     return;
   }
 
   const data = {
     name: formData.get('name'),
     message: formData.get('message'),
-    scheduledAt: isBatchCampaign ? (formData.get('scheduledAt') || null) : (formData.get('scheduledAt') || null),
-    contacts: selectedContacts,
-    isBatchCampaign: isBatchCampaign,
-    batchSize: isBatchCampaign ? parseInt(formData.get('batchSize') || '25') : undefined,
-    batchInterval: isBatchCampaign ? parseInt(formData.get('batchInterval') || '15') : undefined,
-    saleStatusFilter: saleStatusFilter.length > 0 ? saleStatusFilter : undefined
+    scheduledAt: formData.get('scheduledAt') || null,
+    contacts: selectedContacts
   };
 
   try {
@@ -596,97 +585,13 @@ async function createCampaign() {
       body: JSON.stringify(data)
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create campaign');
-    }
+    if (!response.ok) throw new Error('Failed to create campaign');
 
-    const result = await response.json();
-    alert(`Campaña creada exitosamente. ${result.summary ? `Total: ${result.summary.totalContacts} contactos, ${result.summary.totalBatches} lotes` : ''}`);
+    alert('Campaña creada exitosamente');
     showSection('campaigns');
   } catch (error) {
     console.error('Error creating campaign:', error);
-    alert('Error al crear campaña: ' + error.message);
-  }
-}
-
-// Toggle batch campaign options
-document.addEventListener('DOMContentLoaded', function() {
-  const batchCheckbox = document.getElementById('is-batch-campaign');
-  const batchOptions = document.getElementById('batch-campaign-options');
-  const normalOptions = document.getElementById('normal-campaign-options');
-  
-  if (batchCheckbox && batchOptions && normalOptions) {
-    batchCheckbox.addEventListener('change', function() {
-      if (this.checked) {
-        batchOptions.classList.remove('hidden');
-        normalOptions.classList.add('hidden');
-        updateCampaignSummary();
-      } else {
-        batchOptions.classList.add('hidden');
-        normalOptions.classList.remove('hidden');
-      }
-    });
-    
-    // Update summary when batch size or filter changes
-    const batchSizeInput = document.getElementById('batch-size');
-    const statusFilter = document.getElementById('campaign-status-filter');
-    
-    if (batchSizeInput) {
-      batchSizeInput.addEventListener('input', updateCampaignSummary);
-    }
-    if (statusFilter) {
-      statusFilter.addEventListener('change', updateCampaignSummary);
-    }
-  }
-});
-
-async function updateCampaignSummary() {
-  const summaryDiv = document.getElementById('campaign-summary');
-  const totalContactsInfo = document.getElementById('total-contacts-info');
-  const totalBatchesInfo = document.getElementById('total-batches-info');
-  const contactsPerBatchInfo = document.getElementById('contacts-per-batch-info');
-  
-  if (!summaryDiv) return;
-  
-  const isBatch = document.getElementById('is-batch-campaign').checked;
-  const batchSize = parseInt(document.getElementById('batch-size')?.value || '25');
-  const saleStatusFilter = Array.from(document.getElementById('campaign-status-filter')?.selectedOptions || []).map(opt => opt.value);
-  
-  if (isBatch) {
-    if (saleStatusFilter.length > 0) {
-      // Obtener conteo de contactos con ese estado
-      try {
-        const response = await fetch(`/crm/contacts?limit=1&saleStatus=${saleStatusFilter[0]}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const totalContacts = data.meta?.total || 0;
-          const totalBatches = Math.ceil(totalContacts / batchSize);
-          
-          totalContactsInfo.textContent = `Contactos Totales: ${totalContacts}`;
-          totalBatchesInfo.textContent = `Total de Lotes: ${totalBatches}`;
-          contactsPerBatchInfo.textContent = `Contactos por Lote: ${batchSize}`;
-          summaryDiv.classList.remove('hidden');
-        }
-      } catch (error) {
-        console.error('Error updating summary:', error);
-      }
-    } else {
-      const selectedCount = document.querySelectorAll('#selected-contacts [data-phone]').length;
-      if (selectedCount > 0) {
-        const totalBatches = Math.ceil(selectedCount / batchSize);
-        totalContactsInfo.textContent = `Contactos Totales: ${selectedCount}`;
-        totalBatchesInfo.textContent = `Total de Lotes: ${totalBatches}`;
-        contactsPerBatchInfo.textContent = `Contactos por Lote: ${batchSize}`;
-        summaryDiv.classList.remove('hidden');
-      } else {
-        summaryDiv.classList.add('hidden');
-      }
-    }
-  } else {
-    summaryDiv.classList.add('hidden');
+    alert('Error al crear campaña');
   }
 }
 
@@ -896,27 +801,11 @@ window.openChatModal = function (phone, name) {
   document.getElementById('chat-contact-phone').textContent = phone;
   document.getElementById('chat-modal').classList.remove('hidden');
   loadChatMessages();
-  
-  // Iniciar polling automático cada 3 segundos para recibir nuevos mensajes
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
-  }
-  chatPollingInterval = setInterval(() => {
-    if (currentChatPhoneNumber) {
-      loadChatMessages();
-    }
-  }, 3000);
 };
 
 window.closeChatModal = function () {
   document.getElementById('chat-modal').classList.add('hidden');
   currentChatPhoneNumber = null;
-  
-  // Detener polling cuando se cierra el modal
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
-    chatPollingInterval = null;
-  }
 };
 
 async function loadChatMessages() {
@@ -1411,95 +1300,31 @@ async function loadWhatsAppStatus() {
   }
 }
 
-let qrRefreshInterval = null;
-let qrErrorCount = 0;
-
 async function loadQRCode() {
   const qrDisplay = document.getElementById('qr-display');
   const qrContainer = document.getElementById('qr-code-container');
-  const qrInstructions = document.getElementById('qr-instructions');
   
   try {
     const response = await fetch('/qr');
     if (!response.ok) {
-      qrErrorCount++;
-      if (qrErrorCount >= 3) {
-        // Mostrar instrucciones si falla múltiples veces
-        if (qrContainer) {
-          qrContainer.innerHTML = `
-            <div class="text-center p-6 bg-yellow-50 border-2 border-yellow-400 rounded-xl">
-              <i class="fas fa-exclamation-triangle text-yellow-600 text-4xl mb-4"></i>
-              <p class="text-sm font-bold text-yellow-800 mb-2">No se pudo generar el QR automáticamente</p>
-              <p class="text-xs text-yellow-700 mb-4">Sigue estos pasos para solucionarlo:</p>
-              <ol class="text-left text-xs text-yellow-700 space-y-2 list-decimal list-inside">
-                <li>Verifica que WhatsApp Web no esté abierto en otra sesión</li>
-                <li>Haz clic en "Desvincular" y espera unos segundos</li>
-                <li>Recarga la página (F5)</li>
-                <li>Si el problema persiste, reinicia el servidor</li>
-              </ol>
-              <button onclick="location.reload()" class="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                <i class="fas fa-sync-alt mr-2"></i>Recargar Página
-              </button>
-            </div>
-          `;
-        }
-        // Limpiar intervalo si hay muchos errores
-        if (qrRefreshInterval) {
-          clearInterval(qrRefreshInterval);
-          qrRefreshInterval = null;
-        }
-        return;
-      }
-      // Reintentar después de 5 segundos si hay error
-      setTimeout(loadQRCode, 5000);
+      if (qrDisplay) qrDisplay.classList.add('hidden');
       return;
     }
-    
-    qrErrorCount = 0; // Resetear contador de errores
     const data = await response.json();
     
     if (data.qr && !data.qrScanned) {
       if (qrDisplay) qrDisplay.classList.remove('hidden');
       if (qrContainer) {
-        qrContainer.innerHTML = `
-          <img src="data:image/png;base64,${data.qr}" alt="QR Code" class="w-64 h-64 mx-auto mb-4 border-4 border-black rounded-xl shadow-2xl">
-          <p class="text-xs text-gray-600 text-center">Escanea este código con WhatsApp</p>
-        `;
+        qrContainer.innerHTML = `<img src="data:image/png;base64,${data.qr}" alt="QR Code" class="w-64 h-64">`;
       }
-      
-      // Configurar actualización automática cada 20 segundos
-      if (qrRefreshInterval) {
-        clearInterval(qrRefreshInterval);
-      }
-      qrRefreshInterval = setInterval(loadQRCode, 20000);
+      // Refrescar QR cada 20 segundos
+      setTimeout(loadQRCode, 20000);
     } else if (data.qrScanned) {
       if (qrDisplay) qrDisplay.classList.add('hidden');
-      if (qrRefreshInterval) {
-        clearInterval(qrRefreshInterval);
-        qrRefreshInterval = null;
-      }
       loadWhatsAppStatus();
     }
   } catch (error) {
     console.error('Error loading QR code:', error);
-    qrErrorCount++;
-    if (qrErrorCount >= 3) {
-      if (qrContainer) {
-        qrContainer.innerHTML = `
-          <div class="text-center p-6 bg-red-50 border-2 border-red-400 rounded-xl">
-            <i class="fas fa-times-circle text-red-600 text-4xl mb-4"></i>
-            <p class="text-sm font-bold text-red-800 mb-2">Error al cargar el QR</p>
-            <p class="text-xs text-red-700 mb-4">Por favor, intenta recargar la página o contacta al administrador</p>
-            <button onclick="location.reload()" class="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-              <i class="fas fa-sync-alt mr-2"></i>Recargar Página
-            </button>
-          </div>
-        `;
-      }
-    } else {
-      // Reintentar después de 5 segundos
-      setTimeout(loadQRCode, 5000);
-    }
   }
 }
 
@@ -1701,9 +1526,7 @@ function renderUsers(users) {
   users.forEach(user => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-        <span id="username-${user._id}">${user.username}</span>
-      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${user.username}</td>
       <td class="px-6 py-4 whitespace-nowrap">
         <span class="px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
           ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
@@ -1711,14 +1534,8 @@ function renderUsers(users) {
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(user.createdAt)}</td>
       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-        <button onclick="editUsername('${user._id}', '${user.username}')" class="text-blue-600 hover:text-blue-900 mr-3" title="Editar nombre">
-          <i class="fas fa-edit"></i>
-        </button>
         <button onclick="changeUserPassword('${user._id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Cambiar contraseña">
           <i class="fas fa-key"></i>
-        </button>
-        <button onclick="deleteUser('${user._id}', '${user.username}')" class="text-red-600 hover:text-red-900" title="Eliminar usuario">
-          <i class="fas fa-trash"></i>
         </button>
       </td>
     `;
@@ -1771,41 +1588,6 @@ window.saveCreateUser = async function() {
   }
 };
 
-window.editUsername = async function(userId, currentUsername) {
-  const newUsername = prompt('Ingresa el nuevo nombre de usuario (mínimo 3 caracteres):', currentUsername);
-  if (!newUsername || newUsername.trim() === currentUsername) return;
-  
-  if (newUsername.trim().length < 3) {
-    alert('El nombre de usuario debe tener al menos 3 caracteres');
-    return;
-  }
-  
-  try {
-    const response = await fetch(`/crm/auth/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ username: newUsername.trim() })
-    });
-    
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to update username');
-    }
-    
-    // Actualizar el nombre en la tabla
-    const usernameEl = document.getElementById(`username-${userId}`);
-    if (usernameEl) usernameEl.textContent = newUsername.trim();
-    
-    alert('Nombre de usuario actualizado correctamente');
-  } catch (error) {
-    console.error('Error updating username:', error);
-    alert('Error al actualizar nombre de usuario: ' + error.message);
-  }
-};
-
 window.changeUserPassword = async function(userId) {
   const newPassword = prompt('Ingresa la nueva contraseña (mínimo 6 caracteres):');
   if (!newPassword) return;
@@ -1834,105 +1616,6 @@ window.changeUserPassword = async function(userId) {
   } catch (error) {
     console.error('Error changing password:', error);
     alert('Error al cambiar contraseña: ' + error.message);
-  }
-};
-
-window.deleteUser = async function(userId, username) {
-  if (!confirm(`¿Estás seguro de que deseas eliminar al usuario "${username}"? Esta acción no se puede deshacer.`)) {
-    return;
-  }
-  
-  try {
-    const response = await fetch(`/crm/auth/users/${userId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-    
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to delete user');
-    }
-    
-    alert('Usuario eliminado correctamente');
-    loadUsers();
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    alert('Error al eliminar usuario: ' + error.message);
-  }
-};
-
-// --- Import/Export Contacts Functions ---
-
-window.exportContacts = async function() {
-  try {
-    const response = await fetch('/crm/contacts/export/xlsx', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    });
-    
-    if (!response.ok) throw new Error('Failed to export contacts');
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `contactos_${new Date().toISOString().split('T')[0]}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    
-    alert('Contactos exportados correctamente');
-  } catch (error) {
-    console.error('Error exporting contacts:', error);
-    alert('Error al exportar contactos: ' + error.message);
-  }
-};
-
-window.importContacts = async function(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-    alert('Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV');
-    return;
-  }
-  
-  if (!confirm(`¿Estás seguro de que deseas importar "${file.name}"? Los contactos existentes se actualizarán.`)) {
-    event.target.value = '';
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  try {
-    const response = await fetch('/crm/contacts/import/xlsx', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to import contacts');
-    }
-    
-    const result = await response.json();
-    alert(`Importación completada:\n${result.summary.imported} nuevos contactos\n${result.summary.updated} contactos actualizados\n${result.summary.errors} errores`);
-    
-    // Recargar contactos
-    loadContacts();
-    
-    // Limpiar input
-    event.target.value = '';
-  } catch (error) {
-    console.error('Error importing contacts:', error);
-    alert('Error al importar contactos: ' + error.message);
-    event.target.value = '';
   }
 };
 
