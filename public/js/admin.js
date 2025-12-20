@@ -1448,6 +1448,8 @@ window.logoutWhatsApp = async function() {
   }
   
   const statusEl = document.getElementById('whatsapp-connected-status');
+  const qrDisplay = document.getElementById('qr-display');
+  
   if (statusEl) statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Desvinculando...</span>`;
   
   try {
@@ -1456,18 +1458,40 @@ window.logoutWhatsApp = async function() {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     });
     
-    if (!response.ok) throw new Error('Failed to logout');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to logout');
+    }
     
-    alert('WhatsApp desvinculado correctamente. Escanea el nuevo código QR para reconectar.');
+    const result = await response.json();
     
-    // Esperar un momento y recargar el estado
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
+    }
+    
+    alert('WhatsApp desvinculado correctamente. Generando nuevo código QR...');
+    
+    // Esperar un momento para que se genere el nuevo QR y luego recargar
     setTimeout(() => {
       loadWhatsAppStatus();
-    }, 2000);
+      loadQRCode();
+    }, 3000);
+    
+    // Recargar cada 5 segundos hasta que aparezca el QR
+    let attempts = 0;
+    const checkQR = setInterval(() => {
+      attempts++;
+      loadWhatsAppStatus();
+      loadQRCode();
+      
+      if (attempts >= 6) { // 30 segundos máximo
+        clearInterval(checkQR);
+      }
+    }, 5000);
     
   } catch (error) {
     console.error('Error logging out WhatsApp:', error);
-    alert('Error al desvincular WhatsApp');
+    alert('Error al desvincular WhatsApp: ' + (error.message || 'Error desconocido'));
     loadWhatsAppStatus();
   }
 };

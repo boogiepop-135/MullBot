@@ -219,19 +219,33 @@ export class BotManager {
             // Cerrar y destruir el cliente actual
             if (this.client) {
                 try {
-                    await this.client.logout();
+                    // Remover todos los event listeners primero para evitar errores
+                    this.client.removeAllListeners();
+                    logger.info("Event listeners removed");
                 } catch (error) {
-                    logger.warn(`Error during client logout: ${error}`);
+                    logger.warn(`Error removing event listeners: ${error}`);
                 }
+                
+                try {
+                    await this.client.logout();
+                    logger.info("Client logout successful");
+                } catch (error) {
+                    logger.warn(`Error during client logout (may already be logged out): ${error}`);
+                }
+                
                 try {
                     await this.client.destroy();
+                    logger.info("Client destroyed successfully");
                 } catch (error) {
                     logger.warn(`Error during client destroy: ${error}`);
                 }
+                
                 this.client = null;
+                logger.info("Client reference cleared");
             }
 
             // Limpiar sesión de MongoDB
+            logger.info("Clearing session from MongoDB...");
             await this.clearSessionFromMongoDB();
 
             // Resetear QR data
@@ -239,10 +253,17 @@ export class BotManager {
                 qrCodeData: "",
                 qrScanned: false
             };
+            logger.info("QR data reset");
 
-            logger.info("WhatsApp session cleared successfully");
+            logger.info("WhatsApp client logged out and session cleared successfully");
         } catch (error) {
-            logger.error(`Error logging out: ${error}`);
+            logger.error(`Error during logout: ${error}`);
+            // Asegurar que el cliente se limpie incluso si hay errores
+            this.client = null;
+            this.qrData = {
+                qrCodeData: "",
+                qrScanned: false
+            };
             throw error;
         }
     }

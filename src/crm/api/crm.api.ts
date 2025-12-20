@@ -1461,23 +1461,38 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     // WhatsApp logout endpoint
     router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
         try {
+            logger.info('Logout request received');
+            
+            // Desvincular y limpiar sesión
             await botManager.logout();
+            logger.info('Logout completed, clearing session');
+            
+            // Esperar un momento para asegurar que todo se limpió
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Reiniciar el cliente para generar nuevo QR
             logger.info('Reinitializing WhatsApp client after logout...');
             
             // Crear nuevo cliente (skip session clear porque logout ya lo hizo)
             await botManager.initializeClient(true);
+            logger.info('New client created');
             
             // Inicializar en background (no esperar) para que la respuesta sea rápida
             botManager.initialize().catch(err => {
                 logger.error('Error during background initialization:', err);
             });
             
-            res.json({ message: 'WhatsApp session disconnected. Generating new QR code...' });
-        } catch (error) {
+            res.json({ 
+                message: 'WhatsApp session disconnected. Generating new QR code...',
+                success: true
+            });
+        } catch (error: any) {
             logger.error('Failed to logout WhatsApp:', error);
-            res.status(500).json({ error: 'Failed to logout WhatsApp' });
+            res.status(500).json({ 
+                error: 'Failed to logout WhatsApp',
+                details: error.message || 'Unknown error',
+                success: false
+            });
         }
     });
 
