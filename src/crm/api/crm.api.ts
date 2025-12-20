@@ -1286,6 +1286,30 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 });
             }
 
+            // Verificar que el cliente esté listo (autenticado y completamente inicializado)
+            if (!botManager.qrData.qrScanned) {
+                return res.status(503).json({ 
+                    error: 'WhatsApp client is not ready. Please wait for the QR code to be scanned.',
+                    success: false 
+                });
+            }
+
+            // Verificar que el cliente tenga info (esté autenticado)
+            if (!botManager.client.info) {
+                return res.status(503).json({ 
+                    error: 'WhatsApp client is not authenticated. Please wait for the connection to be established.',
+                    success: false 
+                });
+            }
+
+            // Verificar que el cliente tenga el método sendMessage disponible
+            if (typeof botManager.client.sendMessage !== 'function') {
+                return res.status(503).json({ 
+                    error: 'WhatsApp client sendMessage method is not available. The client may not be fully initialized.',
+                    success: false 
+                });
+            }
+
             // Formatear número de teléfono
             const formattedNumber = phoneNumber.includes('@')
                 ? phoneNumber
@@ -1293,8 +1317,37 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
 
             logger.info(`Sending message to ${formattedNumber} from CRM`);
 
-            // Enviar mensaje
-            const sentMessage = await botManager.client.sendMessage(formattedNumber, message.trim());
+            // Enviar mensaje - sendMessage creará el chat automáticamente si no existe
+            let sentMessage;
+            try {
+                sentMessage = await botManager.client.sendMessage(formattedNumber, message.trim());
+            } catch (sendError: any) {
+                logger.error(`Error sending message to ${formattedNumber}:`, sendError);
+                
+                // Proporcionar mensajes de error más específicos
+                const errorMessage = sendError.message || String(sendError);
+                
+                if (errorMessage.includes('getChat') || errorMessage.includes('Cannot read properties')) {
+                    return res.status(400).json({ 
+                        error: 'No se pudo enviar el mensaje. El cliente de WhatsApp puede no estar completamente inicializado o el número puede ser inválido.',
+                        success: false,
+                        details: 'Verifica que el número de teléfono sea correcto y que el cliente de WhatsApp esté listo. Intenta recargar la página.'
+                    });
+                }
+                
+                if (errorMessage.includes('not registered') || errorMessage.includes('not found')) {
+                    return res.status(400).json({ 
+                        error: 'El número de teléfono no está registrado en WhatsApp.',
+                        success: false
+                    });
+                }
+                
+                // Error genérico
+                return res.status(500).json({ 
+                    error: `Error al enviar mensaje: ${errorMessage}`,
+                    success: false
+                });
+            }
 
             // Guardar mensaje enviado en la base de datos
             if (sentMessage) {
