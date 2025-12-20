@@ -7,16 +7,37 @@ export async function checkScheduledCampaigns(botManager: BotManager) {
   try {
     const now = new Date();
 
-    // Buscar campañas programadas que deben ejecutarse ahora
-    const campaigns = await CampaignModel.find({
-      status: 'scheduled',
-      $or: [
-        { scheduledAt: { $lte: now } },
-        { nextBatchAt: { $lte: now }, isBatchCampaign: true }
-      ]
+    // Buscar todas las campañas programadas
+    const allScheduledCampaigns = await CampaignModel.find({
+      status: 'scheduled'
     });
 
-    for (const campaign of campaigns) {
+    // Filtrar campañas que deben ejecutarse ahora
+    const campaignsToSend = allScheduledCampaigns.filter(campaign => {
+      if (campaign.isBatchCampaign) {
+        // Para campañas por lotes, verificar nextBatchAt
+        return campaign.nextBatchAt && campaign.nextBatchAt <= now;
+      } else {
+        // Para campañas normales, verificar scheduledAt
+        return campaign.scheduledAt && campaign.scheduledAt <= now;
+      }
+    });
+
+    if (campaignsToSend.length > 0) {
+      logger.info(`Found ${campaignsToSend.length} campaign(s) ready to send`);
+    }
+
+    for (const campaign of campaignsToSend) {
+      const scheduledTime = campaign.isBatchCampaign 
+        ? campaign.nextBatchAt 
+        : campaign.scheduledAt;
+      
+      logger.info(
+        `Processing scheduled campaign: ${campaign.name} ` +
+        `(type: ${campaign.isBatchCampaign ? 'batch' : 'normal'}, ` +
+        `scheduled for: ${scheduledTime?.toISOString()})`
+      );
+      
       await sendCampaignMessages(botManager, campaign);
     }
   } catch (error) {

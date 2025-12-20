@@ -493,27 +493,49 @@ Tu solicitud ha sido registrada correctamente.
                 totalBatches = Math.ceil(actualContacts.length / batchSize);
             }
 
+            // Validar y parsear scheduledAt
+            let parsedScheduledAt: Date | null = null;
+            if (scheduledAt) {
+                parsedScheduledAt = new Date(scheduledAt);
+                // Verificar que la fecha sea válida y futura
+                if (isNaN(parsedScheduledAt.getTime())) {
+                    return res.status(400).json({ error: 'Invalid scheduledAt date format' });
+                }
+                // Si la fecha está en el pasado, rechazar (o permitir si es muy reciente, dentro de 1 minuto)
+                const now = new Date();
+                const timeDiff = parsedScheduledAt.getTime() - now.getTime();
+                if (timeDiff < -60000) { // Más de 1 minuto en el pasado
+                    return res.status(400).json({ error: 'scheduledAt cannot be in the past' });
+                }
+            }
+
             const campaign = new CampaignModel({
                 name,
                 message,
-                scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                scheduledAt: parsedScheduledAt,
                 contacts: actualContacts,
                 createdBy: req.user.userId,
-                status: scheduledAt ? 'scheduled' : 'draft',
+                status: parsedScheduledAt ? 'scheduled' : 'draft',
                 isBatchCampaign: isBatchCampaign || false,
                 batchSize: batchSize || actualContacts.length,
                 batchInterval: batchInterval || 0,
                 currentBatchIndex: 0,
                 totalBatches: totalBatches,
                 saleStatusFilter: saleStatusFilter || [],
-                nextBatchAt: scheduledAt ? new Date(scheduledAt) : new Date()
+                // Para campañas por lotes, nextBatchAt debe ser igual a scheduledAt si existe
+                // Para campañas sin programar, será null y se establecerá cuando se envíe
+                nextBatchAt: parsedScheduledAt ? new Date(parsedScheduledAt) : null
             });
 
             await campaign.save();
 
-            if (!scheduledAt) {
+            // Solo enviar inmediatamente si NO hay scheduledAt (campaña draft)
+            // Si hay scheduledAt, el cron job se encargará de enviarlo en el momento correcto
+            if (!parsedScheduledAt) {
                 // Send immediately (first batch if it's a batch campaign)
                 await sendCampaignMessages(botManager, campaign);
+            } else {
+                logger.info(`Campaign "${campaign.name}" scheduled for ${parsedScheduledAt.toISOString()}. Will be sent by cron job.`);
             }
 
             res.status(201).json({
@@ -1227,27 +1249,84 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     // Send message route
     router.post('/send-message', authenticate, authorizeAdmin, async (req, res) => {
         try {
+            const { phoneNumber, message } = req.body;
+
+            // Validar datos de entrada
+            if (!phoneNumber || !message) {
+                return res.status(400).json({ 
+                    error: 'phoneNumber and message are required',
+                    success: false 
+                });
+            }
+
+            if (typeof phoneNumber !== 'string' || typeof message !== 'string') {
+                return res.status(400).json({ 
+                    error: 'phoneNumber and message must be strings',
+                    success: false 
+                });
+            }
+
+            if (message.trim().length === 0) {
+                return res.status(400).json({ 
+                    error: 'message cannot be empty',
+                    success: false 
+                });
+            }
+
             // Asegurar que el cliente esté inicializado
             if (!botManager.client) {
+                logger.info('Client not initialized, initializing...');
                 await botManager.initializeClient();
             }
 
-            const { phoneNumber, message } = req.body;
+            if (!botManager.client) {
+                return res.status(503).json({ 
+                    error: 'WhatsApp client is not available. Please try again later.',
+                    success: false 
+                });
+            }
+
+            // Formatear número de teléfono
             const formattedNumber = phoneNumber.includes('@')
                 ? phoneNumber
                 : `${phoneNumber}@c.us`;
 
-            const sentMessage = await botManager.client.sendMessage(formattedNumber, message);
+            logger.info(`Sending message to ${formattedNumber} from CRM`);
+
+            // Enviar mensaje
+            const sentMessage = await botManager.client.sendMessage(formattedNumber, message.trim());
 
             // Guardar mensaje enviado en la base de datos
             if (sentMessage) {
-                await botManager.saveSentMessage(phoneNumber, message, sentMessage.id._serialized);
+                try {
+                    await botManager.saveSentMessage(phoneNumber, message.trim(), sentMessage.id._serialized);
+                    logger.info(`Message sent successfully to ${formattedNumber}, saved to database`);
+                } catch (saveError) {
+                    logger.warn(`Message sent but failed to save to database: ${saveError}`);
+                    // No fallar la respuesta si el mensaje se envió pero falló al guardar
+                }
             }
 
-            res.json({ success: true });
-        } catch (error) {
-            logger.error('Failed to send message:', error);
-            res.status(500).json({ error: 'Failed to send message' });
+            res.json({ 
+                success: true,
+                messageId: sentMessage?.id?._serialized || null
+            });
+        } catch (error: any) {
+            logger.error('Failed to send message from CRM:', error);
+            
+            // Proporcionar mensajes de error más específicos
+            let errorMessage = 'Failed to send message';
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+
+            res.status(500).json({ 
+                error: errorMessage,
+                success: false,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     });
 
