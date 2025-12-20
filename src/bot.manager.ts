@@ -78,6 +78,12 @@ export class BotManager {
         this.client.on('qr', this.handleQr.bind(this));
         this.client.on('authenticated', () => {
             logger.info("Client authenticated successfully");
+            // Si se autentica pero no emite ready después de un tiempo, puede haber un problema
+            setTimeout(() => {
+                if (!this.qrData.qrScanned && !this.client.info) {
+                    logger.warn("Client authenticated but not ready after 15 seconds. Session may be corrupted.");
+                }
+            }, 15000);
         });
         this.client.on('auth_failure', (msg) => {
             logger.error(`Authentication failure: ${msg}`);
@@ -136,8 +142,10 @@ export class BotManager {
 
     private handleDisconnect(reason: string) {
         logger.info(`Client disconnected: ${reason}`);
+        this.qrData.qrScanned = false;
         setTimeout(async () => {
             if (this.client) {
+                logger.info("Attempting to reconnect after disconnect...");
                 await this.client.initialize();
             }
         }, 5000);
@@ -156,12 +164,23 @@ export class BotManager {
             logger.info("WhatsApp client.initialize() completed");
             
             // Esperar un momento para que los eventos se emitan
-            // Si después de 10 segundos no hay QR ni ready, puede haber un problema
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            // Si después de 20 segundos no hay QR ni ready, puede haber un problema con la sesión
+            await new Promise(resolve => setTimeout(resolve, 20000));
             
             if (!this.qrData.qrScanned && !this.client.info) {
-                logger.warn("Client initialized but no QR or ready event after 10 seconds. This may indicate a session issue.");
-                logger.warn("If this persists, you may need to clear the session and scan QR again.");
+                logger.warn("Client initialized but no QR or ready event after 20 seconds. This may indicate a session issue.");
+                logger.warn("The session may be corrupted. Try logging out and scanning QR again.");
+                
+                // Intentar forzar una desconexión para que genere un nuevo QR
+                try {
+                    logger.info("Attempting to force disconnect to trigger QR generation...");
+                    if (this.client) {
+                        await this.client.logout();
+                        // El evento 'disconnected' debería manejar la reconexión
+                    }
+                } catch (error) {
+                    logger.error(`Error forcing disconnect: ${error}`);
+                }
             }
         } catch (error) {
             logger.error(`Client initialization error: ${error}`);
