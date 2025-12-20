@@ -1475,6 +1475,25 @@ window.logoutWhatsApp = async function() {
     setTimeout(() => {
       loadWhatsAppStatus();
       loadQRCode();
+      
+      // Si después de 5 segundos no hay QR, intentar regenerar
+      setTimeout(async () => {
+        try {
+          const qrResponse = await fetch('/qr');
+          const qrData = await qrResponse.json();
+          if (!qrData.qr) {
+            console.log('No QR after logout, attempting to regenerate...');
+            const regenerateResponse = await fetch('/qr/regenerate', {
+              method: 'POST'
+            });
+            if (regenerateResponse.ok) {
+              console.log('QR regeneration initiated');
+            }
+          }
+        } catch (error) {
+          console.error('Error checking/regenerating QR:', error);
+        }
+      }, 5000);
     }, 3000);
     
     // Recargar cada 5 segundos hasta que aparezca el QR
@@ -1484,8 +1503,11 @@ window.logoutWhatsApp = async function() {
       loadWhatsAppStatus();
       loadQRCode();
       
-      if (attempts >= 6) { // 30 segundos máximo
+      if (attempts >= 10) { // 50 segundos máximo
         clearInterval(checkQR);
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-orange-600 font-medium">⚠️ Si no aparece el QR, intenta recargar la página</span>`;
+        }
       }
     }, 5000);
     

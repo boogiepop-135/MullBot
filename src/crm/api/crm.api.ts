@@ -1467,8 +1467,8 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             await botManager.logout();
             logger.info('Logout completed, clearing session');
             
-            // Esperar un momento para asegurar que todo se limpió
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Esperar un momento para asegurar que todo se limpió completamente
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Reiniciar el cliente para generar nuevo QR
             logger.info('Reinitializing WhatsApp client after logout...');
@@ -1477,10 +1477,15 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             await botManager.initializeClient(true);
             logger.info('New client created');
             
-            // Inicializar en background (no esperar) para que la respuesta sea rápida
+            // Inicializar el cliente - esto debería generar un nuevo QR
+            // No hacerlo en background para asegurar que se inicialice correctamente
+            logger.info('Initializing new client to generate QR...');
             botManager.initialize().catch(err => {
-                logger.error('Error during background initialization:', err);
+                logger.error('Error during initialization after logout:', err);
             });
+            
+            // Esperar un momento para que el QR se genere
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             res.json({ 
                 message: 'WhatsApp session disconnected. Generating new QR code...',

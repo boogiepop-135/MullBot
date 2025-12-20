@@ -192,15 +192,34 @@ export class BotManager {
                 logger.warn("Client initialized but no QR or ready event after 20 seconds. This may indicate a session issue.");
                 logger.warn("The session may be corrupted. Try logging out and scanning QR again.");
                 
-                // Intentar forzar una desconexión para que genere un nuevo QR
+                // Intentar forzar una desconexión y reinicialización para que genere un nuevo QR
                 try {
-                    logger.info("Attempting to force disconnect to trigger QR generation...");
+                    logger.info("Attempting to force disconnect and reinitialize to trigger QR generation...");
                     if (this.client) {
-                        await this.client.logout();
-                        // El evento 'disconnected' debería manejar la reconexión
+                        try {
+                            await this.client.logout();
+                        } catch (error) {
+                            logger.warn(`Error during forced logout: ${error}`);
+                        }
+                        
+                        try {
+                            await this.client.destroy();
+                        } catch (error) {
+                            logger.warn(`Error during forced destroy: ${error}`);
+                        }
+                        
+                        // Limpiar sesión de MongoDB
+                        await this.clearSessionFromMongoDB();
+                        
+                        // Crear nuevo cliente
+                        this.client = null;
+                        await this.initializeClient(true);
+                        await this.client.initialize();
+                        
+                        logger.info("Client reinitialized, waiting for QR...");
                     }
                 } catch (error) {
-                    logger.error(`Error forcing disconnect: ${error}`);
+                    logger.error(`Error forcing reinitialize: ${error}`);
                 }
             }
         } catch (error) {
