@@ -1,0 +1,9 @@
+version: "2"
+authtoken: 32R0zcy88zNsf9mGgXmXYpF0VlQ_6FNoHX1a6nhWi7bP682vG
+tunnels:
+  mullbot:
+    addr: app:3000
+    proto: http
+    schemes:
+      - https
+    inspect: true
