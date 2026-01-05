@@ -855,6 +855,34 @@ Tu solicitud ha sido registrada correctamente.
                         }
 
                         logger.info(`Pause confirmation message sent automatically to ${phoneNumber}`);
+
+                        // NOTIFICAR AL AGENTE HUMANO SI ESTÁ CONFIGURADO
+                        try {
+                            const { BotConfigModel } = await import('./crm/models/bot-config.model');
+                            const botCfg = await BotConfigModel.findOne();
+
+                            if (botCfg && botCfg.humanAgentPhone && botCfg.notifyAgentOnAttention) {
+                                const agentNumber = botCfg.humanAgentPhone;
+                                const formattedAgent = agentNumber.includes('@') ? agentNumber : `${agentNumber}@c.us`;
+                                const excerpt = (message.body || '').toString().substring(0, 300);
+                                const notifyText = `📣 *Nueva solicitud de atención humana*\n\n*De:* ${phoneNumber}\n*Nombre:* ${pushName || 'Desconocido'}\n*Mensaje:* ${excerpt}\n\nResponde desde el panel de administración o envía mensaje directo usando este número.`;
+
+                                try {
+                                    const sentToAgent = await this.client.sendMessage(formattedAgent, notifyText);
+                                    if (sentToAgent) await this.saveSentMessage(agentNumber, notifyText);
+
+                                    // Asociar agente al contacto para seguimiento
+                                    await ContactModel.findOneAndUpdate({ phoneNumber: phoneNumber }, { $set: { assignedAgentPhone: agentNumber } });
+
+                                    logger.info(`Agent ${agentNumber} notified about ${phoneNumber}`);
+                                } catch (notifyErr) {
+                                    logger.error(`Error notifying agent ${agentNumber}:`, notifyErr);
+                                }
+                            }
+                        } catch (cfgErr) {
+                            logger.error('Error loading bot config for agent notification:', cfgErr);
+                        }
+
                     } catch (messageError) {
                         logger.error(`Error sending automatic pause confirmation message to ${phoneNumber}:`, messageError);
                         // No fallar la operación de pausa si el mensaje falla

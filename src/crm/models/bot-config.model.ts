@@ -41,7 +41,11 @@ export interface IBotConfig extends Document {
     // Configuración de pagos
     bankInfo: string;
     paypalEmail: string;
-    
+
+    // Agent forwarding
+    humanAgentPhone?: string;
+    notifyAgentOnAttention?: boolean;
+
     updatedAt: Date;
     createdAt: Date;
 }
@@ -60,6 +64,11 @@ const BotConfigSchema = new Schema<IBotConfig>({
     businessAddress: { type: String, default: '' },
     businessWebsite: { type: String, default: '' },
     
+    // Teléfono de agente humano (opcional) - si está configurado, el bot podrá notificar a este número
+    humanAgentPhone: { type: String, default: '' },
+    // Notificar automáticamente al agente cuando un contacto solicite atención humana
+    notifyAgentOnAttention: { type: Boolean, default: false },
+
     // Horario de atención
     businessHours: { type: String, default: 'Lunes a Viernes 9am - 7pm' },
     

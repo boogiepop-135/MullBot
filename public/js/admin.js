@@ -1118,6 +1118,10 @@ async function loadBotConfig() {
     setInputValue('business-name-input', config.businessName);
     setInputValue('business-description-input', config.businessDescription);
     setInputValue('business-phone-input', config.businessPhone);
+    setInputValue('agent-phone-input', config.humanAgentPhone);
+    // Checkbox para notificación automática al agente
+    const notifyCheckbox = document.getElementById('notify-agent-checkbox');
+    if (notifyCheckbox) notifyCheckbox.checked = !!config.notifyAgentOnAttention;
     setInputValue('business-email-input', config.businessEmail);
     setInputValue('business-address-input', config.businessAddress);
     setInputValue('business-website-input', config.businessWebsite);
@@ -1230,6 +1234,10 @@ window.saveBotConfig = async function() {
     welcomeMessage: getInputValue('welcome-message-input'),
     pauseMessage: getInputValue('pause-message-input'),
     
+    // Teléfono de agente y notificaciones automáticas
+    humanAgentPhone: getInputValue('agent-phone-input'),
+    notifyAgentOnAttention: document.getElementById('notify-agent-checkbox')?.checked || false,
+
     // IA
     aiSystemPrompt: getInputValue('ai-system-prompt-input'),
     aiModel: getInputValue('ai-model-input'),

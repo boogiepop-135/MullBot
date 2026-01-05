@@ -16,6 +16,9 @@ export interface IContact extends Document {
     appointmentConfirmed: boolean;
     appointmentNotes?: string;
     paymentConfirmedAt?: Date;
+
+    // Agente asignado (opcional)
+    assignedAgentPhone?: string;
 }
 
 const ContactSchema = new Schema<IContact>({
@@ -37,7 +40,10 @@ const ContactSchema = new Schema<IContact>({
     appointmentDate: Date,
     appointmentConfirmed: { type: Boolean, default: false },
     appointmentNotes: String,
-    paymentConfirmedAt: Date
+    paymentConfirmedAt: Date,
+
+    // Agent assignment (phone number of human agent currently handling this contact)
+    assignedAgentPhone: { type: String, default: '' }
 }, { timestamps: true });
 
 export const ContactModel = mongoose.model<IContact>('Contact', ContactSchema);
