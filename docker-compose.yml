@@ -9,7 +9,7 @@ services:
       PORT: 3000
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
-      MONGODB_URI: mongodb://mongo:27017/mullbot
+      MONGODB_URI: mongodb://root:example@mongo:27017/mullbot?authSource=admin
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     ports:
       - "3000:3000"
