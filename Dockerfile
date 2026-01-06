@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copiar archivos de dependencias
 COPY package.json package-lock.json* ./
-RUN npm ci
+# Usar npm install en lugar de npm ci para actualizar el lock file con Prisma
+# TODO: Cambiar de vuelta a npm ci después de que package-lock.json esté actualizado
+RUN npm install
 
 # Copiar archivos fuente
 COPY tsconfig.json ./
@@ -69,7 +71,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/views ./src/views
 
 # Instalar solo dependencias de producción
-RUN npm ci --only=production && \
+# Usar npm install temporalmente hasta que package-lock.json esté sincronizado
+RUN npm install --only=production && \
     npm cache clean --force && \
     rm -rf /tmp/*
 
