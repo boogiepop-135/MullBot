@@ -18,8 +18,8 @@ async function createAdminAuto() {
             console.log(`✅ Admin user already exists: ${username}`);
             console.log(`   Username: ${username}`);
             console.log(`   Password: ${password}`);
+            await prisma.$disconnect();
             process.exit(0);
-            return;
         }
         
         // Crear el usuario admin

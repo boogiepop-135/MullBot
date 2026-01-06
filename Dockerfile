@@ -28,12 +28,8 @@ COPY scripts/ ./scripts/
 COPY src/ ./src/
 COPY public/ ./public/
 
-# Compilar proyecto
+# Compilar proyecto (esto compilará scripts/create-admin-auto.ts a dist/scripts/create-admin-auto.js)
 RUN npm run build
-
-# Copiar script de admin compilado
-RUN mkdir -p dist/scripts && \
-    cp scripts/create-admin-auto.js dist/scripts/ || true
 
 # Stage de producción - imagen final optimizada
 FROM node:20-slim
