@@ -4,12 +4,14 @@
 
 Se encontró información sensible en el repositorio público:
 
-1. **Token de Ngrok** en `ngrok.yml` - Expuesto en el historial de git
-2. **JWT_SECRET de ejemplo** en `README.md` - Podría confundirse con uno real
+1. **API Key de Gemini** en `.env.example` - Expuesta en el historial de git: `AIzaSyCjN-SiPpKayCQMW70GVIQi3LNsFH7xIDg`
+2. **Token de Ngrok** en `ngrok.yml` - Expuesto en el historial de git: `32R0zcy88zNsf9mGgXmXYpF0VlQ_6FNoHX1a6nhWi7bP682vG`
+3. **JWT_SECRET de ejemplo** en `README.md` - Podría confundirse con uno real
 
 ## ✅ CAMBIOS REALIZADOS
 
 ### 1. Archivos Corregidos
+- ✅ `.env.example` - API key real reemplazada con placeholder seguro
 - ✅ `ngrok.yml` - Token reemplazado con placeholder
 - ✅ `README.md` - JWT_SECRET de ejemplo actualizado
 - ✅ `.gitignore` - Agregado `ngrok.yml` para evitar futuros commits
@@ -18,7 +20,20 @@ Se encontró información sensible en el repositorio público:
 
 ### 2. Acciones Inmediatas Requeridas
 
-#### A. Regenerar Token de Ngrok (CRÍTICO)
+#### A. Regenerar API Key de Gemini (CRÍTICO - PRIORIDAD MÁXIMA)
+La API key de Gemini que estaba expuesta debe ser **regenerada inmediatamente**:
+
+1. Ve a: https://makersuite.google.com/app/apikey
+2. Encuentra la API key expuesta: `AIzaSyCjN-SiPpKayCQMW70GVIQi3LNsFH7xIDg`
+3. Haz clic en "Delete" o "Revoke" para revocarla
+4. Genera una nueva API key
+5. Actualiza tu archivo `.env` local con la nueva API key:
+   ```bash
+   GEMINI_API_KEY=tu_nueva_api_key_aqui
+   ```
+6. Si estás usando esta API key en producción (Railway, Digital Ocean, etc.), actualízala también allí
+
+#### B. Regenerar Token de Ngrok (CRÍTICO)
 El token de Ngrok que estaba expuesto debe ser **regenerado inmediatamente**:
 
 1. Ve a: https://dashboard.ngrok.com/get-started/your-authtoken
@@ -29,7 +44,7 @@ El token de Ngrok que estaba expuesto debe ser **regenerado inmediatamente**:
    NGROK_AUTHTOKEN=tu_nuevo_token_aqui
    ```
 
-#### B. Regenerar JWT_SECRET (Recomendado)
+#### C. Regenerar JWT_SECRET (Recomendado)
 Si el JWT_SECRET en `README.md` era el que estabas usando en producción:
 
 1. Genera un nuevo JWT_SECRET:
@@ -44,7 +59,7 @@ Si el JWT_SECRET en `README.md` era el que estabas usando en producción:
 
 ## 🧹 Limpieza del Historial de Git
 
-El token de Ngrok está en el historial de git. Para eliminarlo completamente, tienes dos opciones:
+Las API keys y tokens están en el historial de git. Para eliminarlos completamente, tienes tres opciones:
 
 ### Opción 1: Usar git filter-repo (Recomendado)
 
@@ -52,8 +67,12 @@ El token de Ngrok está en el historial de git. Para eliminarlo completamente, t
 # Instalar git-filter-repo (si no lo tienes)
 pip install git-filter-repo
 
-# Eliminar ngrok.yml del historial
-git filter-repo --path ngrok.yml --invert-paths
+# Eliminar archivos con información sensible del historial
+git filter-repo --path ngrok.yml --path .env.example --invert-paths
+
+# O eliminar solo el contenido sensible de .env.example
+git filter-repo --replace-text <(echo "AIzaSyCjN-SiPpKayCQMW70GVIQi3LNsFH7xIDg==>tu_api_key_de_gemini_aqui")
+git filter-repo --replace-text <(echo "32R0zcy88zNsf9mGgXmXYpF0VlQ_6FNoHX1a6nhWi7bP682vG==>TU_NGROK_AUTHTOKEN_AQUI")
 
 # Forzar push (⚠️ ADVERTENCIA: Esto reescribe el historial)
 git push origin --force --all
@@ -68,8 +87,12 @@ wget https://repo1.maven.org/maven2/com/madgag/bfg/1.14.0/bfg-1.14.0.jar
 # Crear backup
 git clone --mirror https://github.com/boogiepop-135/MullBot.git backup.git
 
-# Eliminar ngrok.yml del historial
-java -jar bfg-1.14.0.jar --delete-files ngrok.yml
+# Eliminar archivos con información sensible del historial
+java -jar bfg-1.14.0.jar --delete-files ngrok.yml .env.example
+
+# O reemplazar contenido sensible
+java -jar bfg-1.14.0.jar --replace-text passwords.txt
+# (crea passwords.txt con: AIzaSyCjN-SiPpKayCQMW70GVIQi3LNsFH7xIDg==>tu_api_key_de_gemini_aqui)
 
 # Limpiar y forzar push
 cd MullBot.git
@@ -94,12 +117,16 @@ Si el repositorio no tiene muchos colaboradores:
 
 ## 📋 Checklist de Seguridad
 
+- [ ] **URGENTE:** Regenerar API key de Gemini en Google AI Studio
+- [ ] **URGENTE:** Actualizar `.env` local con nueva API key de Gemini
+- [ ] **URGENTE:** Actualizar API key en producción (Railway/Digital Ocean) si aplica
 - [ ] Regenerar token de Ngrok
-- [ ] Actualizar `.env` local con nuevo token
+- [ ] Actualizar `.env` local con nuevo token de Ngrok
 - [ ] Regenerar JWT_SECRET si era el de producción
 - [ ] Limpiar historial de git (elegir una opción arriba)
 - [ ] Verificar que `.env` está en `.gitignore`
 - [ ] Verificar que `ngrok.yml` está en `.gitignore`
+- [ ] Verificar que `.env.example` solo contiene placeholders
 - [ ] Revisar otros archivos por información sensible
 
 ## 🔐 Mejores Prácticas para el Futuro
