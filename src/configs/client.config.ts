@@ -93,7 +93,7 @@ export async function getClientConfig() {
         qrMaxRetries: 10, // Aumentar reintentos de QR
         // Configuración adicional para mejor estabilidad
         webVersionCache: {
-            type: 'remote',
+            type: 'remote' as const,
             remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51.html'
         },
         // Forzar regeneración de QR si falla
