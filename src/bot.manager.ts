@@ -134,29 +134,31 @@ export class BotManager {
 
     private async handleQr(qr: string) {
         try {
-            logger.info('QR RECEIVED - Generating QR code...');
+            logger.info('🔷 QR RECEIVED - Generating QR code...');
+            logger.info(`QR string length: ${qr?.length || 0}`);
             
             // Validar que el QR no esté vacío
             if (!qr || qr.trim().length === 0) {
-                logger.error('Received empty QR code');
+                logger.error('❌ Received empty QR code');
                 return;
             }
             
             this.qrData.qrCodeData = qr;
             this.qrData.qrScanned = false;
-            logger.info("QR Code generated successfully (length: " + qr.length + ")");
+            logger.info(`✅ QR Code generated successfully (length: ${qr.length})`);
+            logger.info(`✅ QR data stored in qrData.qrCodeData`);
             
             // Generar QR en terminal
             try {
                 qrcode.generate(qr, { small: true });
             } catch (error) {
-                logger.warn(`Error generating QR in terminal: ${error}`);
+                logger.warn(`⚠ Error generating QR in terminal: ${error}`);
             }
             
-            logger.info("QR Code ready for scanning. Waiting for device authentication...");
-            logger.info("QR will expire in approximately 20 seconds. If not scanned, a new QR will be generated.");
+            logger.info("📱 QR Code ready for scanning. Waiting for device authentication...");
+            logger.info("⏰ QR will expire in approximately 20 seconds. If not scanned, a new QR will be generated.");
         } catch (error) {
-            logger.error(`Error handling QR code: ${error}`);
+            logger.error(`❌ Error handling QR code: ${error}`);
             // Resetear QR data en caso de error
             this.qrData.qrCodeData = "";
             this.qrData.qrScanned = false;
@@ -220,6 +222,14 @@ export class BotManager {
             // Inicializar el cliente de WhatsApp
             logger.info("Iniciando inicialización del cliente de WhatsApp...");
             
+            // Resetear QR data antes de inicializar para asegurar que se genere nuevo QR si es necesario
+            const hadQR = !!this.qrData.qrCodeData;
+            if (hadQR) {
+                logger.info("Limpiando QR anterior antes de inicializar...");
+                this.qrData.qrCodeData = "";
+                this.qrData.qrScanned = false;
+            }
+            
             // Timeout para detectar si no se genera QR o no se conecta
             const initTimeout = setTimeout(() => {
                 if (!this.qrData.qrScanned && !this.client?.info && !this.qrData.qrCodeData) {
@@ -238,8 +248,8 @@ export class BotManager {
             }
             
             // Esperar un momento para que los eventos se emitan
-            // Reducir tiempo de espera a 15 segundos para respuesta más rápida
-            await new Promise(resolve => setTimeout(resolve, 15000));
+            // Aumentar tiempo de espera a 20 segundos para dar más tiempo al QR
+            await new Promise(resolve => setTimeout(resolve, 20000));
             clearTimeout(initTimeout);
             
             // Verificar estado después de la inicialización
@@ -251,9 +261,21 @@ export class BotManager {
             
             // Si no hay QR, no está listo y no está escaneado, puede haber un problema
             if (!hasQR && !isReady && !isScanned) {
-                logger.warn("⚠ Cliente inicializado pero no hay QR ni ready después de 15 segundos");
+                logger.warn("⚠ Cliente inicializado pero no hay QR ni ready después de 20 segundos");
                 logger.warn("Esto puede indicar un problema con la sesión. La sesión puede estar corrupta.");
                 logger.info("💡 Sugerencia: Intenta desvincular y escanear el QR nuevamente");
+                logger.info("💡 Intentando forzar regeneración de QR...");
+                
+                // Intentar forzar regeneración destruyendo y recreando el cliente
+                try {
+                    if (this.client) {
+                        await this.client.destroy();
+                        this.client = null;
+                        logger.info("Cliente destruido, se recreará en el próximo intento");
+                    }
+                } catch (error) {
+                    logger.error(`Error destruyendo cliente para regenerar QR: ${error}`);
+                }
             }
             
         } catch (error) {

@@ -63,6 +63,7 @@ export default function (botManager: BotManager) {
             
             // Si el cliente está listo, no hay QR disponible
             if (isClientReady && qrData.qrScanned) {
+                logger.info("GET /qr - Client already connected");
                 return res.json({
                     qr: null,
                     qrScanned: true,
@@ -71,6 +72,8 @@ export default function (botManager: BotManager) {
             }
             
             const qr = qrData.qrCodeData;
+            logger.info(`GET /qr - QR data check: hasQR=${!!qr}, length=${qr?.length || 0}, clientReady=${isClientReady}, qrScanned=${qrData.qrScanned}`);
+            
             if (!qr || qr.trim().length === 0) {
                 // Si no hay QR pero el cliente existe, puede estar inicializándose
                 if (botManager.client && !isClientReady) {
@@ -81,6 +84,19 @@ export default function (botManager: BotManager) {
                         message: "QR code is being generated, please wait...",
                         retryAfter: 5
                     });
+                }
+                
+                // Si no hay cliente, intentar inicializarlo
+                if (!botManager.client) {
+                    logger.info("Cliente no existe, inicializando...");
+                    try {
+                        await botManager.initializeClient();
+                        await botManager.initialize();
+                        // Esperar un momento para que se genere el QR
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    } catch (error) {
+                        logger.error(`Error inicializando cliente: ${error}`);
+                    }
                 }
                 
                 // En lugar de 404, devolver 200 con información útil
