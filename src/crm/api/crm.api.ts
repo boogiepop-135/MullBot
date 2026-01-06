@@ -392,12 +392,10 @@ Tu solicitud ha sido registrada correctamente.
                             } else if (!existingContact || !existingContact.pushName) {
                                 // Si no hay nombre y no tenemos pushName, intentar obtenerlo de WhatsApp
                                 try {
-                                    if (botManager.client) {
-                                        const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
-                                        const contact = await botManager.client.getContactById(formattedNumber);
-                                        if (contact && contact.pushName) {
-                                            updateData.pushName = contact.pushname;
-                                        }
+                                    // Evolution API no tiene getContactById, usar información de la BD
+                                    const contact = await ContactModel.findOne({ phoneNumber: phoneNumber.replace(/@[cg]\.us$/, '') });
+                                    if (contact && contact.pushName) {
+                                        updateData.pushName = contact.pushName;
                                     }
                                 } catch (waError) {
                                     logger.warn(`Could not get WhatsApp profile for ${phoneNumber}`);
