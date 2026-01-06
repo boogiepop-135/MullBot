@@ -83,10 +83,14 @@ export default function (botManager: BotManager) {
                     });
                 }
                 
-                return res.status(404).json({ 
-                    error: "QR code not available",
+                // En lugar de 404, devolver 200 con información útil
+                // Esto evita errores en el frontend y permite mejor manejo
+                return res.json({ 
+                    qr: null,
                     qrScanned: qrData.qrScanned,
-                    message: "No QR code available. The client may need to be reinitialized."
+                    error: "QR code not available",
+                    message: "No QR code available. The client may need to be reinitialized. Try logging out and reconnecting.",
+                    needsReconnect: true
                 });
             }
 

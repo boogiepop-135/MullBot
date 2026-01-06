@@ -60,5 +60,36 @@ services:
   #   environment:
   #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
 
+  # Evolution API - Alternativa más robusta a whatsapp-web.js (OPCIONAL)
+  # Descomenta este servicio si quieres usar Evolution API en lugar de whatsapp-web.js
+  # Evolution API es más estable y confiable, pero requiere configuración adicional
+  # evolution-api:
+  #   image: atendai/evolution-api:latest
+  #   container_name: evolution-api
+  #   restart: always
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     DATABASE_ENABLED: "true"
+  #     DATABASE_PROVIDER: "mongodb"
+  #     DATABASE_CONNECTION_URI: ${MONGODB_URI}
+  #     AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-mullbot-evolution-key-2025}
+  #     AUTHENTICATION_EXPOSE_INTERNAL: "false"
+  #     WEBHOOK_GLOBAL_ENABLED: "true"
+  #     WEBHOOK_GLOBAL_URL: ${API_BASE_URL:-http://localhost:3001}/webhook/evolution
+  #     QRCODE_LIMIT: "30"
+  #     QRCODE_COLOR: "198,31,31"
+  #     LOG_LEVEL: "ERROR"
+  #     LOG_COLOR: "true"
+  #   volumes:
+  #     - evolution_instances:/evolution/instances
+  #     - evolution_store:/evolution/store
+  #   depends_on:
+  #     - mongo
+  #   networks:
+  #     - default
+
 volumes:
   mongodata:
+  # evolution_instances:
+  # evolution_store:
