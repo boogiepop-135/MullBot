@@ -1186,18 +1186,16 @@
             <div class="space-y-6">
               <div class="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border-2 border-gray-300">
                 <div>
-                  <p class="font-bold text-white">Estado de la conexión</p>
+                  <p class="font-bold text-gray-800">Estado de la conexión</p>
                   <p class="text-sm text-gray-700 mt-1" id="whatsapp-connected-status">Verificando...</p>
                 </div>
-                <div class="flex gap-3">
-                  <button onclick="if(typeof clearAllSessions === 'function') { clearAllSessions(); } else { alert('Error: La función clearAllSessions no está disponible. Por favor, recarga la página.'); console.error('clearAllSessions not found'); }"
-                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
-                    <i class="fas fa-trash mr-2"></i>Limpiar Sesiones
+                <div>
+                  <button onclick="if(typeof logoutWhatsApp === 'function') { logoutWhatsApp(); } else { alert('Error: La función no está disponible. Por favor, recarga la página.'); console.error('logoutWhatsApp not found'); }"
+                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2">
+                    <i class="fas fa-unlink"></i>
+                    <span>Desvincular WhatsApp</span>
                   </button>
-                  <button onclick="if(typeof logoutWhatsApp === 'function') { logoutWhatsApp(); } else { alert('Error: La función logoutWhatsApp no está disponible. Por favor, recarga la página.'); console.error('logoutWhatsApp not found'); }"
-                    class="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl">
-                    <i class="fas fa-unlink mr-2"></i>Desvincular
-                  </button>
+                  <p class="text-xs text-gray-500 mt-2 text-center">Desvincula y limpia todas las sesiones automáticamente</p>
                 </div>
               </div>
               <div id="qr-display" class="hidden p-8 bg-gray-50 rounded-2xl border-2 border-gray-300 flex flex-col items-center">

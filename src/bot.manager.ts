@@ -122,15 +122,34 @@ export class BotManager {
     }
 
     private async handleQr(qr: string) {
-        logger.info('QR RECEIVED');
-        this.qrData.qrCodeData = qr;
-        this.qrData.qrScanned = false;
-        logger.info("QR Code generated:", qr);
-        qrcode.generate(qr, { small: true });
-        
-        // NO limpiar sesiones aquí - esto puede interferir con la autenticación
-        // La limpieza debe hacerse explícitamente antes de generar el QR (en logout/clear-sessions)
-        logger.info("QR Code ready for scanning. Waiting for device authentication...");
+        try {
+            logger.info('QR RECEIVED - Generating QR code...');
+            
+            // Validar que el QR no esté vacío
+            if (!qr || qr.trim().length === 0) {
+                logger.error('Received empty QR code');
+                return;
+            }
+            
+            this.qrData.qrCodeData = qr;
+            this.qrData.qrScanned = false;
+            logger.info("QR Code generated successfully (length: " + qr.length + ")");
+            
+            // Generar QR en terminal
+            try {
+                qrcode.generate(qr, { small: true });
+            } catch (error) {
+                logger.warn(`Error generating QR in terminal: ${error}`);
+            }
+            
+            logger.info("QR Code ready for scanning. Waiting for device authentication...");
+            logger.info("QR will expire in approximately 20 seconds. If not scanned, a new QR will be generated.");
+        } catch (error) {
+            logger.error(`Error handling QR code: ${error}`);
+            // Resetear QR data en caso de error
+            this.qrData.qrCodeData = "";
+            this.qrData.qrScanned = false;
+        }
     }
 
     /**
@@ -165,111 +184,117 @@ export class BotManager {
         }, 5000);
     }
 
-    public async initialize() {
+    public async initialize(): Promise<void> {
         try {
             // Verificar si el cliente existe, si no, inicializarlo
             if (!this.client) {
+                logger.info("Cliente no existe, inicializando...");
                 await this.initializeClient();
             }
 
             // Inicializar el cliente de WhatsApp
-            logger.info("Starting WhatsApp client initialization...");
-            await this.client.initialize();
-            logger.info("WhatsApp client.initialize() completed");
+            logger.info("Iniciando inicialización del cliente de WhatsApp...");
+            
+            // Timeout para detectar si no se genera QR o no se conecta
+            const initTimeout = setTimeout(() => {
+                if (!this.qrData.qrScanned && !this.client?.info && !this.qrData.qrCodeData) {
+                    logger.warn("⚠ Timeout: No se recibió QR ni ready después de 30 segundos");
+                    logger.warn("Esto puede indicar un problema con la sesión. Intentando regenerar...");
+                }
+            }, 30000);
+
+            try {
+                await this.client.initialize();
+                logger.info("✓ Cliente de WhatsApp inicializado");
+            } catch (error) {
+                clearTimeout(initTimeout);
+                logger.error(`❌ Error durante initialize(): ${error}`);
+                throw error;
+            }
             
             // Esperar un momento para que los eventos se emitan
-            // Si después de 20 segundos no hay QR ni ready, puede haber un problema con la sesión
-            await new Promise(resolve => setTimeout(resolve, 20000));
+            // Reducir tiempo de espera a 15 segundos para respuesta más rápida
+            await new Promise(resolve => setTimeout(resolve, 15000));
+            clearTimeout(initTimeout);
             
-            if (!this.qrData.qrScanned && !this.client.info) {
-                logger.warn("Client initialized but no QR or ready event after 20 seconds. This may indicate a session issue.");
-                logger.warn("The session may be corrupted. Try logging out and scanning QR again.");
-                
-                // Intentar forzar una desconexión y reinicialización para que genere un nuevo QR
-                try {
-                    logger.info("Attempting to force disconnect and reinitialize to trigger QR generation...");
-                    if (this.client) {
-                        try {
-                            await this.client.logout();
-                        } catch (error) {
-                            logger.warn(`Error during forced logout: ${error}`);
-                        }
-                        
-                        try {
-                            await this.client.destroy();
-                        } catch (error) {
-                            logger.warn(`Error during forced destroy: ${error}`);
-                        }
-                        
-                        // Limpiar sesión de MongoDB
-                        await this.clearSessionFromMongoDB();
-                        
-                        // Crear nuevo cliente
-                        this.client = null;
-                        await this.initializeClient(true);
-                        await this.client.initialize();
-                        
-                        logger.info("Client reinitialized, waiting for QR...");
-                    }
-                } catch (error) {
-                    logger.error(`Error forcing reinitialize: ${error}`);
-                }
+            // Verificar estado después de la inicialización
+            const hasQR = !!this.qrData.qrCodeData;
+            const isReady = !!this.client?.info;
+            const isScanned = this.qrData.qrScanned;
+            
+            logger.info(`Estado después de inicialización - QR: ${hasQR}, Ready: ${isReady}, Scanned: ${isScanned}`);
+            
+            // Si no hay QR, no está listo y no está escaneado, puede haber un problema
+            if (!hasQR && !isReady && !isScanned) {
+                logger.warn("⚠ Cliente inicializado pero no hay QR ni ready después de 15 segundos");
+                logger.warn("Esto puede indicar un problema con la sesión. La sesión puede estar corrupta.");
+                logger.info("💡 Sugerencia: Intenta desvincular y escanear el QR nuevamente");
             }
+            
         } catch (error) {
-            logger.error(`Client initialization error: ${error}`);
-            throw error;
+            logger.error(`❌ Error durante inicialización del cliente: ${error}`);
+            // No lanzar error inmediatamente, permitir que el sistema intente recuperarse
+            logger.info("El sistema intentará regenerar el QR automáticamente si es necesario");
         }
     }
 
     /**
-     * Desvincular WhatsApp actual y limpiar sesión
+     * Desvincular WhatsApp actual y limpiar TODAS las sesiones
+     * Esta función unifica logout y clearAllSessions para garantizar una limpieza completa
      */
-    public async logout(): Promise<void> {
+    public async logout(): Promise<number> {
         try {
-            logger.info("Logging out WhatsApp client...");
+            logger.info("=== INICIANDO LOGOUT COMPLETO ===");
+            logger.info("Paso 1: Desvinculando y destruyendo cliente...");
 
             // Cerrar y destruir el cliente actual
             if (this.client) {
                 try {
                     // Remover todos los event listeners primero para evitar errores
                     this.client.removeAllListeners();
-                    logger.info("Event listeners removed");
+                    logger.info("✓ Event listeners removidos");
                 } catch (error) {
-                    logger.warn(`Error removing event listeners: ${error}`);
+                    logger.warn(`⚠ Error removiendo event listeners: ${error}`);
                 }
                 
                 try {
                     await this.client.logout();
-                    logger.info("Client logout successful");
+                    logger.info("✓ Cliente desvinculado exitosamente");
                 } catch (error) {
-                    logger.warn(`Error during client logout (may already be logged out): ${error}`);
+                    logger.warn(`⚠ Error durante logout (puede estar ya desvinculado): ${error}`);
                 }
                 
                 try {
                     await this.client.destroy();
-                    logger.info("Client destroyed successfully");
+                    logger.info("✓ Cliente destruido exitosamente");
                 } catch (error) {
-                    logger.warn(`Error during client destroy: ${error}`);
+                    logger.warn(`⚠ Error durante destroy: ${error}`);
                 }
                 
                 this.client = null;
-                logger.info("Client reference cleared");
+                logger.info("✓ Referencia del cliente limpiada");
             }
 
-            // Limpiar sesión de MongoDB
-            logger.info("Clearing session from MongoDB...");
-            await this.clearSessionFromMongoDB();
+            // Esperar un momento para asegurar que el cliente se destruyó completamente
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Limpiar TODAS las sesiones de MongoDB (no solo la actual)
+            logger.info("Paso 2: Limpiando TODAS las sesiones de MongoDB...");
+            const deletedCount = await this.clearAllSessions();
+            logger.info(`✓ ${deletedCount} sesión(es) eliminada(s) de MongoDB`);
 
             // Resetear QR data
+            logger.info("Paso 3: Reseteando datos del QR...");
             this.qrData = {
                 qrCodeData: "",
                 qrScanned: false
             };
-            logger.info("QR data reset");
+            logger.info("✓ Datos del QR reseteados");
 
-            logger.info("WhatsApp client logged out and session cleared successfully");
+            logger.info("=== LOGOUT COMPLETO EXITOSO ===");
+            return deletedCount;
         } catch (error) {
-            logger.error(`Error during logout: ${error}`);
+            logger.error(`❌ Error durante logout: ${error}`);
             // Asegurar que el cliente se limpie incluso si hay errores
             this.client = null;
             this.qrData = {

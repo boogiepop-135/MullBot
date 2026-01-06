@@ -1482,109 +1482,62 @@ async function loadQRCode() {
   const qrContainer = document.getElementById('qr-code-container');
   
   try {
-    const response = await fetch('/qr');
+    // Agregar timestamp para evitar cache
+    const response = await fetch(`/qr?_t=${Date.now()}`);
+    
     if (!response.ok) {
-      if (qrDisplay) qrDisplay.classList.add('hidden');
+      if (response.status === 404) {
+        // QR no disponible aún, esperar y reintentar
+        if (qrDisplay) qrDisplay.classList.add('hidden');
+        setTimeout(loadQRCode, 5000); // Reintentar en 5 segundos
+      } else {
+        console.warn('Error al cargar QR:', response.status);
+        if (qrDisplay) qrDisplay.classList.add('hidden');
+      }
       return;
     }
+    
     const data = await response.json();
     
     if (data.qr && !data.qrScanned) {
-      if (qrDisplay) qrDisplay.classList.remove('hidden');
-      if (qrContainer) {
-        qrContainer.innerHTML = `<img src="data:image/png;base64,${data.qr}" alt="QR Code" class="w-64 h-64">`;
+      // Hay QR disponible y no está escaneado
+      if (qrDisplay) {
+        qrDisplay.classList.remove('hidden');
       }
-      // Refrescar QR cada 20 segundos
+      if (qrContainer) {
+        // Actualizar imagen del QR
+        qrContainer.innerHTML = `<img src="data:image/png;base64,${data.qr}" alt="QR Code" class="w-64 h-64" style="max-width: 100%; height: auto;">`;
+      }
+      // Refrescar QR cada 20 segundos (los QR expiran después de ~20 segundos)
       setTimeout(loadQRCode, 20000);
     } else if (data.qrScanned) {
+      // QR ya fue escaneado, ocultar y actualizar estado
       if (qrDisplay) qrDisplay.classList.add('hidden');
       loadWhatsAppStatus();
+    } else {
+      // No hay QR disponible aún, esperar y reintentar
+      if (qrDisplay) qrDisplay.classList.add('hidden');
+      setTimeout(loadQRCode, 5000); // Reintentar en 5 segundos
     }
   } catch (error) {
-    console.error('Error loading QR code:', error);
+    console.error('Error cargando código QR:', error);
+    // Reintentar después de un error
+    setTimeout(loadQRCode, 5000);
   }
 }
 
+// clearAllSessions ahora está deprecado - usar logoutWhatsApp en su lugar
+// Mantenido por compatibilidad pero redirige a logoutWhatsApp
 window.clearAllSessions = async function() {
-  console.log('clearAllSessions called');
-  
-  if (!confirm('¿Estás seguro de que deseas LIMPIAR TODAS las sesiones de WhatsApp?\n\nEsto eliminará completamente todas las sesiones guardadas en la base de datos y generará un nuevo QR. Tendrás que escanear el QR nuevamente.')) {
-    console.log('User cancelled clearAllSessions');
-    return;
-  }
-  
-  const statusEl = document.getElementById('whatsapp-connected-status');
-  if (!statusEl) {
-    console.error('whatsapp-connected-status element not found');
-    alert('Error: No se pudo encontrar el elemento de estado');
-    return;
-  }
-  
-  statusEl.innerHTML = `<span class="text-red-600 font-medium">⏳ Limpiando todas las sesiones...</span>`;
-  
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
-    }
-    
-    console.log('Sending clear-sessions request...');
-    const response = await fetch('/crm/whatsapp/clear-sessions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Error response:', errorData);
-      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
-    }
-    
-    const result = await response.json();
-    console.log('Clear sessions result:', result);
-    
-    statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
-    
-    alert(result.message || `Sesiones limpiadas. Se eliminaron ${result.deletedCount || 0} sesiones. Generando nuevo QR...`);
-    
-    // Esperar y recargar
-    setTimeout(() => {
-      loadWhatsAppStatus();
-      loadQRCode();
-      
-      // Recargar cada 5 segundos hasta que aparezca el QR
-      let attempts = 0;
-      const checkQR = setInterval(() => {
-        attempts++;
-        loadWhatsAppStatus();
-        loadQRCode();
-        
-        if (attempts >= 10) { // 50 segundos máximo
-          clearInterval(checkQR);
-        }
-      }, 5000);
-    }, 3000);
-    
-  } catch (error) {
-    console.error('Error clearing sessions:', error);
-    alert('Error al limpiar sesiones: ' + (error.message || 'Error desconocido'));
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-red-600 font-medium">❌ Error al limpiar sesiones</span>`;
-    }
-    loadWhatsAppStatus();
-  }
+  console.log('clearAllSessions llamado (redirigiendo a logoutWhatsApp)...');
+  logoutWhatsApp();
 };
 
 window.logoutWhatsApp = async function() {
-  console.log('logoutWhatsApp called');
+  console.log('=== DESVINCULACIÓN DE WHATSAPP ===');
   
-  if (!confirm('¿Estás seguro de que deseas desvincular WhatsApp? Tendrás que escanear el QR nuevamente.')) {
-    console.log('User cancelled logout');
+  if (!confirm('¿Estás seguro de que deseas desvincular WhatsApp?\n\nEsto desvinculará el dispositivo y limpiará todas las sesiones guardadas. Tendrás que escanear el QR nuevamente para volver a conectar.')) {
+    console.log('Usuario canceló la desvinculación');
     return;
   }
   
@@ -1595,7 +1548,14 @@ window.logoutWhatsApp = async function() {
     return;
   }
   
-  statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Desvinculando...</span>`;
+  // Deshabilitar botón durante el proceso
+  const logoutBtn = event?.target?.closest('button');
+  if (logoutBtn) {
+    logoutBtn.disabled = true;
+    logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Desvinculando...';
+  }
+  
+  statusEl.innerHTML = `<span class="text-yellow-600 font-medium">⏳ Desvinculando y limpiando sesiones...</span>`;
   
   try {
     const token = localStorage.getItem('token');
@@ -1603,7 +1563,7 @@ window.logoutWhatsApp = async function() {
       throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
     }
     
-    console.log('Sending logout request...');
+    console.log('Enviando solicitud de desvinculación...');
     const response = await fetch('/crm/whatsapp/logout', {
       method: 'POST',
       headers: { 
@@ -1612,64 +1572,79 @@ window.logoutWhatsApp = async function() {
       }
     });
     
-    console.log('Response status:', response.status);
+    console.log('Estado de respuesta:', response.status);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('Error response:', errorData);
-      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      console.error('Error en respuesta:', errorData);
+      throw new Error(errorData.error || errorData.details || `Error ${response.status}: ${response.statusText}`);
     }
     
     const result = await response.json();
-    console.log('Logout result:', result);
+    console.log('Resultado de desvinculación:', result);
     
     statusEl.innerHTML = `<span class="text-blue-600 font-medium">⏳ Generando nuevo QR...</span>`;
     
-    alert('WhatsApp desvinculado correctamente. Generando nuevo código QR...');
+    // Mostrar mensaje de éxito
+    const deletedCount = result.deletedCount || 0;
+    alert(`✅ WhatsApp desvinculado correctamente.\n\n${deletedCount} sesión(es) eliminada(s).\n\nGenerando nuevo código QR...`);
     
-    // Esperar un momento para que se genere el nuevo QR y luego recargar
+    // Esperar y recargar estado y QR
     setTimeout(() => {
       loadWhatsAppStatus();
       loadQRCode();
-      
-      // Si después de 5 segundos no hay QR, intentar regenerar
-      setTimeout(async () => {
-        try {
-          const qrResponse = await fetch('/qr');
-          const qrData = await qrResponse.json();
-          if (!qrData.qr) {
-            console.log('No QR after logout, attempting to regenerate...');
-            const regenerateResponse = await fetch('/qr/regenerate', {
-              method: 'POST'
-            });
-            if (regenerateResponse.ok) {
-              console.log('QR regeneration initiated');
-            }
-          }
-        } catch (error) {
-          console.error('Error checking/regenerating QR:', error);
-        }
-      }, 5000);
-    }, 3000);
+    }, 2000);
     
-    // Recargar cada 5 segundos hasta que aparezca el QR
+    // Recargar periódicamente hasta que aparezca el QR o se conecte
     let attempts = 0;
+    const maxAttempts = 15; // 75 segundos máximo (15 intentos x 5 segundos)
     const checkQR = setInterval(() => {
       attempts++;
       loadWhatsAppStatus();
       loadQRCode();
       
-      if (attempts >= 10) { // 50 segundos máximo
+      // Verificar si ya hay QR o si está conectado
+      const qrDisplay = document.getElementById('qr-display');
+      const statusText = statusEl.textContent || '';
+      
+      if (qrDisplay && !qrDisplay.classList.contains('hidden')) {
+        console.log('✓ QR visible, deteniendo verificación');
         clearInterval(checkQR);
-        if (statusEl) {
-          statusEl.innerHTML = `<span class="text-orange-600 font-medium">⚠️ Si no aparece el QR, intenta recargar la página</span>`;
+        if (logoutBtn) {
+          logoutBtn.disabled = false;
+          logoutBtn.innerHTML = '<i class="fas fa-unlink mr-2"></i><span>Desvincular WhatsApp</span>';
+        }
+      } else if (statusText.includes('Conectado') || statusText.includes('✅')) {
+        console.log('✓ Cliente conectado, deteniendo verificación');
+        clearInterval(checkQR);
+        if (logoutBtn) {
+          logoutBtn.disabled = false;
+          logoutBtn.innerHTML = '<i class="fas fa-unlink mr-2"></i><span>Desvincular WhatsApp</span>';
+        }
+      } else if (attempts >= maxAttempts) {
+        console.log('⚠ Tiempo máximo alcanzado');
+        clearInterval(checkQR);
+        statusEl.innerHTML = `<span class="text-orange-600 font-medium">⚠️ Si no aparece el QR, intenta recargar la página o contacta al soporte</span>`;
+        if (logoutBtn) {
+          logoutBtn.disabled = false;
+          logoutBtn.innerHTML = '<i class="fas fa-unlink mr-2"></i><span>Desvincular WhatsApp</span>';
         }
       }
     }, 5000);
     
   } catch (error) {
-    console.error('Error logging out WhatsApp:', error);
-    alert('Error al desvincular WhatsApp: ' + (error.message || 'Error desconocido'));
+    console.error('❌ Error al desvincular WhatsApp:', error);
+    alert('❌ Error al desvincular WhatsApp:\n\n' + (error.message || 'Error desconocido'));
+    
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="text-red-600 font-medium">❌ Error al desvincular</span>`;
+    }
+    
+    if (logoutBtn) {
+      logoutBtn.disabled = false;
+      logoutBtn.innerHTML = '<i class="fas fa-unlink mr-2"></i><span>Desvincular WhatsApp</span>';
+    }
+    
     loadWhatsAppStatus();
   }
 };

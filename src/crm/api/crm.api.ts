@@ -1459,133 +1459,81 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     });
 
     // Endpoint para limpiar completamente todas las sesiones de WhatsApp
+    // DEPRECATED: Ahora usa logout() que hace lo mismo. Mantenido por compatibilidad.
     router.post('/whatsapp/clear-sessions', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            logger.info('Clear all sessions request received');
+            logger.info('Clear all sessions request received (usando logout unificado)...');
             
-            // Paso 1: Desconectar y destruir cliente actual completamente
-            if (botManager.client) {
-                try {
-                    logger.info('Removing all event listeners...');
-                    botManager.client.removeAllListeners();
-                } catch (error) {
-                    logger.warn(`Error removing event listeners: ${error}`);
-                }
-                
-                try {
-                    logger.info('Logging out client...');
-                    await botManager.client.logout();
-                } catch (error) {
-                    logger.warn(`Error during logout (may already be logged out): ${error}`);
-                }
-                
-                try {
-                    logger.info('Destroying client...');
-                    await botManager.client.destroy();
-                } catch (error) {
-                    logger.warn(`Error destroying client: ${error}`);
-                }
-                
-                botManager.client = null;
-                logger.info('Client completely destroyed');
-            }
+            // Usar logout() que ahora hace todo: desvincular + limpiar todas las sesiones
+            const deletedCount = await botManager.logout();
             
-            // Paso 2: Esperar un momento para asegurar que el cliente se destruyó completamente
+            // Esperar y reinicializar igual que logout
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Paso 3: Limpiar TODAS las sesiones de MongoDB (sin filtros)
-            logger.info('Clearing ALL sessions from MongoDB...');
-            const deletedCount = await botManager.clearAllSessions();
-            logger.info(`Cleared ${deletedCount} sessions from MongoDB`);
-            
-            // Paso 4: Resetear estado del QR
-            botManager.qrData = {
-                qrCodeData: "",
-                qrScanned: false
-            };
-            
-            // Paso 5: Esperar más tiempo para asegurar que MongoDB procesó las eliminaciones
-            logger.info('Waiting for MongoDB to process deletions...');
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            // Paso 6: Crear nuevo cliente completamente limpio
-            logger.info('Creating new clean client (skipSessionClear=true because we already cleared)...');
-            await botManager.initializeClient(true); // skipSessionClear porque ya limpiamos todo
-            
-            // Paso 7: Esperar un momento antes de inicializar
+            await botManager.initializeClient(true);
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Paso 8: Inicializar para generar nuevo QR (sin sesión previa, debe generar QR)
-            logger.info('Initializing new client to generate QR...');
             botManager.initialize().catch(err => {
                 logger.error('Error during initialization after clear:', err);
             });
-            
-            // Paso 9: Esperar para que el QR se genere
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 5000));
             
             res.json({ 
-                message: `Todas las sesiones han sido eliminadas completamente (${deletedCount} sesiones). Generando nuevo QR...`,
+                message: `Todas las sesiones han sido eliminadas (${deletedCount} sesiones). Generando nuevo QR...`,
                 success: true,
                 deletedCount
             });
         } catch (error: any) {
             logger.error('Failed to clear sessions:', error);
             res.status(500).json({ 
-                error: 'Failed to clear sessions',
-                details: error.message || 'Unknown error',
+                error: 'Error al limpiar sesiones',
+                details: error.message || 'Error desconocido',
                 success: false
             });
         }
     });
 
-    // WhatsApp logout endpoint
+    // WhatsApp logout endpoint - Unificado: desvincula y limpia todas las sesiones
     router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            logger.info('Logout request received');
+            logger.info('=== SOLICITUD DE DESVINCULACIÓN RECIBIDA ===');
             
-            // Paso 1: Desvincular y limpiar sesión
-            await botManager.logout();
-            logger.info('Logout completed, session cleared');
+            // Paso 1: Desvincular y limpiar TODAS las sesiones (función unificada)
+            logger.info('Paso 1: Desvinculando y limpiando todas las sesiones...');
+            const deletedCount = await botManager.logout();
+            logger.info(`✓ Logout completado. ${deletedCount} sesión(es) eliminada(s)`);
             
-            // Paso 2: Limpiar TODAS las sesiones de MongoDB también (por si acaso)
-            logger.info('Clearing all sessions from MongoDB as well...');
-            const deletedCount = await botManager.clearAllSessions();
-            logger.info(`Cleared ${deletedCount} additional sessions from MongoDB`);
+            // Paso 2: Esperar para asegurar que todo se limpió completamente
+            logger.info('Paso 2: Esperando que la limpieza se complete...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
-            // Paso 3: Esperar más tiempo para asegurar que todo se limpió completamente
-            logger.info('Waiting for cleanup to complete...');
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Paso 3: Crear nuevo cliente limpio
+            logger.info('Paso 3: Creando nuevo cliente limpio...');
+            await botManager.initializeClient(true); // skipSessionClear porque ya limpiamos todo
+            logger.info('✓ Nuevo cliente creado');
             
-            // Paso 4: Reiniciar el cliente para generar nuevo QR
-            logger.info('Reinitializing WhatsApp client after logout...');
-            
-            // Crear nuevo cliente (skip session clear porque ya limpiamos todo)
-            await botManager.initializeClient(true);
-            logger.info('New client created');
-            
-            // Paso 5: Esperar antes de inicializar
+            // Paso 4: Esperar antes de inicializar
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Paso 6: Inicializar el cliente - esto debería generar un nuevo QR
-            logger.info('Initializing new client to generate QR...');
+            // Paso 5: Inicializar el cliente - esto generará un nuevo QR
+            logger.info('Paso 4: Inicializando cliente para generar nuevo QR...');
             botManager.initialize().catch(err => {
-                logger.error('Error during initialization after logout:', err);
+                logger.error('❌ Error durante inicialización después de logout:', err);
             });
             
-            // Paso 7: Esperar para que el QR se genere
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Paso 6: Esperar para que el QR se genere (dar más tiempo)
+            logger.info('Paso 5: Esperando generación del QR...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
             
+            logger.info('=== DESVINCULACIÓN COMPLETADA ===');
             res.json({ 
-                message: 'WhatsApp session disconnected. All sessions cleared. Generating new QR code...',
+                message: `WhatsApp desvinculado correctamente. ${deletedCount} sesión(es) eliminada(s). Generando nuevo código QR...`,
                 success: true,
                 deletedCount
             });
         } catch (error: any) {
-            logger.error('Failed to logout WhatsApp:', error);
+            logger.error('❌ Error durante desvinculación:', error);
             res.status(500).json({ 
-                error: 'Failed to logout WhatsApp',
-                details: error.message || 'Unknown error',
+                error: 'Error al desvincular WhatsApp',
+                details: error.message || 'Error desconocido',
                 success: false
             });
         }

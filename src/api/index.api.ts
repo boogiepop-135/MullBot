@@ -55,28 +55,92 @@ export default function (botManager: BotManager) {
         }
     });
 
-    // QR Code endpoint para API (JSON)
+    // QR Code endpoint para API (JSON) - Mejorado con mejor manejo de errores
     router.get("/qr", async (_req, res) => {
         try {
+            // Verificar si el cliente está listo (conectado)
+            const isClientReady = botManager.client?.info ? true : false;
+            
+            // Si el cliente está listo, no hay QR disponible
+            if (isClientReady && qrData.qrScanned) {
+                return res.json({
+                    qr: null,
+                    qrScanned: true,
+                    message: "Client is already connected"
+                });
+            }
+            
             const qr = qrData.qrCodeData;
-            if (!qr) {
-                return res.status(404).json({ error: "QR code not available" });
+            if (!qr || qr.trim().length === 0) {
+                // Si no hay QR pero el cliente existe, puede estar inicializándose
+                if (botManager.client && !isClientReady) {
+                    logger.info("QR no disponible aún, cliente puede estar inicializándose...");
+                    return res.status(202).json({ 
+                        qr: null,
+                        qrScanned: false,
+                        message: "QR code is being generated, please wait...",
+                        retryAfter: 5
+                    });
+                }
+                
+                return res.status(404).json({ 
+                    error: "QR code not available",
+                    qrScanned: qrData.qrScanned,
+                    message: "No QR code available. The client may need to be reinitialized."
+                });
+            }
+
+            // Validar que el QR tenga el formato correcto
+            if (qr.length < 50) {
+                logger.warn(`QR code seems invalid (length: ${qr.length})`);
+                return res.status(500).json({ 
+                    error: "Invalid QR code format",
+                    message: "The QR code generated seems invalid. Please try regenerating."
+                });
             }
 
             // Generar imagen QR en base64
             const QRCode = require('qrcode');
-            const qrImage = await QRCode.toDataURL(qr);
+            let qrImage;
+            try {
+                qrImage = await QRCode.toDataURL(qr, {
+                    errorCorrectionLevel: 'M',
+                    type: 'image/png',
+                    quality: 0.92,
+                    margin: 1,
+                    width: 512
+                });
+            } catch (qrError) {
+                logger.error("Error generating QR image:", qrError);
+                return res.status(500).json({ 
+                    error: "Failed to generate QR image",
+                    message: "Error converting QR code to image format"
+                });
+            }
 
             // Extraer solo el base64 sin el prefijo data:image/png;base64,
             const base64Image = qrImage.split(',')[1];
+            
+            if (!base64Image) {
+                logger.error("Failed to extract base64 from QR image");
+                return res.status(500).json({ 
+                    error: "Failed to process QR code",
+                    message: "Error processing QR code image"
+                });
+            }
 
+            logger.info("QR code image generated successfully");
             res.json({
                 qr: base64Image,
-                qrScanned: qrData.qrScanned
+                qrScanned: qrData.qrScanned,
+                timestamp: new Date().toISOString()
             });
         } catch (error) {
             logger.error("Failed to generate QR code:", error);
-            res.status(500).json({ error: "Failed to generate QR code" });
+            res.status(500).json({ 
+                error: "Failed to generate QR code",
+                message: error instanceof Error ? error.message : "Unknown error occurred"
+            });
         }
     });
 
