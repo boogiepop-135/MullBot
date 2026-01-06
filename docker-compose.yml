@@ -2,6 +2,7 @@ services:
   app:
     build: .
     image: mullbot:latest
+    container_name: mullbot-app-1
     restart: always
     environment:
       NODE_ENV: production
@@ -26,6 +27,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      evolution-api:
+        condition: service_started
     command: ["/bin/sh", "-c", "sleep 10 && npx prisma migrate deploy && node dist/scripts/create-admin-auto.js && npm start"]
 
   postgres:
@@ -51,6 +54,7 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: always
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
     volumes:
@@ -61,57 +65,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # Servicio de Ngrok (OPCIONAL - solo si no tienes dominio propio)
-  # Descomenta este servicio si necesitas usar ngrok en lugar de tu dominio
-  # ngrok:
-  #   image: ngrok/ngrok:latest
-  #   restart: always
-  #   command: 
-  #     - "start"
-  #     - "--all"
-  #     - "--authtoken"
-  #     - "${NGROK_AUTHTOKEN}"
-  #     - "--config"
-  #     - "/etc/ngrok.yml"
-  #   volumes:
-  #     - ./ngrok.yml:/etc/ngrok.yml:ro
-  #   ports:
-  #     - "4040:4040"  # Dashboard de ngrok
-  #   depends_on:
-  #     - app
-  #   environment:
-  #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
-
-  # Evolution API - Alternativa más robusta a whatsapp-web.js (OPCIONAL)
-  # Descomenta este servicio si quieres usar Evolution API en lugar de whatsapp-web.js
-  # Evolution API es más estable y confiable, pero requiere configuración adicional
-  # evolution-api:
-  #   image: atendai/evolution-api:latest
-  #   container_name: evolution-api
-  #   restart: always
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     DATABASE_ENABLED: "true"
-  #     DATABASE_PROVIDER: "mongodb"
-  #     DATABASE_CONNECTION_URI: ${MONGODB_URI}
-  #     AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-mullbot-evolution-key-2025}
-  #     AUTHENTICATION_EXPOSE_INTERNAL: "false"
-  #     WEBHOOK_GLOBAL_ENABLED: "true"
-  #     WEBHOOK_GLOBAL_URL: ${API_BASE_URL:-http://localhost:3001}/webhook/evolution
-  #     QRCODE_LIMIT: "30"
-  #     QRCODE_COLOR: "198,31,31"
-  #     LOG_LEVEL: "ERROR"
-  #     LOG_COLOR: "true"
-  #   volumes:
-  #     - evolution_instances:/evolution/instances
-  #     - evolution_store:/evolution/store
-  #   depends_on:
-  #     - mongo
-  #   networks:
-  #     - default
-
-  # Evolution API - Alternativa más robusta a whatsapp-web.js
   evolution-api:
     image: atendai/evolution-api:latest
     container_name: evolution-api
@@ -119,20 +72,31 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Server Configuration
+      SERVER_PORT: 8080
+      AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-TuClaveSecretaChangeMe123}
+      AUTHENTICATION_EXPOSE_INTERNAL: "false"
+      # Database Configuration (usando esquema 'evolution' en mullbot_db)
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: "postgresql"
       DATABASE_CONNECTION_URI: postgresql://evolution:evolutionpass@postgres:5432/mullbot_db?schema=evolution
-      REDIS_ENABLED: "true"
-      REDIS_URI: redis://redis:6379
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-TuClaveSecretaChangeMe123}
-      AUTHENTICATION_EXPOSE_INTERNAL: "false"
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      # Redis Cache Configuration (¡CRÍTICO!)
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/0
+      CACHE_LOCAL_ENABLED: "false"
+      # Webhook Configuration
       WEBHOOK_GLOBAL_ENABLED: "true"
       WEBHOOK_GLOBAL_URL: ${API_BASE_URL:-http://localhost:3001}/webhook/evolution
       WEBHOOK_EVENTS: messages.upsert,connection.update,qrcode.updated
+      # QR Code Configuration
       QRCODE_LIMIT: "30"
       QRCODE_COLOR: "198,31,31"
+      # Logging
       LOG_LEVEL: "ERROR"
       LOG_COLOR: "true"
     volumes:
