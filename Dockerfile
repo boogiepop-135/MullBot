@@ -75,6 +75,8 @@ COPY --from=builder /app/package.json /app/package-lock.json* ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/views ./src/views
+# Copiar carpeta prisma necesaria para migraciones en producción
+COPY --from=builder /app/prisma ./prisma
 
 # Instalar solo dependencias de producción
 # Usar npm install temporalmente hasta que package-lock.json esté sincronizado
