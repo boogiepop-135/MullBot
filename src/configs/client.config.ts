@@ -11,10 +11,12 @@ export async function getClientConfig() {
     // Código legacy (no ejecutado):
     // Este archivo ya no se usa - Evolution API no requiere configuración de cliente de whatsapp-web.js
 
+    // Este código nunca se ejecuta porque la función lanza un error arriba
+    // Mantenido solo para referencia
     return {
         authStrategy: new RemoteAuth({
             clientId: "mullbot-client",
-            store: store,
+            // store: store, // REMOVED - MongoStore ya no existe
             backupSyncIntervalMs: 300000, // Sincronizar cada 5 minutos
             dataPath: './.wwebjs_auth', // Ruta para datos de autenticación local (backup)
             // La sesión se guarda automáticamente en MongoDB en la colección 'auth_sessions'
