@@ -121,9 +121,11 @@ services:
     environment:
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: "postgresql"
-      DATABASE_CONNECTION_URI: postgresql://evolution:evolutionpass@postgres:5432/mullbot_db?schema=public
+      DATABASE_CONNECTION_URI: postgresql://evolution:evolutionpass@postgres:5432/mullbot_db?schema=evolution
       REDIS_ENABLED: "true"
       REDIS_URI: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
       AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-TuClaveSecretaChangeMe123}
       AUTHENTICATION_EXPOSE_INTERNAL: "false"
       WEBHOOK_GLOBAL_ENABLED: "true"
