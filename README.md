@@ -73,45 +73,75 @@ npm run dev
 npm start
 ```
 
-## 🐳 Docker
+## 🐳 Docker - MVP Local (Recomendado)
 
-Para ejecutar Mullbot en contenedores Docker (útil para desplegar en VPS o entornos controlados), hay dos opciones: usar el `Dockerfile` o usar `docker-compose` que incluye un servicio de MongoDB para pruebas locales.
-
-1) Construir y ejecutar la imagen Docker:
+### ⚡ Inicio Rápido en 3 pasos
 
 ```bash
-# Construir imagen
-docker build -t mullbot:latest .
+# 1. Clonar el repositorio
+git clone https://github.com/boogiepop-135/MullBot.git
+cd MullBot
 
-# Ejecutar (asegúrate de exportar las variables de entorno necesarias)
-docker run -d \
-	-p 3000:3000 \
-	-e NODE_ENV=production \
-	-e PORT=3000 \
-	-e GEMINI_API_KEY="$GEMINI_API_KEY" \
-	-e MONGODB_URI="$MONGODB_URI" \
-	-e JWT_SECRET="$JWT_SECRET" \
-	-e PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium" \
-	--name mullbot mullbot:latest
+# 2. Levantar servicios con Docker Compose
+docker compose up -d --build
+
+# 3. Acceder a la aplicación
+# Abre: http://localhost:3000/admin
+# Credenciales: admin / admin123
 ```
 
-2) Usar `docker-compose` (rápido para pruebas locales, levanta MongoDB junto con la app):
+### 🚀 Script de inicio rápido
 
 ```bash
-# Copiar variables de entorno a .env (o exportarlas en tu entorno)
-cp mullbot.env.example .env
-
-# Iniciar los servicios
-docker-compose up -d --build
-
-# Ver logs
-docker-compose logs -f app
+# Ejecutar script de inicio automático
+./start.sh
 ```
 
-Notas importantes:
-- El `Dockerfile` incluido intenta instalar Chromium (usado por Puppeteer). En algunos entornos la paquetería puede variar; si el build falla, puedes usar una imagen base que ya incluya Chrome/Chromium (p. ej. `zenika/alpine-chrome`) o instalar Chrome en el host y apuntar `PUPPETEER_EXECUTABLE_PATH` a esa ruta.
-- En producción se recomienda conectar la app a una instancia de MongoDB gestionada (Atlas) o a un servicio de base de datos separado, y no usar el contenedor `mongo` incluido en `docker-compose`.
-- Protege las variables sensibles (`GEMINI_API_KEY`, `JWT_SECRET`, `MONGODB_URI`) usando secretos del orquestador, `docker secret`, o variables en `systemd`/`pm2` en la VM.
+### ✅ Verificar estado
+
+```bash
+# Verificar que todo funciona
+./verify.sh
+```
+
+### 📋 Servicios incluidos
+
+- **MullBot App** - Puerto 3000 (Panel de administración)
+- **MongoDB** - Base de datos incluida y configurada
+- **Ngrok** - Túnel público HTTPS (Dashboard en puerto 4040)
+
+### 🔐 Credenciales por defecto
+
+- **Usuario admin:** `admin`
+- **Contraseña:** `admin123`
+- ⚠️ **IMPORTANTE:** Cambia la contraseña después del primer login
+
+### 📚 Documentación completa
+
+Para más detalles sobre la configuración MVP, consulta:
+- **[README_MVP.md](README_MVP.md)** - Guía completa MVP con todos los detalles
+- **[SETUP_DOCKER.md](SETUP_DOCKER.md)** - Configuración detallada de Docker
+- **[SETUP_NGROK.md](SETUP_NGROK.md)** - Configuración de Ngrok
+- **[CREDENCIALES.md](CREDENCIALES.md)** - Información de credenciales
+
+### 🛠️ Comandos útiles
+
+```bash
+# Ver logs en tiempo real
+docker compose logs -f app
+
+# Ver estado de servicios
+docker compose ps
+
+# Reiniciar servicios
+docker compose restart
+
+# Detener servicios
+docker compose down
+
+# Reconstruir y reiniciar
+docker compose up -d --build
+```
 
 
 ## 📱 Comandos del Agente de Ventas
