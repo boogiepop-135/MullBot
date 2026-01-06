@@ -61,8 +61,9 @@ export class AutomationService {
 
       for (const automation of automations) {
         // Verificar si el mensaje contiene las palabras clave
-        const keywords = automation.triggerConditions.messageContains || [];
-        const messageContainsKeyword = keywords.some(keyword =>
+        const conditions = automation.triggerConditions as any;
+        const keywords = conditions?.messageContains || [];
+        const messageContainsKeyword = keywords.some((keyword: string) =>
           message.toLowerCase().includes(keyword.toLowerCase())
         );
 
