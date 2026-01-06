@@ -16,6 +16,12 @@ COPY package.json package-lock.json* ./
 # TODO: Cambiar de vuelta a npm ci después de que package-lock.json esté actualizado
 RUN npm install
 
+# Copiar schema de Prisma antes de generar el cliente
+COPY prisma/ ./prisma/
+
+# Generar Prisma Client (necesario antes de compilar TypeScript)
+RUN npx prisma generate
+
 # Copiar archivos fuente
 COPY tsconfig.json ./
 COPY scripts/ ./scripts/

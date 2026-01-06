@@ -9,7 +9,7 @@ export async function getClientConfig() {
     throw new Error('getClientConfig is deprecated. Evolution API handles sessions directly.');
     
     // Código legacy (no ejecutado):
-    // const store = await getMongoStore();
+    // Este archivo ya no se usa - Evolution API no requiere configuración de cliente de whatsapp-web.js
 
     return {
         authStrategy: new RemoteAuth({
