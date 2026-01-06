@@ -39,13 +39,17 @@ async function checkAuth() {
     if (usernameEl) usernameEl.textContent = currentUser.username;
 
     const roleEl = document.getElementById('user-role');
-    if (roleEl) roleEl.textContent = currentUser.role === 'admin' ? 'Administrador' : 'Usuario';
+    // Prisma usa 'ADMIN' y 'USER' (mayúsculas), pero también puede venir como 'admin'/'user'
+    const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'admin';
+    if (roleEl) roleEl.textContent = isAdmin ? 'Administrador' : 'Usuario';
 
     const initialsEl = document.getElementById('user-initials');
     if (initialsEl) initialsEl.textContent = currentUser.username.charAt(0).toUpperCase();
 
     // Show users tab if admin
-    if (currentUser.role === 'admin') {
+    // Prisma usa 'ADMIN' y 'USER' (mayúsculas), pero también puede venir como 'admin'/'user'
+    const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'admin';
+    if (isAdmin) {
       const usersNav = document.getElementById('nav-users');
       if (usersNav) usersNav.classList.remove('hidden');
     }
@@ -1813,16 +1817,18 @@ function renderUsers(users) {
   
   users.forEach(user => {
     const tr = document.createElement('tr');
+    // Prisma usa 'ADMIN' y 'USER' (mayúsculas), pero también puede venir como 'admin'/'user'
+    const isAdmin = user.role === 'ADMIN' || user.role === 'admin';
     tr.innerHTML = `
       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${user.username}</td>
       <td class="px-6 py-4 whitespace-nowrap">
-        <span class="px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
-          ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
+        <span class="px-2 py-1 text-xs font-semibold rounded-full ${isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+          ${isAdmin ? 'Administrador' : 'Usuario'}
         </span>
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(user.createdAt)}</td>
       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-        <button onclick="changeUserPassword('${user._id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Cambiar contraseña">
+        <button onclick="changeUserPassword('${user.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Cambiar contraseña">
           <i class="fas fa-key"></i>
         </button>
       </td>

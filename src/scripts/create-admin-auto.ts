@@ -14,10 +14,24 @@ async function createAdminAuto() {
         // Verificar si el usuario ya existe
         const existingUser = await prisma.user.findUnique({ where: { username } });
         if (existingUser) {
-            logger.info(`Admin user already exists: ${username}`);
-            console.log(`✅ Admin user already exists: ${username}`);
-            console.log(`   Username: ${username}`);
-            console.log(`   Password: ${password}`);
+            // Si el usuario existe pero NO es admin, actualizar el rol
+            if (existingUser.role !== 'ADMIN') {
+                await prisma.user.update({
+                    where: { id: existingUser.id },
+                    data: { role: 'ADMIN' }
+                });
+                logger.info(`Admin user role updated: ${username}`);
+                console.log(`✅ Admin user role updated to ADMIN: ${username}`);
+                console.log(`   Username: ${username}`);
+                console.log(`   Password: ${password}`);
+                console.log(`   Role: ADMIN (actualizado)`);
+            } else {
+                logger.info(`Admin user already exists with ADMIN role: ${username}`);
+                console.log(`✅ Admin user already exists: ${username}`);
+                console.log(`   Username: ${username}`);
+                console.log(`   Password: ${password}`);
+                console.log(`   Role: ADMIN`);
+            }
             await prisma.$disconnect();
             process.exit(0);
         }
@@ -28,7 +42,7 @@ async function createAdminAuto() {
         console.log(`✅ Admin user created successfully!`);
         console.log(`   Username: ${username}`);
         console.log(`   Password: ${password}`);
-        console.log(`   Role: admin`);
+        console.log(`   Role: ADMIN`);
         console.log(`\n⚠️  IMPORTANTE: Cambia la contraseña después del primer inicio de sesión`);
         
     } catch (error: any) {

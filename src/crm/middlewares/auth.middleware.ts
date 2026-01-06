@@ -40,7 +40,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 };
 
 export const authorizeAdmin = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user.role !== 'admin') {
+  // El rol viene del JWT como 'ADMIN' o 'USER' (enum de Prisma)
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
