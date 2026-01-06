@@ -28,13 +28,14 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         const delay = await getBotDelay();
         await new Promise(resolve => setTimeout(resolve, delay));
 
-        const sentMsg = await chat.sendMessage(AppConfig.instance.printMessage(opcionesIniciales));
+        // Enviar mensaje usando Evolution API
+        const { BotManager } = await import('../bot.manager');
+        const botManager = BotManager.getInstance();
+        const phoneNumber = message.from.split('@')[0];
+        await botManager.sendMessage(phoneNumber, AppConfig.instance.printMessage(opcionesIniciales));
+        
         // Guardar mensaje inicial en la base de datos
-        if (sentMsg) {
-            const { BotManager } = await import('../bot.manager');
-            const botManager = BotManager.getInstance();
-            await botManager.saveSentMessage(message.from.split('@')[0], AppConfig.instance.printMessage(opcionesIniciales), sentMsg.id._serialized);
-        }
+        await botManager.saveSentMessage(phoneNumber, AppConfig.instance.printMessage(opcionesIniciales), null);
         return;
     }
 

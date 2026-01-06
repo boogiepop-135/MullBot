@@ -153,11 +153,9 @@ export default function (botManager: BotManager) {
             }
 
             // Si se está pausando (no despausando), enviar mensaje automático
-            if (isPaused === true && botManager.client) {
+            if (isPaused === true) {
                 try {
-                    const formattedNumber = phoneNumber.includes('@')
-                        ? phoneNumber
-                        : `${phoneNumber}@c.us`;
+                    const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
 
                     const pauseMessage = `✅ *Solicitud Recibida*
 
@@ -170,12 +168,10 @@ Tu solicitud ha sido registrada correctamente.
 
 ¡Gracias por tu paciencia! 🌱`;
 
-                    const sentMessage = await botManager.client.sendMessage(formattedNumber, pauseMessage);
+                    await botManager.sendMessage(formattedNumber, pauseMessage);
 
                     // Guardar mensaje enviado en la base de datos
-                    if (sentMessage) {
-                        await botManager.saveSentMessage(phoneNumber, pauseMessage, sentMessage.id._serialized);
-                    }
+                    await botManager.saveSentMessage(phoneNumber, pauseMessage, null);
 
                     logger.info(`Pause confirmation message sent to ${phoneNumber}`);
                 } catch (messageError) {
@@ -281,9 +277,7 @@ Tu solicitud ha sido registrada correctamente.
 
             // Enviar mensaje automático de confirmación de pago
             try {
-                if (botManager.client) {
-                    await sendPaymentConfirmationMessage(botManager.client, phoneNumber);
-                }
+                await sendPaymentConfirmationMessage(botManager, phoneNumber);
             } catch (msgError) {
                 logger.error('Error sending payment confirmation message:', msgError);
                 // No fallar la confirmación si el mensaje falla
@@ -403,7 +397,7 @@ Tu solicitud ha sido registrada correctamente.
                                     if (botManager.client) {
                                         const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
                                         const contact = await botManager.client.getContactById(formattedNumber);
-                                        if (contact && contact.pushname) {
+                                        if (contact && contact.pushName) {
                                             updateData.pushName = contact.pushname;
                                         }
                                     }
@@ -1273,88 +1267,32 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 });
             }
 
-            // Asegurar que el cliente esté inicializado
-            if (!botManager.client) {
-                logger.info('Client not initialized, initializing...');
-                await botManager.initializeClient();
-            }
-
-            if (!botManager.client) {
-                logger.warn('Send message failed: Client is null after initialization attempt');
-                return res.status(503).json({ 
-                    error: 'WhatsApp client is not available. Please try again later.',
-                    success: false,
-                    reason: 'client_not_initialized'
-                });
-            }
-
-            // Verificar que el cliente esté listo usando la misma lógica que /health
-            const isClientReady = botManager.client && botManager.client.info ? true : false;
+            // Verificar que Evolution API esté conectado
+            const evolutionAPI = botManager.getEvolutionAPI();
+            const isConnected = await evolutionAPI.isConnected();
             
-            // Si el cliente está conectado pero qrScanned es false (después de reinicio), actualizarlo
-            if (isClientReady && !botManager.qrData.qrScanned) {
-                logger.info('Client is ready but qrScanned is false, updating status');
-                botManager.qrData.qrScanned = true;
-            }
-            
-            if (!isClientReady) {
-                const qrScanned = botManager.qrData.qrScanned;
-                const hasInfo = !!botManager.client.info;
-                
-                logger.warn(`Send message failed: Client not ready. qrScanned: ${qrScanned}, hasInfo: ${hasInfo}`);
-                
-                if (!hasInfo) {
-                    return res.status(503).json({ 
-                        error: 'WhatsApp client is not authenticated. Please wait for the connection to be established.',
-                        success: false,
-                        reason: 'client_not_authenticated',
-                        details: 'The client may be initializing. Please wait a moment and try again. If the problem persists, go to Settings > WhatsApp to check the connection status.'
-                    });
-                }
-                
-                // Si no tiene info, no puede enviar mensajes
+            if (!isConnected) {
                 return res.status(503).json({ 
-                    error: 'WhatsApp client is not ready. Please wait for the connection to be established.',
+                    error: 'WhatsApp is not connected. Please wait for the connection to be established.',
                     success: false,
-                    reason: 'client_not_ready',
+                    reason: 'not_connected',
                     details: 'Go to Settings > WhatsApp to check the connection status and scan the QR code if needed.'
                 });
             }
 
-            // Verificar que el cliente tenga el método sendMessage disponible
-            if (typeof botManager.client.sendMessage !== 'function') {
-                logger.warn('Send message failed: sendMessage method not available');
-                return res.status(503).json({ 
-                    error: 'WhatsApp client sendMessage method is not available. The client may not be fully initialized.',
-                    success: false,
-                    reason: 'sendMessage_not_available'
-                });
-            }
-
-            // Formatear número de teléfono
-            const formattedNumber = phoneNumber.includes('@')
-                ? phoneNumber
-                : `${phoneNumber}@c.us`;
+            // Normalizar número de teléfono (remover @ si existe)
+            const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
 
             logger.info(`Sending message to ${formattedNumber} from CRM`);
 
-            // Enviar mensaje - sendMessage creará el chat automáticamente si no existe
-            let sentMessage;
+            // Enviar mensaje usando Evolution API
             try {
-                sentMessage = await botManager.client.sendMessage(formattedNumber, message.trim());
+                await botManager.sendMessage(formattedNumber, message.trim());
             } catch (sendError: any) {
                 logger.error(`Error sending message to ${formattedNumber}:`, sendError);
                 
                 // Proporcionar mensajes de error más específicos
                 const errorMessage = sendError.message || String(sendError);
-                
-                if (errorMessage.includes('getChat') || errorMessage.includes('Cannot read properties')) {
-                    return res.status(400).json({ 
-                        error: 'No se pudo enviar el mensaje. El cliente de WhatsApp puede no estar completamente inicializado o el número puede ser inválido.',
-                        success: false,
-                        details: 'Verifica que el número de teléfono sea correcto y que el cliente de WhatsApp esté listo. Intenta recargar la página.'
-                    });
-                }
                 
                 if (errorMessage.includes('not registered') || errorMessage.includes('not found')) {
                     return res.status(400).json({ 
@@ -1371,19 +1309,17 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             }
 
             // Guardar mensaje enviado en la base de datos
-            if (sentMessage) {
-                try {
-                    await botManager.saveSentMessage(phoneNumber, message.trim(), sentMessage.id._serialized);
-                    logger.info(`Message sent successfully to ${formattedNumber}, saved to database`);
-                } catch (saveError) {
-                    logger.warn(`Message sent but failed to save to database: ${saveError}`);
-                    // No fallar la respuesta si el mensaje se envió pero falló al guardar
-                }
+            try {
+                await botManager.saveSentMessage(phoneNumber, message.trim(), null);
+                logger.info(`Message sent successfully to ${formattedNumber}, saved to database`);
+            } catch (saveError) {
+                logger.warn(`Message sent but failed to save to database: ${saveError}`);
+                // No fallar la respuesta si el mensaje se envió pero falló al guardar
             }
 
             res.json({ 
                 success: true,
-                messageId: sentMessage?.id?._serialized || null
+                messageId: null // Evolution API no retorna ID de mensaje en sendText
             });
         } catch (error: any) {
             logger.error('Failed to send message from CRM:', error);
@@ -1469,7 +1405,7 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             // Esperar y reinicializar igual que logout
             await new Promise(resolve => setTimeout(resolve, 2000));
-            await botManager.initializeClient(true);
+            await botManager.initializeClient();
             await new Promise(resolve => setTimeout(resolve, 1000));
             botManager.initialize().catch(err => {
                 logger.error('Error during initialization after clear:', err);
@@ -1510,7 +1446,7 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             // Paso 3: Crear nuevo cliente limpio
             logger.info('Paso 3: Creando nuevo cliente limpio...');
-            await botManager.initializeClient(true); // skipSessionClear porque ya limpiamos todo
+            await botManager.initializeClient();
             logger.info('✓ Nuevo cliente creado');
             
             // Paso 4: Esperar antes de inicializar

@@ -131,7 +131,7 @@ export default function (botManager: BotManager) {
                 qrData.qrScanned = false;
 
                 // Inicializar nuevo cliente (esto generará un nuevo QR)
-                await botManager.initializeClient(true);
+                await botManager.initializeClient();
                 await botManager.initialize();
 
                 res.json({

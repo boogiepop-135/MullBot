@@ -47,11 +47,6 @@ export async function checkScheduledCampaigns(botManager: BotManager) {
 
 export async function sendCampaignMessages(botManager: BotManager, campaign: any) {
   try {
-    // Asegurar que el cliente esté inicializado
-    if (!botManager.client) {
-      await botManager.initializeClient();
-    }
-
     campaign.status = 'sending';
     await campaign.save();
 
@@ -75,18 +70,15 @@ export async function sendCampaignMessages(botManager: BotManager, campaign: any
     // Enviar mensajes del lote actual
     for (const phoneNumber of contactsToSend) {
       try {
-        const formattedNumber = phoneNumber.includes('@')
-          ? phoneNumber
-          : `${phoneNumber}@c.us`;
+        // Normalizar número (remover @ si existe)
+        const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
 
-        const sentMsg = await botManager.client.sendMessage(formattedNumber, campaign.message);
+        await botManager.sendMessage(formattedNumber, campaign.message);
 
-        if (sentMsg) {
-          try {
-            await botManager.saveSentMessage(phoneNumber, campaign.message, sentMsg.id._serialized);
-          } catch (err) {
-            logger.warn(`Failed to save campaign message for ${phoneNumber}:`, err);
-          }
+        try {
+          await botManager.saveSentMessage(phoneNumber, campaign.message, null);
+        } catch (err) {
+          logger.warn(`Failed to save campaign message for ${phoneNumber}:`, err);
         }
         sentCount++;
       } catch (error) {

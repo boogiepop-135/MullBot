@@ -148,7 +148,9 @@ Una vez que recibamos tu disponibilidad, coordinaremos la fecha exacta de instal
 
 ¿Qué días de la semana te funcionan mejor para la instalación?`;
 
-        await client.sendMessage(formattedNumber, message);
+        const { BotManager } = await import('./bot.manager');
+        const botManager = BotManager.getInstance();
+        await botManager.sendMessage(phoneNumber.replace(/@[cg]\.us$/, ''), message);
         logger.info(`Payment confirmation message sent to ${phoneNumber}`);
     } catch (error) {
         logger.error(`Error sending payment confirmation message: ${error}`);
@@ -190,7 +192,9 @@ export async function sendAppointmentConfirmationMessage(client: any, phoneNumbe
 
         message += `\n\nSi tienes alguna pregunta o necesitas cambiar la fecha, por favor contáctanos.`;
 
-        await client.sendMessage(formattedNumber, message);
+        const { BotManager } = await import('./bot.manager');
+        const botManager = BotManager.getInstance();
+        await botManager.sendMessage(phoneNumber.replace(/@[cg]\.us$/, ''), message);
         logger.info(`Appointment confirmation message sent to ${phoneNumber}`);
     } catch (error) {
         logger.error(`Error sending appointment confirmation message: ${error}`);

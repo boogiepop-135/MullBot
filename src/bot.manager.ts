@@ -281,7 +281,8 @@ export class BotManager {
                 try {
                     const network = identifySocialNetwork(content);
                     if (network) {
-                        const downloader = new YtDlpDownloader();
+                        const { YtDlpDownloader } = await import('./utils/get.util');
+                        const downloader = YtDlpDownloader.getInstance();
                         await downloader.downloadAndSend(this.evolutionAPI, phoneNumber, content, network);
                         return;
                     }
@@ -379,6 +380,44 @@ export class BotManager {
      */
     public getEvolutionAPI(): EvolutionAPIv2Service {
         return this.evolutionAPI;
+    }
+
+    /**
+     * Guardar mensaje enviado en base de datos
+     * @param phoneNumber Número de teléfono
+     * @param message Texto del mensaje
+     * @param messageId ID del mensaje (opcional, para Evolution API puede ser null)
+     */
+    public async saveSentMessage(phoneNumber: string, message: string, messageId?: string | null): Promise<void> {
+        try {
+            await MessageModel.findOneAndUpdate(
+                {
+                    phoneNumber: phoneNumber,
+                    body: message,
+                    isFromBot: true
+                },
+                {
+                    $set: {
+                        phoneNumber: phoneNumber,
+                        from: EnvConfig.EVOLUTION_INSTANCE_NAME,
+                        to: phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`,
+                        body: message,
+                        type: 'text',
+                        isFromBot: true,
+                        timestamp: new Date(),
+                        hasMedia: false,
+                        requiresAttention: false,
+                        metadata: {
+                            messageId: messageId || null,
+                            fromMe: true
+                        }
+                    }
+                },
+                { upsert: true, new: true }
+            );
+        } catch (error) {
+            logger.error('Error guardando mensaje enviado en BD:', error);
+        }
     }
 
     // Métodos legacy para compatibilidad (deprecated)

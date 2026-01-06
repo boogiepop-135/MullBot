@@ -99,12 +99,8 @@ export class AutomationService {
       for (const action of automation.actions) {
         switch (action.type) {
           case 'send_message':
-            if (botManager.client) {
-              const formattedNumber = phoneNumber.includes('@')
-                ? phoneNumber
-                : `${phoneNumber}@c.us`;
-              await botManager.client.sendMessage(formattedNumber, action.value);
-            }
+            const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
+            await botManager.sendMessage(formattedNumber, action.value);
             break;
 
           case 'change_status':

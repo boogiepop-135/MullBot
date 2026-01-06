@@ -103,17 +103,15 @@ ${systemInfo.publicUrl ? '• Usa tu dominio propio para acceder desde internet'
 
 🔄 Para actualizar esta información, envía: \`/info\``;
 
-        // Enviar mensaje
-        const sentMessage = await client.sendMessage(formattedNumber, infoMessage);
+        // Enviar mensaje usando Evolution API
+        const { BotManager } = await import('../bot.manager');
+        const botManager = BotManager.getInstance();
+        await botManager.sendMessage(phoneNumber.replace(/@[cg]\.us$/, ''), infoMessage);
         
-        if (sentMessage) {
-            // Guardar mensaje en la base de datos
-            const { BotManager } = await import('../bot.manager');
-            const botManager = BotManager.getInstance();
-            await botManager.saveSentMessage(phoneNumber, infoMessage, sentMessage.id._serialized);
-            
-            logger.info(`✅ Información del sistema enviada al admin: ${phoneNumber}`);
-        }
+        // Guardar mensaje en la base de datos
+        await botManager.saveSentMessage(phoneNumber, infoMessage, null);
+        
+        logger.info(`✅ Información del sistema enviada al admin: ${phoneNumber}`);
 
     } catch (error) {
         logger.error(`Error sending admin info to ${phoneNumber}:`, error);
@@ -158,15 +156,15 @@ ${publicUrlText}
 🔑 *Contraseña:* \`${systemInfo.adminCredentials.password}\`
 ${statusText}`;
 
-        const sentMessage = await client.sendMessage(formattedNumber, infoMessage);
+        // Enviar mensaje usando Evolution API
+        const { BotManager } = await import('../bot.manager');
+        const botManager = BotManager.getInstance();
+        await botManager.sendMessage(phoneNumber.replace(/@[cg]\.us$/, ''), infoMessage);
         
-        if (sentMessage) {
-            const { BotManager } = await import('../bot.manager');
-            const botManager = BotManager.getInstance();
-            await botManager.saveSentMessage(phoneNumber, infoMessage, sentMessage.id._serialized);
-            
-            logger.info(`✅ Información actualizada enviada al admin: ${phoneNumber}`);
-        }
+        // Guardar mensaje en la base de datos
+        await botManager.saveSentMessage(phoneNumber, infoMessage, null);
+        
+        logger.info(`✅ Información actualizada enviada al admin: ${phoneNumber}`);
 
     } catch (error) {
         logger.error(`Error sending updated admin info:`, error);
