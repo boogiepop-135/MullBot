@@ -97,8 +97,8 @@ export async function getClientConfig() {
             remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51.html'
         },
         // Forzar regeneración de QR si falla
-        authTimeoutMs: 60000, // 60 segundos para autenticación
-        // Mejorar manejo de sesiones
-        session: 'default'
+        authTimeoutMs: 60000 // 60 segundos para autenticación
+        // Nota: La sesión se maneja automáticamente a través de RemoteAuth y MongoStore
+        // No es necesario especificar 'session' manualmente
     };
 }
