@@ -47,8 +47,6 @@ async function checkAuth() {
     if (initialsEl) initialsEl.textContent = currentUser.username.charAt(0).toUpperCase();
 
     // Show users tab if admin
-    // Prisma usa 'ADMIN' y 'USER' (mayúsculas), pero también puede venir como 'admin'/'user'
-    const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'admin';
     if (isAdmin) {
       const usersNav = document.getElementById('nav-users');
       if (usersNav) usersNav.classList.remove('hidden');
