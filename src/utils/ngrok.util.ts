@@ -19,7 +19,7 @@ export async function getNgrokUrl(): Promise<string | null> {
         if (response.data && response.data.tunnels && response.data.tunnels.length > 0) {
             // Buscar el túnel HTTPS
             const httpsTunnel = response.data.tunnels.find((tunnel: any) => 
-                tunnel.proto === 'https' || tunnel.config?.addr?.includes('3000')
+                tunnel.proto === 'https' || tunnel.config?.addr?.includes('3001')
             );
             
             if (httpsTunnel && httpsTunnel.public_url) {
@@ -46,17 +46,22 @@ export async function getNgrokUrl(): Promise<string | null> {
  */
 export async function getSystemInfo(): Promise<{
     ngrokUrl: string | null;
+    publicUrl: string | null;
     localUrl: string;
     adminCredentials: { username: string; password: string };
     serverStatus: string;
 }> {
     const ngrokUrl = await getNgrokUrl();
-    const localUrl = `http://localhost:${EnvConfig.PORT || 3000}`;
+    
+    // Priorizar dominio propio si está configurado, luego ngrok, luego null
+    const publicUrl = process.env.PUBLIC_URL || ngrokUrl || null;
+    const localUrl = `http://localhost:${EnvConfig.PORT || 3001}`;
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
     return {
         ngrokUrl,
+        publicUrl,
         localUrl,
         adminCredentials: {
             username: adminUsername,

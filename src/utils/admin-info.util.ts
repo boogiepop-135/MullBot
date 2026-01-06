@@ -76,10 +76,16 @@ export async function sendAdminInfo(client: any, phoneNumber: string): Promise<v
             : `${phoneNumber}@c.us`;
 
         // Crear mensaje con información
+        const publicUrlText = systemInfo.publicUrl 
+            ? `🌍 *Pública:* ${systemInfo.publicUrl}/admin`
+            : systemInfo.ngrokUrl 
+                ? `🌍 *Pública (Ngrok):* ${systemInfo.ngrokUrl}/admin`
+                : '⚠️ URL pública no configurada';
+
         const infoMessage = `🌐 *Información del Sistema MullBot*
 
 📊 *URLs de Acceso:*
-${systemInfo.ngrokUrl ? `🌍 *Pública (Ngrok):* ${systemInfo.ngrokUrl}/admin` : '⚠️ Ngrok no disponible'}
+${publicUrlText}
 🏠 *Local:* ${systemInfo.localUrl}/admin
 
 🔐 *Credenciales de Administrador:*
@@ -87,7 +93,7 @@ ${systemInfo.ngrokUrl ? `🌍 *Pública (Ngrok):* ${systemInfo.ngrokUrl}/admin` 
 🔑 *Contraseña:* \`${systemInfo.adminCredentials.password}\`
 
 ⚠️ *IMPORTANTE:*
-• La URL de Ngrok cambia cada vez que reinicias el servidor
+${systemInfo.publicUrl ? '• Usa tu dominio propio para acceder desde internet' : systemInfo.ngrokUrl ? '• La URL de Ngrok cambia cada vez que reinicias el servidor' : '• Configura PUBLIC_URL en .env para usar tu dominio'}
 • Cambia la contraseña después del primer login
 • Guarda esta información de forma segura
 
@@ -129,17 +135,28 @@ export async function sendUpdatedAdminInfo(client: any, phoneNumber: string): Pr
             ? phoneNumber 
             : `${phoneNumber}@c.us`;
 
+        const publicUrlText = systemInfo.publicUrl 
+            ? `🌍 *Pública:* ${systemInfo.publicUrl}/admin`
+            : systemInfo.ngrokUrl 
+                ? `🌍 *Pública (Ngrok):* ${systemInfo.ngrokUrl}/admin`
+                : '⚠️ URL pública no configurada';
+
+        const statusText = systemInfo.publicUrl 
+            ? `\n✅ Dominio propio configurado: ${systemInfo.publicUrl}`
+            : systemInfo.ngrokUrl 
+                ? `\n✅ Ngrok activo: ${systemInfo.ngrokUrl}`
+                : '\n⚠️ URL pública no configurada. Configura PUBLIC_URL en .env para usar tu dominio.';
+
         const infoMessage = `🔄 *Información Actualizada del Sistema*
 
 📊 *URLs de Acceso:*
-${systemInfo.ngrokUrl ? `🌍 *Pública (Ngrok):* ${systemInfo.ngrokUrl}/admin` : '⚠️ Ngrok no disponible'}
+${publicUrlText}
 🏠 *Local:* ${systemInfo.localUrl}/admin
 
 🔐 *Credenciales:*
 👤 *Usuario:* \`${systemInfo.adminCredentials.username}\`
 🔑 *Contraseña:* \`${systemInfo.adminCredentials.password}\`
-
-${systemInfo.ngrokUrl ? `\n✅ Ngrok activo: ${systemInfo.ngrokUrl}` : '\n⚠️ Ngrok no está disponible. Verifica que el servicio esté corriendo.'}`;
+${statusText}`;
 
         const sentMessage = await client.sendMessage(formattedNumber, infoMessage);
         
