@@ -1,6 +1,7 @@
 import { Message, MessageTypes } from "whatsapp-web.js";
-import { ContactModel } from "../crm/models/contact.model";
+import prisma from "../database/prisma";
 import logger from "../configs/logger.config";
+import { SaleStatus } from "@prisma/client";
 
 /**
  * Detecta si un mensaje contiene un comprobante de pago
@@ -35,10 +36,10 @@ export async function detectPaymentReceipt(message: Message): Promise<boolean> {
     // También considerar imágenes/documents sin texto si el contacto está en un estado que sugiere pago
     // Extraer número del mensaje sin usar getContact (para evitar errores)
     const phoneNumber = message.from.split('@')[0];
-    const contact = await ContactModel.findOne({ phoneNumber });
+    const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
     
     // Si el contacto está en estado "interested" o "info_requested", probablemente quiere pagar
-    if (contact && (contact.saleStatus === 'interested' || contact.saleStatus === 'info_requested')) {
+    if (contact && (contact.saleStatus === SaleStatus.INTERESTED || contact.saleStatus === SaleStatus.INFO_REQUESTED)) {
         // Si envía una imagen/documento sin texto claro, pero está en estado de interés, puede ser comprobante
         if (message.type === MessageTypes.IMAGE || message.type === MessageTypes.DOCUMENT) {
             return true;
@@ -46,7 +47,7 @@ export async function detectPaymentReceipt(message: Message): Promise<boolean> {
     }
 
     // Si el contacto ya tiene appointment_confirmed y envía media, puede ser comprobante adicional
-    if (contact && contact.saleStatus === 'appointment_confirmed') {
+    if (contact && contact.saleStatus === SaleStatus.APPOINTMENT_CONFIRMED) {
         if (message.type === MessageTypes.IMAGE || message.type === MessageTypes.DOCUMENT) {
             return true;
         }
@@ -62,7 +63,7 @@ export async function handlePaymentReceipt(message: Message): Promise<void> {
     try {
         // Extraer número del mensaje sin usar getContact (para evitar errores)
         const phoneNumber = message.from.split('@')[0];
-        const contact = await ContactModel.findOne({ phoneNumber });
+        const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
 
         if (!contact) {
             return;
@@ -74,44 +75,44 @@ export async function handlePaymentReceipt(message: Message): Promise<void> {
         };
 
         // Actualizar estado según el estado actual del contacto
-        if (contact.saleStatus === 'lead' || contact.saleStatus === 'interested' || contact.saleStatus === 'info_requested') {
+        if (contact.saleStatus === SaleStatus.LEAD || contact.saleStatus === SaleStatus.INTERESTED || contact.saleStatus === SaleStatus.INFO_REQUESTED) {
             // Si es un lead, interesado o pidió info, actualizar a payment_pending
-            newStatus = 'payment_pending';
-            updateData.saleStatus = 'payment_pending';
+            newStatus = SaleStatus.PAYMENT_PENDING;
+            updateData.saleStatus = SaleStatus.PAYMENT_PENDING;
             updateData.saleStatusNotes = `Comprobante recibido el ${new Date().toLocaleString('es-ES')}`;
-        } else if (contact.saleStatus === 'appointment_confirmed') {
+        } else if (contact.saleStatus === SaleStatus.APPOINTMENT_CONFIRMED) {
             // Si ya tiene cita confirmada y envía otro comprobante, mantener el estado pero actualizar notas
             // No cambiar el estado porque ya tienen cita confirmada
             updateData.saleStatusNotes = `${contact.saleStatusNotes || ''}\nNuevo comprobante recibido el ${new Date().toLocaleString('es-ES')}`;
-        } else if (contact.saleStatus === 'payment_pending') {
+        } else if (contact.saleStatus === SaleStatus.PAYMENT_PENDING) {
             // Si ya está en payment_pending, mantener el estado pero actualizar notas
             updateData.saleStatusNotes = `${contact.saleStatusNotes || ''}\nNuevo comprobante recibido el ${new Date().toLocaleString('es-ES')}`;
-        } else if (contact.saleStatus === 'appointment_scheduled') {
+        } else if (contact.saleStatus === SaleStatus.APPOINTMENT_SCHEDULED) {
             // Si tiene cita agendada pero envía comprobante, puede ser adicional
             // Mantener estado pero actualizar notas
             updateData.saleStatusNotes = `${contact.saleStatusNotes || ''}\nComprobante adicional recibido el ${new Date().toLocaleString('es-ES')}`;
         }
 
-        const updatedContact = await ContactModel.findOneAndUpdate(
-            { phoneNumber },
-            { $set: updateData },
-            { new: true }
-        );
+        const updatedContact = await prisma.contact.update({
+            where: { phoneNumber },
+            data: updateData
+        });
 
         // Crear notificación para el admin
         try {
-            const { NotificationModel } = await import('../crm/models/notification.model');
             if (updatedContact) {
-                await NotificationModel.create({
-                    type: 'payment_receipt',
-                    contactId: updatedContact._id.toString(),
-                    phoneNumber: updatedContact.phoneNumber,
-                    contactName: updatedContact.name || updatedContact.pushName || 'Unknown',
-                    message: message.body || 'Comprobante de pago recibido',
-                    metadata: {
-                        receivedAt: new Date()
-                    },
-                    read: false
+                await prisma.notification.create({
+                    data: {
+                        type: 'PAYMENT_RECEIPT',
+                        contactId: updatedContact.id,
+                        phoneNumber: updatedContact.phoneNumber,
+                        contactName: updatedContact.name || updatedContact.pushName || 'Unknown',
+                        message: message.body || 'Comprobante de pago recibido',
+                        metadata: {
+                            receivedAt: new Date()
+                        },
+                        read: false
+                    }
                 });
             }
         } catch (notifError) {

@@ -1,15 +1,18 @@
 // src/crons/campaign.cron.ts
 import { BotManager } from '../bot.manager';
 import logger from '../configs/logger.config';
-import { CampaignModel } from '../crm/models/campaign.model';
+import prisma from '../database/prisma';
+import { CampaignStatus } from '@prisma/client';
 
 export async function checkScheduledCampaigns(botManager: BotManager) {
   try {
     const now = new Date();
 
     // Buscar todas las campañas programadas
-    const allScheduledCampaigns = await CampaignModel.find({
-      status: 'scheduled'
+    const allScheduledCampaigns = await prisma.campaign.findMany({
+      where: {
+        status: CampaignStatus.SCHEDULED
+      }
     });
 
     // Filtrar campañas que deben ejecutarse ahora
@@ -47,8 +50,10 @@ export async function checkScheduledCampaigns(botManager: BotManager) {
 
 export async function sendCampaignMessages(botManager: BotManager, campaign: any) {
   try {
-    campaign.status = 'sending';
-    await campaign.save();
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { status: CampaignStatus.SENDING }
+    });
 
     let sentCount = campaign.sentCount || 0;
     let failedCount = campaign.failedCount || 0;
@@ -100,9 +105,16 @@ export async function sendCampaignMessages(botManager: BotManager, campaign: any
         const nextBatchDate = new Date();
         nextBatchDate.setMinutes(nextBatchDate.getMinutes() + (campaign.batchInterval || 0));
 
-        campaign.currentBatchIndex = nextBatchIndex;
-        campaign.nextBatchAt = nextBatchDate;
-        campaign.status = 'scheduled';
+        await prisma.campaign.update({
+          where: { id: campaign.id },
+          data: {
+            currentBatchIndex: nextBatchIndex,
+            nextBatchAt: nextBatchDate,
+            status: CampaignStatus.SCHEDULED,
+            sentCount,
+            failedCount
+          }
+        });
 
         logger.info(
           `Scheduled next batch ${nextBatchIndex + 1}/${campaign.totalBatches} ` +
@@ -110,21 +122,33 @@ export async function sendCampaignMessages(botManager: BotManager, campaign: any
         );
       } else {
         // Todos los lotes enviados
-        campaign.status = sentCount > 0 ? 'sent' : 'failed';
-        campaign.sentAt = new Date();
+        await prisma.campaign.update({
+          where: { id: campaign.id },
+          data: {
+            status: sentCount > 0 ? CampaignStatus.SENT : CampaignStatus.FAILED,
+            sentCount,
+            failedCount
+          }
+        });
         logger.info(`Campaign completed: ${campaign.name}`);
       }
     } else {
       // Campaña normal (no por lotes)
-      campaign.status = sentCount > 0 ? 'sent' : 'failed';
-      campaign.sentAt = new Date();
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: {
+          status: sentCount > 0 ? CampaignStatus.SENT : CampaignStatus.FAILED,
+          sentCount,
+          failedCount
+        }
+      });
     }
-
-    await campaign.save();
 
   } catch (error) {
     logger.error('Failed to send campaign:', error);
-    campaign.status = 'failed';
-    await campaign.save();
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { status: CampaignStatus.FAILED }
+    });
   }
 }

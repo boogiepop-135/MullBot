@@ -1,8 +1,7 @@
 import { BotManager } from '../../bot.manager';
 import logger from '../../configs/logger.config';
-import { AutomationModel } from '../models/automation.model';
-import { ContactModel } from '../models/contact.model';
-import { NotificationModel } from '../models/notification.model';
+import prisma from '../../database/prisma';
+import { AutomationTrigger, NotificationType, SaleStatus } from '@prisma/client';
 
 export class AutomationService {
   /**
@@ -15,13 +14,25 @@ export class AutomationService {
     toStatus: string
   ) {
     try {
-      const automations = await AutomationModel.find({
-        isActive: true,
-        triggerType: 'status_change',
-        $or: [
-          { 'triggerConditions.toStatus': toStatus },
-          { 'triggerConditions.fromStatus': fromStatus, 'triggerConditions.toStatus': toStatus }
-        ]
+      // Obtener todas las automatizaciones activas de tipo status_change y filtrar en memoria
+      // Prisma no soporta queries complejas en JSON fields directamente
+      const allAutomations = await prisma.automation.findMany({
+        where: {
+          isActive: true,
+          triggerType: AutomationTrigger.STATUS_CHANGE
+        }
+      });
+
+      // Filtrar manualmente por condiciones JSON
+      // Los estados pueden venir como enum o como string, normalizar para comparación
+      const automations = allAutomations.filter(automation => {
+        const conditions = automation.triggerConditions as any;
+        const condToStatus = conditions?.toStatus;
+        const condFromStatus = conditions?.fromStatus;
+        // Comparar como strings para manejar tanto enums como strings
+        const matchesToStatus = condToStatus?.toString() === toStatus.toString();
+        const matchesFromAndTo = condFromStatus?.toString() === fromStatus.toString() && condToStatus?.toString() === toStatus.toString();
+        return matchesToStatus || matchesFromAndTo;
       });
 
       for (const automation of automations) {
@@ -41,9 +52,11 @@ export class AutomationService {
     message: string
   ) {
     try {
-      const automations = await AutomationModel.find({
-        isActive: true,
-        triggerType: 'message_received'
+      const automations = await prisma.automation.findMany({
+        where: {
+          isActive: true,
+          triggerType: AutomationTrigger.MESSAGE_RECEIVED
+        }
       });
 
       for (const automation of automations) {
@@ -71,10 +84,19 @@ export class AutomationService {
     tag: string
   ) {
     try {
-      const automations = await AutomationModel.find({
-        isActive: true,
-        triggerType: 'tag_added',
-        'triggerConditions.tags': tag
+      // Obtener todas las automatizaciones activas de tipo tag_added y filtrar en memoria
+      const allAutomations = await prisma.automation.findMany({
+        where: {
+          isActive: true,
+          triggerType: AutomationTrigger.TAG_ADDED
+        }
+      });
+
+      // Filtrar manualmente por tags en JSON
+      const automations = allAutomations.filter(automation => {
+        const conditions = automation.triggerConditions as any;
+        const tags = conditions?.tags || [];
+        return Array.isArray(tags) && tags.includes(tag);
       });
 
       for (const automation of automations) {
@@ -104,41 +126,54 @@ export class AutomationService {
             break;
 
           case 'change_status':
-            await ContactModel.findOneAndUpdate(
-              { phoneNumber },
-              { $set: { saleStatus: action.value } }
-            );
+            await prisma.contact.update({
+              where: { phoneNumber },
+              data: { saleStatus: action.value.toUpperCase().replace('-', '_') as SaleStatus }
+            });
             break;
 
           case 'add_tag':
-            await ContactModel.findOneAndUpdate(
-              { phoneNumber },
-              { $addToSet: { tags: action.value } }
-            );
+            const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
+            if (contact && !contact.tags.includes(action.value)) {
+              await prisma.contact.update({
+                where: { phoneNumber },
+                data: { tags: [...contact.tags, action.value] }
+              });
+            }
             break;
 
           case 'pause_bot':
-            await ContactModel.findOneAndUpdate(
-              { phoneNumber },
-              { $set: { isPaused: true } }
-            );
+            await prisma.contact.update({
+              where: { phoneNumber },
+              data: { isPaused: true }
+            });
             break;
 
           case 'create_notification':
-            await NotificationModel.create({
-              type: 'automation',
-              message: action.value,
-              phoneNumber,
-              isRead: false
-            });
+            const contactForNotif = await prisma.contact.findUnique({ where: { phoneNumber } });
+            if (contactForNotif) {
+              await prisma.notification.create({
+                data: {
+                  type: NotificationType.APPOINTMENT_REQUEST,
+                  phoneNumber,
+                  contactId: contactForNotif.id,
+                  message: action.value,
+                  read: false
+                }
+              });
+            }
             break;
         }
       }
 
       // Actualizar estadísticas de la automatización
-      automation.lastTriggered = new Date();
-      automation.triggerCount += 1;
-      await automation.save();
+      await prisma.automation.update({
+        where: { id: automation.id },
+        data: {
+          lastTriggered: new Date(),
+          triggerCount: { increment: 1 }
+        }
+      });
 
     } catch (error) {
       logger.error(`Error executing automation "${automation.name}":`, error);

@@ -1,25 +1,31 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { UserModel } from '../models/user.model';
+import prisma from '../../database/prisma';
 import EnvConfig from '../../configs/env.config';
 import logger from '../../configs/logger.config';
+import { Role } from '@prisma/client';
 
 export class AuthService {
   static async register(username: string, password: string, role: 'admin' | 'user' = 'user') {
-    const existingUser = await UserModel.findOne({ username });
+    const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
       throw new Error('Username already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new UserModel({ username, password: hashedPassword, role });
-    await user.save();
+    const user = await prisma.user.create({
+      data: {
+        username,
+        password: hashedPassword,
+        role: role === 'admin' ? Role.ADMIN : Role.USER
+      }
+    });
 
     return user;
   }
 
   static async login(username: string, password: string) {
-    const user = await UserModel.findOne({ username });
+    const user = await prisma.user.findUnique({ where: { username } });
     if (!user) {
       throw new Error('Invalid credentials');
     }
@@ -30,8 +36,8 @@ export class AuthService {
     }
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      EnvConfig.JWT_SECRET,
+      { userId: user.id, role: user.role },
+      EnvConfig.JWT_SECRET!,
       { expiresIn: '1d' }
     );
 
@@ -56,7 +62,7 @@ export class AuthService {
    * Cambiar contraseña de un usuario
    */
   static async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const user = await UserModel.findById(userId);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
     }
@@ -74,18 +80,20 @@ export class AuthService {
 
     // Hashear nueva contraseña
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
 
     logger.info(`Password changed for user: ${user.username}`);
-    return user;
+    return updatedUser;
   }
 
   /**
    * Cambiar contraseña de un usuario por admin (sin verificar contraseña actual)
    */
   static async changePasswordByAdmin(userId: string, newPassword: string) {
-    const user = await UserModel.findById(userId);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
     }
@@ -97,11 +105,13 @@ export class AuthService {
 
     // Hashear nueva contraseña
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
 
     logger.info(`Password changed by admin for user: ${user.username}`);
-    return user;
+    return updatedUser;
   }
 
   /**
@@ -109,12 +119,12 @@ export class AuthService {
    */
   static async updateUsername(userId: string, newUsername: string) {
     // Verificar que el nuevo nombre de usuario no exista
-    const existingUser = await UserModel.findOne({ username: newUsername });
-    if (existingUser && existingUser._id.toString() !== userId) {
+    const existingUser = await prisma.user.findUnique({ where: { username: newUsername } });
+    if (existingUser && existingUser.id !== userId) {
       throw new Error('Username already exists');
     }
 
-    const user = await UserModel.findById(userId);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
     }
@@ -125,31 +135,33 @@ export class AuthService {
     }
 
     const oldUsername = user.username;
-    user.username = newUsername.trim();
-    await user.save();
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { username: newUsername.trim() }
+    });
 
     logger.info(`Username changed by admin from ${oldUsername} to ${newUsername}`);
-    return user;
+    return updatedUser;
   }
 
   /**
    * Eliminar usuario (admin only)
    */
   static async deleteUser(userId: string) {
-    const user = await UserModel.findById(userId);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
     }
 
     // Verificar que no sea el único admin
-    if (user.role === 'admin') {
-      const adminCount = await UserModel.countDocuments({ role: 'admin' });
+    if (user.role === Role.ADMIN) {
+      const adminCount = await prisma.user.count({ where: { role: Role.ADMIN } });
       if (adminCount <= 1) {
         throw new Error('Cannot delete the last admin user');
       }
     }
 
-    await UserModel.findByIdAndDelete(userId);
+    await prisma.user.delete({ where: { id: userId } });
     logger.info(`User deleted: ${user.username}`);
     return user;
   }

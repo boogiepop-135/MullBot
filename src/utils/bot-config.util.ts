@@ -1,4 +1,4 @@
-import { BotConfigModel } from '../crm/models/bot-config.model';
+import prisma from '../database/prisma';
 import logger from '../configs/logger.config';
 
 let cachedDelay: number | null = null;
@@ -14,9 +14,9 @@ export async function getBotDelay(): Promise<number> {
     }
     
     try {
-        let config = await BotConfigModel.findOne();
+        let config = await prisma.botConfig.findFirst();
         if (!config) {
-            config = await BotConfigModel.create({ botDelay: 10000 });
+            config = await prisma.botConfig.create({ data: { botDelay: 10000 } });
         }
         
         cachedDelay = config.botDelay;

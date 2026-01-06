@@ -56,7 +56,7 @@ app.get('/admin/login', (req, res) => {
 
 const botManager = BotManager.getInstance();
 
-// Conectar a MongoDB primero, luego inicializar el bot
+// Conectar a PostgreSQL primero, luego inicializar el bot
 connectDB().then(async () => {
     // Configurar rutas PRIMERO (para que el webhook esté disponible)
     app.use("/", apiRoutes(botManager));

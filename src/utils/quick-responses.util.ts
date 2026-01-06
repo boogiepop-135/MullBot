@@ -1,4 +1,4 @@
-import { BotContentModel } from '../crm/models/bot-content.model';
+import prisma from '../database/prisma';
 
 /**
  * Respuestas rápidas predefinidas para opciones del menú
@@ -7,7 +7,7 @@ import { BotContentModel } from '../crm/models/bot-content.model';
 // Función para obtener respuesta del menú principal
 export const getMainMenuResponse = async (): Promise<string> => {
     try {
-        const content = await BotContentModel.findOne({ key: 'main_menu' });
+        const content = await prisma.botContent.findUnique({ where: { key: 'main_menu' } });
         if (content) {
             return content.content;
         }
@@ -40,7 +40,7 @@ Escribe el *número* de la opción que te interesa o pregunta lo que necesites �
 export const getOptionResponse = async (optionNumber: number): Promise<string | null> => {
     try {
         const key = `option_${optionNumber}_${getOptionKey(optionNumber)}`;
-        const content = await BotContentModel.findOne({ key });
+        const content = await prisma.botContent.findUnique({ where: { key } });
         if (content) {
             return content.content;
         }

@@ -2,20 +2,12 @@ import express from 'express';
 import { BotManager } from '../../bot.manager';
 import logger from '../../configs/logger.config';
 import { authenticate, authorizeAdmin } from '../middlewares/auth.middleware';
-import { CampaignModel } from '../models/campaign.model';
-import { ContactModel } from '../models/contact.model';
+import prisma from '../../database/prisma';
 import { AuthService } from '../utils/auth.util';
-import { TemplateModel } from '../models/template.model';
-import { BotConfigModel } from '../models/bot-config.model';
 import { sendPaymentConfirmationMessage, sendAppointmentConfirmationMessage } from '../../utils/payment-detection.util';
-import { NotificationModel } from '../models/notification.model';
-import { MessageModel } from '../models/message.model';
-import { UserModel } from '../models/user.model';
-import { ProductModel } from '../models/product.model';
 import { sendCampaignMessages } from '../../crons/campaign.cron';
-import { CustomStatusModel } from '../models/custom-status.model';
-import { AutomationModel } from '../models/automation.model';
 import { AutomationService } from '../utils/automation.util';
+import { SaleStatus, CampaignStatus, BotContentCategory, NotificationType, Role, AutomationTrigger } from '@prisma/client';
 
 export const router = express.Router();
 
@@ -28,26 +20,35 @@ export default function (botManager: BotManager) {
 
             const query: any = {};
 
+            // Build where clause for Prisma
+            const where: any = {};
+
             // Search filter
             if (search) {
-                query.$or = [
-                    { phoneNumber: { $regex: search, $options: 'i' } },
-                    { name: { $regex: search, $options: 'i' } },
-                    { pushName: { $regex: search, $options: 'i' } }
+                where.OR = [
+                    { phoneNumber: { contains: search as string, mode: 'insensitive' } },
+                    { name: { contains: search as string, mode: 'insensitive' } },
+                    { pushName: { contains: search as string, mode: 'insensitive' } }
                 ];
             }
 
             // Sale status filter
             if (saleStatus) {
-                query.saleStatus = saleStatus;
+                where.saleStatus = saleStatus;
             }
 
-            const contacts = await ContactModel.find(query)
-                .sort(sort)
-                .skip(skip)
-                .limit(Number(limit));
+            // Parse sort
+            const sortOrder = sort.toString().startsWith('-') ? 'desc' : 'asc';
+            const sortField = sort.toString().replace(/^-/, '') as any;
 
-            const total = await ContactModel.countDocuments(query);
+            const contacts = await prisma.contact.findMany({
+                where,
+                orderBy: { [sortField]: sortOrder },
+                skip,
+                take: Number(limit)
+            });
+
+            const total = await prisma.contact.count({ where });
 
             res.json({
                 data: contacts,
@@ -70,30 +71,31 @@ export default function (botManager: BotManager) {
             const { phoneNumber } = req.params;
             const { saleStatus, saleStatusNotes } = req.body;
 
-            const validStatuses = ['lead', 'interested', 'info_requested', 'payment_pending', 'appointment_scheduled', 'appointment_confirmed', 'completed'];
-            if (!validStatuses.includes(saleStatus)) {
+            const validStatuses: SaleStatus[] = ['LEAD', 'INTERESTED', 'INFO_REQUESTED', 'PAYMENT_PENDING', 'APPOINTMENT_SCHEDULED', 'APPOINTMENT_CONFIRMED', 'COMPLETED'];
+            const saleStatusUpper = saleStatus.toUpperCase() as SaleStatus;
+            if (!validStatuses.includes(saleStatusUpper)) {
                 return res.status(400).json({ error: `Invalid sale status. Must be one of: ${validStatuses.join(', ')}` });
             }
 
             // Obtener estado anterior para disparar automatizaciones
-            const previousContact = await ContactModel.findOne({ phoneNumber });
-            const previousStatus = previousContact?.saleStatus || 'lead';
+            const previousContact = await prisma.contact.findUnique({ where: { phoneNumber } });
+            const previousStatus = previousContact?.saleStatus || SaleStatus.LEAD;
 
-            const updateData: any = { saleStatus };
+            const updateData: any = { saleStatus: saleStatusUpper };
             if (saleStatusNotes !== undefined) {
                 updateData.saleStatusNotes = saleStatusNotes;
             }
 
             // Manejar estados específicos
-            if (saleStatus === 'payment_pending') {
+            if (saleStatusUpper === SaleStatus.PAYMENT_PENDING) {
                 if (!req.body.paidAt) {
                     updateData.paidAt = new Date();
                 }
             }
-            if (saleStatus === 'appointment_scheduled' && req.body.appointmentDate) {
+            if (saleStatusUpper === SaleStatus.APPOINTMENT_SCHEDULED && req.body.appointmentDate) {
                 updateData.appointmentDate = new Date(req.body.appointmentDate);
             }
-            if (saleStatus === 'appointment_confirmed') {
+            if (saleStatusUpper === SaleStatus.APPOINTMENT_CONFIRMED) {
                 updateData.appointmentConfirmed = true;
                 if (req.body.appointmentNotes) {
                     updateData.appointmentNotes = req.body.appointmentNotes;
@@ -109,23 +111,23 @@ export default function (botManager: BotManager) {
                 updateData.appointmentNotes = req.body.appointmentNotes;
             }
 
-            const contact = await ContactModel.findOneAndUpdate(
-                { phoneNumber },
-                { $set: updateData },
-                { new: true }
-            );
+            const contact = await prisma.contact.update({
+                where: { phoneNumber },
+                data: updateData
+            });
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
             }
 
             // Disparar automatizaciones de cambio de estado
-            if (previousStatus !== saleStatus) {
+            // Convertir ambos estados a string para comparación
+            if (previousStatus !== saleStatusUpper) {
                 AutomationService.triggerStatusChangeAutomations(
                     botManager,
                     phoneNumber,
-                    previousStatus,
-                    saleStatus
+                    previousStatus.toString(),
+                    saleStatusUpper.toString()
                 ).catch(err => logger.error('Error triggering status change automations:', err));
             }
 
@@ -142,11 +144,10 @@ export default function (botManager: BotManager) {
             const { phoneNumber } = req.params;
             const { isPaused } = req.body;
 
-            const contact = await ContactModel.findOneAndUpdate(
-                { phoneNumber },
-                { $set: { isPaused: isPaused === true } },
-                { new: true }
-            );
+            const contact = await prisma.contact.update({
+                where: { phoneNumber },
+                data: { isPaused: isPaused === true }
+            });
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
@@ -190,15 +191,15 @@ Tu solicitud ha sido registrada correctamente.
     // Despausar TODOS los contactos
     router.post('/contacts/unpause-all', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const result = await ContactModel.updateMany(
-                { isPaused: true },
-                { $set: { isPaused: false } }
-            );
+            const result = await prisma.contact.updateMany({
+                where: { isPaused: true },
+                data: { isPaused: false }
+            });
 
-            logger.info(`Unpaused ${result.modifiedCount} contacts`);
+            logger.info(`Unpaused ${result.count} contacts`);
             res.json({ 
-                message: `Se despausaron ${result.modifiedCount} contacto(s) exitosamente`,
-                count: result.modifiedCount 
+                message: `Se despausaron ${result.count} contacto(s) exitosamente`,
+                count: result.count 
             });
         } catch (error) {
             logger.error('Failed to unpause all contacts:', error);
@@ -214,7 +215,7 @@ Tu solicitud ha sido registrada correctamente.
 
             const updateData: any = {
                 appointmentConfirmed: true,
-                saleStatus: 'appointment_confirmed'
+                saleStatus: SaleStatus.APPOINTMENT_CONFIRMED
             };
             if (appointmentNotes) {
                 updateData.appointmentNotes = appointmentNotes;
@@ -223,11 +224,10 @@ Tu solicitud ha sido registrada correctamente.
                 updateData.appointmentDate = new Date(appointmentDate);
             }
 
-            const contact = await ContactModel.findOneAndUpdate(
-                { phoneNumber },
-                { $set: updateData },
-                { new: true }
-            );
+            const contact = await prisma.contact.update({
+                where: { phoneNumber },
+                data: updateData
+            });
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
@@ -258,16 +258,13 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { phoneNumber } = req.params;
 
-            const contact = await ContactModel.findOneAndUpdate(
-                { phoneNumber },
-                {
-                    $set: {
-                        paymentConfirmedAt: new Date(),
-                        saleStatus: 'appointment_scheduled'
-                    }
-                },
-                { new: true }
-            );
+            const contact = await prisma.contact.update({
+                where: { phoneNumber },
+                data: {
+                    paymentConfirmedAt: new Date(),
+                    saleStatus: SaleStatus.APPOINTMENT_SCHEDULED
+                }
+            });
 
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found' });
@@ -294,7 +291,9 @@ Tu solicitud ha sido registrada correctamente.
             const XLSX = require('xlsx');
 
             // Obtener todos los contactos
-            const contacts = await ContactModel.find().sort({ lastInteraction: -1 });
+            const contacts = await prisma.contact.findMany({
+                orderBy: { lastInteraction: 'desc' }
+            });
 
             // Preparar datos para exportación
             const exportData = contacts.map(contact => ({
@@ -375,15 +374,17 @@ Tu solicitud ha sido registrada correctamente.
                             }
 
                             // Verificar si el contacto ya existe
-                            const existingContact = await ContactModel.findOne({ phoneNumber });
+                            const existingContact = await prisma.contact.findUnique({ where: { phoneNumber } });
+
+                            const validStatuses = ['LEAD', 'INTERESTED', 'INFO_REQUESTED', 'PAYMENT_PENDING', 'APPOINTMENT_SCHEDULED', 'APPOINTMENT_CONFIRMED', 'COMPLETED'];
+                            const statusUpper = saleStatus.toUpperCase() as SaleStatus;
+                            const finalStatus = validStatuses.includes(statusUpper) ? statusUpper : SaleStatus.LEAD;
 
                             const updateData: any = {
                                 lastInteraction: row['Última interacción'] && row['Última interacción'] !== 'Sin registro'
                                     ? new Date(row['Última interacción'])
                                     : new Date(),
-                                saleStatus: ['lead', 'interested', 'info_requested', 'payment_pending', 'appointment_scheduled', 'appointment_confirmed', 'completed'].includes(saleStatus)
-                                    ? saleStatus
-                                    : 'lead'
+                                saleStatus: finalStatus
                             };
 
                             // Manejar nombre: si está vacío, intentar obtener pushName del perfil de WhatsApp
@@ -393,7 +394,9 @@ Tu solicitud ha sido registrada correctamente.
                                 // Si no hay nombre y no tenemos pushName, intentar obtenerlo de WhatsApp
                                 try {
                                     // Evolution API no tiene getContactById, usar información de la BD
-                                    const contact = await ContactModel.findOne({ phoneNumber: phoneNumber.replace(/@[cg]\.us$/, '') });
+                                    const contact = await prisma.contact.findUnique({ 
+                                        where: { phoneNumber: phoneNumber.replace(/@[cg]\.us$/, '') } 
+                                    });
                                     if (contact && contact.pushName) {
                                         updateData.pushName = contact.pushName;
                                     }
@@ -409,17 +412,18 @@ Tu solicitud ha sido registrada correctamente.
 
                             if (existingContact) {
                                 // Actualizar contacto existente
-                                await ContactModel.findOneAndUpdate(
-                                    { phoneNumber },
-                                    { $set: updateData },
-                                    { new: true }
-                                );
+                                await prisma.contact.update({
+                                    where: { phoneNumber },
+                                    data: updateData
+                                });
                                 updated++;
                             } else {
                                 // Crear nuevo contacto
-                                await ContactModel.create({
-                                    phoneNumber,
-                                    ...updateData
+                                await prisma.contact.create({
+                                    data: {
+                                        phoneNumber,
+                                        ...updateData
+                                    }
                                 });
                                 imported++;
                             }
@@ -470,12 +474,13 @@ Tu solicitud ha sido registrada correctamente.
 
             // Si se especifica filtro por estado, obtener contactos
             if (saleStatusFilter && saleStatusFilter.length > 0) {
-                const query: any = {};
-                if (saleStatusFilter.length > 0) {
-                    query.saleStatus = { $in: saleStatusFilter };
-                }
-
-                const filteredContacts = await ContactModel.find(query).select('phoneNumber');
+                const statusFilter = saleStatusFilter.map((s: string) => s.toUpperCase() as SaleStatus);
+                const filteredContacts = await prisma.contact.findMany({
+                    where: {
+                        saleStatus: { in: statusFilter }
+                    },
+                    select: { phoneNumber: true }
+                });
                 actualContacts = filteredContacts.map(c => c.phoneNumber);
             }
 
@@ -499,25 +504,26 @@ Tu solicitud ha sido registrada correctamente.
                 }
             }
 
-            const campaign = new CampaignModel({
-                name,
-                message,
-                scheduledAt: parsedScheduledAt,
-                contacts: actualContacts,
-                createdBy: req.user.userId,
-                status: parsedScheduledAt ? 'scheduled' : 'draft',
-                isBatchCampaign: isBatchCampaign || false,
-                batchSize: batchSize || actualContacts.length,
-                batchInterval: batchInterval || 0,
-                currentBatchIndex: 0,
-                totalBatches: totalBatches,
-                saleStatusFilter: saleStatusFilter || [],
-                // Para campañas por lotes, nextBatchAt debe ser igual a scheduledAt si existe
-                // Para campañas sin programar, será null y se establecerá cuando se envíe
-                nextBatchAt: parsedScheduledAt ? new Date(parsedScheduledAt) : null
+            const campaign = await prisma.campaign.create({
+                data: {
+                    name,
+                    message,
+                    scheduledAt: parsedScheduledAt,
+                    contacts: actualContacts,
+                    createdBy: req.user.userId,
+                    status: parsedScheduledAt ? CampaignStatus.SCHEDULED : CampaignStatus.DRAFT,
+                    isBatchCampaign: isBatchCampaign || false,
+                    batchSize: batchSize || actualContacts.length,
+                    batchInterval: batchInterval || 0,
+                    currentBatchIndex: 0,
+                    totalBatches: totalBatches,
+                    saleStatusFilter: saleStatusFilter || [],
+                    // Para campañas por lotes, nextBatchAt debe ser igual a scheduledAt si existe
+                    // Para campañas sin programar, será null y se establecerá cuando se envíe
+                    nextBatchAt: parsedScheduledAt ? new Date(parsedScheduledAt) : null
+                },
+                include: { creator: true }
             });
-
-            await campaign.save();
 
             // Solo enviar inmediatamente si NO hay scheduledAt (campaña draft)
             // Si hay scheduledAt, el cron job se encargará de enviarlo en el momento correcto
@@ -544,9 +550,14 @@ Tu solicitud ha sido registrada correctamente.
 
     router.get('/campaigns', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const campaigns = await CampaignModel.find()
-                .sort({ createdAt: -1 })
-                .populate('createdBy', 'username');
+            const campaigns = await prisma.campaign.findMany({
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    creator: {
+                        select: { username: true }
+                    }
+                }
+            });
 
             res.json(campaigns);
         } catch (error) {
@@ -558,7 +569,10 @@ Tu solicitud ha sido registrada correctamente.
     // Templates API
     router.get('/templates', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const templates = await TemplateModel.find().sort({ createdAt: -1 });
+            const templates = await prisma.template.findMany({
+                orderBy: { createdAt: 'desc' },
+                include: { creator: true }
+            });
             res.json(templates);
         } catch (error) {
             logger.error('Failed to fetch templates:', error);
@@ -570,13 +584,15 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { name, content } = req.body;
 
-            const template = new TemplateModel({
-                name,
-                content,
-                createdBy: req.user.userId
+            const template = await prisma.template.create({
+                data: {
+                    name,
+                    content,
+                    createdBy: req.user.userId
+                },
+                include: { creator: true }
             });
 
-            await template.save();
             res.status(201).json(template);
         } catch (error) {
             logger.error('Failed to create template:', error);
@@ -589,11 +605,10 @@ Tu solicitud ha sido registrada correctamente.
             const { id } = req.params;
             const { name, content } = req.body;
 
-            const template = await TemplateModel.findByIdAndUpdate(
-                id,
-                { name, content },
-                { new: true }
-            );
+            const template = await prisma.template.update({
+                where: { id },
+                data: { name, content }
+            });
 
             if (!template) {
                 return res.status(404).json({ error: 'Template not found' });
@@ -610,7 +625,9 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { id } = req.params;
 
-            const template = await TemplateModel.findByIdAndDelete(id);
+            const template = await prisma.template.delete({
+                where: { id }
+            });
 
             if (!template) {
                 return res.status(404).json({ error: 'Template not found' });
@@ -626,7 +643,9 @@ Tu solicitud ha sido registrada correctamente.
     // Products API
     router.get('/products', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const products = await ProductModel.find().sort({ createdAt: -1 });
+            const products = await prisma.product.findMany({
+                orderBy: { createdAt: 'desc' }
+            });
             res.json(products);
         } catch (error) {
             logger.error('Failed to fetch products:', error);
@@ -638,18 +657,19 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { name, description, price, sizes, promotions, imageUrl, category, inStock } = req.body;
 
-            const product = new ProductModel({
-                name,
-                description,
-                price,
-                sizes,
-                promotions,
-                imageUrl,
-                category,
-                inStock
+            const product = await prisma.product.create({
+                data: {
+                    name,
+                    description,
+                    price,
+                    sizes,
+                    promotions,
+                    imageUrl,
+                    category,
+                    inStock
+                }
             });
 
-            await product.save();
             res.status(201).json(product);
         } catch (error) {
             logger.error('Failed to create product:', error);
@@ -662,11 +682,10 @@ Tu solicitud ha sido registrada correctamente.
             const { id } = req.params;
             const updateData = req.body;
 
-            const product = await ProductModel.findByIdAndUpdate(
-                id,
-                updateData,
-                { new: true }
-            );
+            const product = await prisma.product.update({
+                where: { id },
+                data: updateData
+            });
 
             if (!product) {
                 return res.status(404).json({ error: 'Product not found' });
@@ -683,7 +702,9 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { id } = req.params;
 
-            const product = await ProductModel.findByIdAndDelete(id);
+            const product = await prisma.product.delete({
+                where: { id }
+            });
 
             if (!product) {
                 return res.status(404).json({ error: 'Product not found' });
@@ -719,7 +740,7 @@ Tu solicitud ha sido registrada correctamente.
 
             // No devolver la contraseña
             const userResponse = {
-                _id: user._id,
+                id: user.id,
                 username: user.username,
                 role: user.role,
                 createdAt: user.createdAt,
@@ -789,7 +810,16 @@ Tu solicitud ha sido registrada correctamente.
     // Listar usuarios (admin only)
     router.get('/auth/users', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const users = await UserModel.find().select('-password').sort({ createdAt: -1 });
+            const users = await prisma.user.findMany({
+                select: {
+                    id: true,
+                    username: true,
+                    role: true,
+                    createdAt: true,
+                    updatedAt: true
+                },
+                orderBy: { createdAt: 'desc' }
+            });
 
             res.json({ users });
         } catch (error) {
@@ -813,7 +843,7 @@ Tu solicitud ha sido registrada correctamente.
 
             // No devolver la contraseña
             const userResponse = {
-                _id: user._id,
+                id: user.id,
                 username: user.username,
                 role: user.role,
                 createdAt: user.createdAt,
@@ -851,7 +881,16 @@ Tu solicitud ha sido registrada correctamente.
     // Obtener usuario actual
     router.get('/auth/me', authenticate, async (req, res) => {
         try {
-            const user = await UserModel.findById(req.user.userId).select('-password');
+            const user = await prisma.user.findUnique({
+                where: { id: req.user.userId },
+                select: {
+                    id: true,
+                    username: true,
+                    role: true,
+                    createdAt: true,
+                    updatedAt: true
+                }
+            });
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });
             }
@@ -885,7 +924,7 @@ Tu solicitud ha sido registrada correctamente.
 
             // No devolver la contraseña
             const userResponse = {
-                _id: user._id,
+                id: user.id,
                 username: user.username,
                 role: user.role,
                 createdAt: user.createdAt,
@@ -916,7 +955,16 @@ Tu solicitud ha sido registrada correctamente.
 
     router.get('/auth/check', authenticate, async (req, res) => {
         try {
-            const user = await UserModel.findById(req.user.userId).select('-password');
+            const user = await prisma.user.findUnique({
+                where: { id: req.user.userId },
+                select: {
+                    id: true,
+                    username: true,
+                    role: true,
+                    createdAt: true,
+                    updatedAt: true
+                }
+            });
             if (!user) {
                 return res.status(401).json({ error: 'User not found' });
             }
@@ -936,36 +984,45 @@ Tu solicitud ha sido registrada correctamente.
             const salesStats = SalesTracker.getSalesStats();
 
             // Get contact statistics
-            const totalContacts = await ContactModel.countDocuments();
-            const contactsWithTags = await ContactModel.countDocuments({ tags: { $exists: true, $ne: [] } });
-            const recentContacts = await ContactModel.countDocuments({
-                lastInteraction: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+            const totalContacts = await prisma.contact.count();
+            const contactsWithTags = await prisma.contact.count({ where: { tags: { isEmpty: false } } });
+            const recentContacts = await prisma.contact.count({
+                where: {
+                    lastInteraction: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+                }
             });
 
             // Get contacts by sale status
-            const leads = await ContactModel.countDocuments({ saleStatus: 'lead' });
-            const interestedContacts = await ContactModel.countDocuments({ saleStatus: 'interested' });
-            const infoRequested = await ContactModel.countDocuments({ saleStatus: 'info_requested' });
-            const paymentPending = await ContactModel.countDocuments({ saleStatus: 'payment_pending' });
-            const appointmentScheduled = await ContactModel.countDocuments({ saleStatus: 'appointment_scheduled' });
-            const appointmentConfirmed = await ContactModel.countDocuments({ saleStatus: 'appointment_confirmed' });
-            const completed = await ContactModel.countDocuments({ saleStatus: 'completed' });
-            const pausedContacts = await ContactModel.countDocuments({ isPaused: true });
+            const leads = await prisma.contact.count({ where: { saleStatus: SaleStatus.LEAD } });
+            const interestedContacts = await prisma.contact.count({ where: { saleStatus: SaleStatus.INTERESTED } });
+            const infoRequested = await prisma.contact.count({ where: { saleStatus: SaleStatus.INFO_REQUESTED } });
+            const paymentPending = await prisma.contact.count({ where: { saleStatus: SaleStatus.PAYMENT_PENDING } });
+            const appointmentScheduled = await prisma.contact.count({ where: { saleStatus: SaleStatus.APPOINTMENT_SCHEDULED } });
+            const appointmentConfirmed = await prisma.contact.count({ where: { saleStatus: SaleStatus.APPOINTMENT_CONFIRMED } });
+            const completed = await prisma.contact.count({ where: { saleStatus: SaleStatus.COMPLETED } });
+            const pausedContacts = await prisma.contact.count({ where: { isPaused: true } });
 
             // Get campaign statistics
-            const totalCampaigns = await CampaignModel.countDocuments();
-            const sentCampaigns = await CampaignModel.countDocuments({ status: 'sent' });
-            const scheduledCampaigns = await CampaignModel.countDocuments({ status: 'scheduled' });
+            const totalCampaigns = await prisma.campaign.count();
+            const sentCampaigns = await prisma.campaign.count({ where: { status: CampaignStatus.SENT } });
+            const scheduledCampaigns = await prisma.campaign.count({ where: { status: CampaignStatus.SCHEDULED } });
 
             // Calculate total messages sent
-            const campaigns = await CampaignModel.find({ status: 'sent' });
+            const campaigns = await prisma.campaign.findMany({ where: { status: CampaignStatus.SENT } });
             const totalMessagesSent = campaigns.reduce((sum, campaign) => sum + (campaign.sentCount || 0), 0);
 
             // Get top leads from contacts based on interactions
-            const topLeadsContacts = await ContactModel.find()
-                .sort({ interactionsCount: -1 })
-                .limit(10)
-                .select('phoneNumber name pushName interactionsCount lastInteraction');
+            const topLeadsContacts = await prisma.contact.findMany({
+                orderBy: { interactionsCount: 'desc' },
+                take: 10,
+                select: {
+                    phoneNumber: true,
+                    name: true,
+                    pushName: true,
+                    interactionsCount: true,
+                    lastInteraction: true
+                }
+            });
 
             res.json({
                 sales: salesStats,
@@ -1010,7 +1067,10 @@ Tu solicitud ha sido registrada correctamente.
     // Bot Configuration API
     router.get('/bot-config', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const config = await BotConfigModel.findOne() || await BotConfigModel.create({});
+            let config = await prisma.botConfig.findFirst();
+            if (!config) {
+                config = await prisma.botConfig.create({ data: {} });
+            }
             res.json(config);
         } catch (error) {
             logger.error('Failed to fetch bot config:', error);
@@ -1027,17 +1087,14 @@ Tu solicitud ha sido registrada correctamente.
                 return res.status(400).json({ error: 'botDelay must be >= 0' });
             }
 
-            let config = await BotConfigModel.findOne();
+            let config = await prisma.botConfig.findFirst();
             if (!config) {
-                config = await BotConfigModel.create(updateData);
+                config = await prisma.botConfig.create({ data: updateData });
             } else {
-                // Actualizar todos los campos proporcionados
-                Object.keys(updateData).forEach(key => {
-                    if (updateData[key] !== undefined) {
-                        (config as any)[key] = updateData[key];
-                    }
+                config = await prisma.botConfig.update({
+                    where: { id: config.id },
+                    data: updateData
                 });
-                await config.save();
             }
 
             res.json({ message: 'Bot configuration updated successfully', config });
@@ -1050,8 +1107,12 @@ Tu solicitud ha sido registrada correctamente.
     // Bot Content API (para mensajes y respuestas del bot)
     router.get('/bot-content', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { BotContentModel } = await import('../models/bot-content.model');
-            const contents = await BotContentModel.find().sort({ category: 1, key: 1 });
+            const contents = await prisma.botContent.findMany({
+                orderBy: [
+                    { category: 'asc' },
+                    { key: 'asc' }
+                ]
+            });
             res.json(contents);
         } catch (error) {
             logger.error('Failed to fetch bot content:', error);
@@ -1061,8 +1122,9 @@ Tu solicitud ha sido registrada correctamente.
 
     router.get('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { BotContentModel } = await import('../models/bot-content.model');
-            const content = await BotContentModel.findOne({ key: req.params.key });
+            const content = await prisma.botContent.findUnique({
+                where: { key: req.params.key }
+            });
             if (!content) {
                 return res.status(404).json({ error: 'Content not found' });
             }
@@ -1075,19 +1137,23 @@ Tu solicitud ha sido registrada correctamente.
 
     router.put('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { BotContentModel } = await import('../models/bot-content.model');
             const { content, mediaPath, description, category } = req.body;
             
             const updateData: any = { content };
             if (mediaPath !== undefined) updateData.mediaPath = mediaPath;
             if (description !== undefined) updateData.description = description;
-            if (category !== undefined) updateData.category = category;
+            if (category !== undefined) {
+                updateData.category = category.toUpperCase().replace('-', '_') as BotContentCategory;
+            }
 
-            const botContent = await BotContentModel.findOneAndUpdate(
-                { key: req.params.key },
-                { $set: updateData },
-                { new: true, upsert: true }
-            );
+            const botContent = await prisma.botContent.upsert({
+                where: { key: req.params.key },
+                update: updateData,
+                create: {
+                    key: req.params.key,
+                    ...updateData
+                }
+            });
 
             res.json({ message: 'Content updated successfully', content: botContent });
         } catch (error) {
@@ -1098,24 +1164,25 @@ Tu solicitud ha sido registrada correctamente.
 
     router.post('/bot-content', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { BotContentModel } = await import('../models/bot-content.model');
             const { key, content, mediaPath, description, category } = req.body;
             
             if (!key || !content) {
                 return res.status(400).json({ error: 'key and content are required' });
             }
 
-            const existingContent = await BotContentModel.findOne({ key });
+            const existingContent = await prisma.botContent.findUnique({ where: { key } });
             if (existingContent) {
                 return res.status(400).json({ error: 'Content with this key already exists' });
             }
 
-            const botContent = await BotContentModel.create({
-                key,
-                content,
-                mediaPath,
-                description,
-                category: category || 'other'
+            const botContent = await prisma.botContent.create({
+                data: {
+                    key,
+                    content,
+                    mediaPath,
+                    description,
+                    category: category ? (category.toUpperCase().replace('-', '_') as BotContentCategory) : BotContentCategory.OTHER
+                }
             });
 
             res.status(201).json({ message: 'Content created successfully', content: botContent });
@@ -1127,8 +1194,9 @@ Tu solicitud ha sido registrada correctamente.
 
     router.delete('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { BotContentModel } = await import('../models/bot-content.model');
-            const content = await BotContentModel.findOneAndDelete({ key: req.params.key });
+            const content = await prisma.botContent.delete({
+                where: { key: req.params.key }
+            });
             if (!content) {
                 return res.status(404).json({ error: 'Content not found' });
             }
@@ -1142,8 +1210,6 @@ Tu solicitud ha sido registrada correctamente.
     // Inicializar contenido predeterminado del bot
     router.post('/bot-content/init-defaults', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const { BotContentModel } = await import('../models/bot-content.model');
-            
             const defaultContents = [
                 {
                     key: 'main_menu',
@@ -1216,9 +1282,14 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             let skipped = 0;
 
             for (const content of defaultContents) {
-                const exists = await BotContentModel.findOne({ key: content.key });
+                const exists = await prisma.botContent.findUnique({ where: { key: content.key } });
                 if (!exists) {
-                    await BotContentModel.create(content);
+                    await prisma.botContent.create({
+                        data: {
+                            ...content,
+                            category: content.category ? (content.category.toUpperCase().replace('-', '_') as BotContentCategory) : BotContentCategory.OTHER
+                        }
+                    });
                     created++;
                 } else {
                     skipped++;
@@ -1342,21 +1413,23 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             const { phoneNumber } = req.params;
             const { limit = 50, before, requiresAttention } = req.query; // Paginación opcional y filtro de atención
 
-            const query: any = { phoneNumber };
+            const where: any = { phoneNumber };
 
             // Si hay un timestamp "before", obtener mensajes anteriores a esa fecha
             if (before) {
-                query.timestamp = { $lt: new Date(before) };
+                where.timestamp = { lt: new Date(before) };
             }
 
             // Si se solicita solo mensajes que requieren atención
             if (requiresAttention === 'true') {
-                query.requiresAttention = true;
+                where.requiresAttention = true;
             }
 
-            const messages = await MessageModel.find(query)
-                .sort({ timestamp: -1 })
-                .limit(Number(limit));
+            const messages = await prisma.message.findMany({
+                where,
+                orderBy: { timestamp: 'desc' },
+                take: Number(limit)
+            });
 
             // Ordenar por timestamp ascendente para mostrar en orden cronológico
             messages.reverse();
@@ -1378,10 +1451,16 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             const { limit = 50 } = req.query;
 
-            const messages = await MessageModel.find({ requiresAttention: true, isFromBot: false })
-                .sort({ timestamp: -1 })
-                .limit(Number(limit))
-                .populate('contactId', 'phoneNumber name pushName');
+            const messages = await prisma.message.findMany({
+                where: { requiresAttention: true, isFromBot: false },
+                orderBy: { timestamp: 'desc' },
+                take: Number(limit),
+                include: {
+                    contact: {
+                        select: { phoneNumber: true, name: true, pushName: true }
+                    }
+                }
+            });
 
             res.json({ messages });
         } catch (error) {
@@ -1433,8 +1512,26 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             // Paso 1: Desvincular y limpiar TODAS las sesiones (función unificada)
             logger.info('Paso 1: Desvinculando y limpiando todas las sesiones...');
-            const deletedCount = await botManager.logout();
-            logger.info(`✓ Logout completado. ${deletedCount} sesión(es) eliminada(s)`);
+            let deletedCount = 0;
+            let logoutWarning = '';
+            
+            try {
+                deletedCount = await botManager.logout();
+                logger.info(`✓ Logout completado. ${deletedCount} sesión(es) eliminada(s)`);
+            } catch (error: any) {
+                // Capturar errores específicos de conexión
+                if (error.message?.includes('getaddrinfo') || 
+                    error.message?.includes('EAI_AGAIN') ||
+                    error.code === 'ECONNREFUSED' ||
+                    error.code === 'ENOTFOUND') {
+                    logoutWarning = 'Evolution API no está accesible, pero se continuó con el logout. Verifica que el servicio esté corriendo.';
+                    logger.warn(`⚠️ ${logoutWarning}`);
+                } else {
+                    // Para otros errores, registrar pero continuar
+                    logoutWarning = `Advertencia: ${error.message || 'Error desconocido durante logout'}`;
+                    logger.warn(`⚠️ ${logoutWarning}`);
+                }
+            }
             
             // Paso 2: Esperar para asegurar que todo se limpió completamente
             logger.info('Paso 2: Esperando que la limpieza se complete...');
@@ -1442,8 +1539,12 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             // Paso 3: Crear nuevo cliente limpio
             logger.info('Paso 3: Creando nuevo cliente limpio...');
-            await botManager.initializeClient();
-            logger.info('✓ Nuevo cliente creado');
+            try {
+                await botManager.initializeClient();
+                logger.info('✓ Nuevo cliente creado');
+            } catch (error: any) {
+                logger.warn(`⚠️ Error al crear nuevo cliente (puede ser normal): ${error.message || error}`);
+            }
             
             // Paso 4: Esperar antes de inicializar
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1461,16 +1562,33 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             await new Promise(resolve => setTimeout(resolve, waitTime));
             
             logger.info('=== DESVINCULACIÓN COMPLETADA ===');
+            
+            const responseMessage = logoutWarning 
+                ? `WhatsApp desvinculado (con advertencias). ${deletedCount} sesión(es) eliminada(s). ${logoutWarning} Generando nuevo código QR...`
+                : `WhatsApp desvinculado correctamente. ${deletedCount} sesión(es) eliminada(s). Generando nuevo código QR...`;
+            
             res.json({ 
-                message: `WhatsApp desvinculado correctamente. ${deletedCount} sesión(es) eliminada(s). Generando nuevo código QR...`,
+                message: responseMessage,
                 success: true,
-                deletedCount
+                deletedCount,
+                warning: logoutWarning || undefined
             });
         } catch (error: any) {
             logger.error('❌ Error durante desvinculación:', error);
+            
+            // Determinar si es un error de conexión
+            const isConnectionError = error.message?.includes('getaddrinfo') || 
+                                     error.message?.includes('EAI_AGAIN') ||
+                                     error.code === 'ECONNREFUSED' ||
+                                     error.code === 'ENOTFOUND';
+            
+            const errorMessage = isConnectionError 
+                ? 'Evolution API no está accesible. Verifica que el servicio esté corriendo y la URL sea correcta.'
+                : (error.message || 'Error desconocido');
+            
             res.status(500).json({ 
                 error: 'Error al desvincular WhatsApp',
-                details: error.message || 'Error desconocido',
+                details: errorMessage,
                 success: false
             });
         }
@@ -1481,16 +1599,18 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             const { unreadOnly = 'true', limit = 50 } = req.query;
 
-            const query: any = {};
+            const where: any = {};
             if (unreadOnly === 'true') {
-                query.read = false;
+                where.read = false;
             }
 
-            const notifications = await NotificationModel.find(query)
-                .sort({ createdAt: -1 })
-                .limit(Number(limit));
+            const notifications = await prisma.notification.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take: Number(limit)
+            });
 
-            const unreadCount = await NotificationModel.countDocuments({ read: false });
+            const unreadCount = await prisma.notification.count({ where: { read: false } });
 
             res.json({
                 notifications,
@@ -1506,11 +1626,10 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             const { id } = req.params;
 
-            const notification = await NotificationModel.findByIdAndUpdate(
-                id,
-                { $set: { read: true } },
-                { new: true }
-            );
+            const notification = await prisma.notification.update({
+                where: { id },
+                data: { read: true }
+            });
 
             if (!notification) {
                 return res.status(404).json({ error: 'Notification not found' });
@@ -1525,10 +1644,10 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
 
     router.put('/notifications/read-all', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            await NotificationModel.updateMany(
-                { read: false },
-                { $set: { read: true } }
-            );
+            await prisma.notification.updateMany({
+                where: { read: false },
+                data: { read: true }
+            });
 
             res.json({ message: 'All notifications marked as read' });
         } catch (error) {
@@ -1583,10 +1702,12 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                     return;
                 }
 
-                const unreadCount = await NotificationModel.countDocuments({ read: false });
-                const latestNotifications = await NotificationModel.find({ read: false })
-                    .sort({ createdAt: -1 })
-                    .limit(5);
+                const unreadCount = await prisma.notification.count({ where: { read: false } });
+                const latestNotifications = await prisma.notification.findMany({
+                    where: { read: false },
+                    orderBy: { createdAt: 'desc' },
+                    take: 5
+                });
 
                 res.write(`data: ${JSON.stringify({ unreadCount, notifications: latestNotifications })}\n\n`);
             } catch (error) {
@@ -1616,7 +1737,9 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     // Custom Statuses API
     router.get('/custom-statuses', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const statuses = await CustomStatusModel.find().sort({ order: 1 });
+            const statuses = await prisma.customStatus.findMany({
+                orderBy: { order: 'asc' }
+            });
             res.json({ statuses });
         } catch (error) {
             logger.error('Failed to fetch custom statuses:', error);
@@ -1632,13 +1755,15 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 return res.status(400).json({ error: 'Name and value are required' });
             }
 
-            const status = await CustomStatusModel.create({
-                name,
-                value,
-                color,
-                description,
-                order: order || 0,
-                createdBy: req.user.userId
+            const status = await prisma.customStatus.create({
+                data: {
+                    name,
+                    value,
+                    color,
+                    description,
+                    order: order || 0,
+                    createdBy: req.user.userId
+                }
             });
 
             res.status(201).json({ status });
@@ -1653,11 +1778,10 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             const { id } = req.params;
             const { name, value, color, description, order, isActive } = req.body;
 
-            const status = await CustomStatusModel.findByIdAndUpdate(
-                id,
-                { name, value, color, description, order, isActive },
-                { new: true }
-            );
+            const status = await prisma.customStatus.update({
+                where: { id },
+                data: { name, value, color, description, order, isActive }
+            });
 
             if (!status) {
                 return res.status(404).json({ error: 'Custom status not found' });
@@ -1674,7 +1798,9 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             const { id } = req.params;
 
-            const status = await CustomStatusModel.findByIdAndDelete(id);
+            const status = await prisma.customStatus.delete({
+                where: { id }
+            });
 
             if (!status) {
                 return res.status(404).json({ error: 'Custom status not found' });
@@ -1690,9 +1816,14 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     // Automations API
     router.get('/automations', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const automations = await AutomationModel.find()
-                .sort({ createdAt: -1 })
-                .populate('createdBy', 'username');
+            const automations = await prisma.automation.findMany({
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    creator: {
+                        select: { username: true }
+                    }
+                }
+            });
 
             res.json({ automations });
         } catch (error) {
@@ -1709,13 +1840,17 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 return res.status(400).json({ error: 'Name, triggerType, and actions are required' });
             }
 
-            const automation = await AutomationModel.create({
-                name,
-                description,
-                triggerType,
-                triggerConditions: triggerConditions || {},
-                actions,
-                createdBy: req.user.userId
+            const triggerTypeUpper = triggerType.toUpperCase().replace('-', '_') as AutomationTrigger;
+            const automation = await prisma.automation.create({
+                data: {
+                    name,
+                    description,
+                    triggerType: triggerTypeUpper,
+                    triggerConditions: triggerConditions || {},
+                    actions,
+                    createdBy: req.user.userId
+                },
+                include: { creator: true }
             });
 
             res.status(201).json({ automation });
@@ -1730,11 +1865,15 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             const { id } = req.params;
             const { name, description, triggerType, triggerConditions, actions, isActive } = req.body;
 
-            const automation = await AutomationModel.findByIdAndUpdate(
-                id,
-                { name, description, triggerType, triggerConditions, actions, isActive },
-                { new: true }
-            );
+            const updateData: any = { name, description, triggerConditions, actions, isActive };
+            if (triggerType) {
+                updateData.triggerType = triggerType.toUpperCase().replace('-', '_') as AutomationTrigger;
+            }
+            const automation = await prisma.automation.update({
+                where: { id },
+                data: updateData,
+                include: { creator: true }
+            });
 
             if (!automation) {
                 return res.status(404).json({ error: 'Automation not found' });
@@ -1751,7 +1890,9 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             const { id } = req.params;
 
-            const automation = await AutomationModel.findByIdAndDelete(id);
+            const automation = await prisma.automation.delete({
+                where: { id }
+            });
 
             if (!automation) {
                 return res.status(404).json({ error: 'Automation not found' });

@@ -1,7 +1,7 @@
 import { connectDB } from "../src/configs/db.config";
 import logger from "../src/configs/logger.config";
 import { AuthService } from "../src/crm/utils/auth.util";
-import { UserModel } from "../src/crm/models/user.model";
+import prisma from "../src/database/prisma";
 
 async function createAdminAuto() {
     try {
@@ -12,7 +12,7 @@ async function createAdminAuto() {
         const password = process.env.ADMIN_PASSWORD || 'admin123';
         
         // Verificar si el usuario ya existe
-        const existingUser = await UserModel.findOne({ username });
+        const existingUser = await prisma.user.findUnique({ where: { username } });
         if (existingUser) {
             logger.info(`Admin user already exists: ${username}`);
             console.log(`✅ Admin user already exists: ${username}`);
@@ -36,6 +36,7 @@ async function createAdminAuto() {
         console.error('❌ Error:', error.message);
         process.exit(1);
     } finally {
+        await prisma.$disconnect();
         process.exit(0);
     }
 }

@@ -9,7 +9,7 @@ services:
       PORT: 3001
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
-      MONGODB_URI: mongodb://root:example@mongo:27017/mullbot?authSource=admin
+      DATABASE_URL: postgresql://evolution:evolutionpass@postgres:5432/mullbot_db?schema=public
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
@@ -20,20 +20,24 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
-    command: ["/bin/sh", "-c", "sleep 10 && node dist/scripts/create-admin-auto.js && npm start"]
+    command: ["/bin/sh", "-c", "sleep 10 && npx prisma migrate deploy && node dist/scripts/create-admin-auto.js && npm start"]
 
-  mongo:
-    image: mongo:6.0
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolutionpass
+      POSTGRES_DB: mullbot_db
     volumes:
-      - mongodata:/data/db
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD-SHELL", "pg_isready -U evolution -d mullbot_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -98,8 +102,8 @@ services:
       - "8080:8080"
     environment:
       DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: "mongodb"
-      DATABASE_CONNECTION_URI: mongodb://root:example@mongo:27017/mullbot?authSource=admin
+      DATABASE_PROVIDER: "postgresql"
+      DATABASE_CONNECTION_URI: postgresql://evolution:evolutionpass@postgres:5432/mullbot_db?schema=public
       AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-TuClaveSecretaChangeMe123}
       AUTHENTICATION_EXPOSE_INTERNAL: "false"
       WEBHOOK_GLOBAL_ENABLED: "true"
@@ -113,12 +117,12 @@ services:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
     networks:
       - default
 
 volumes:
-  mongodata:
+  postgres_data:
   evolution_instances:
   evolution_store:

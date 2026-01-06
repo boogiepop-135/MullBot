@@ -1,12 +1,12 @@
 import { Message, MessageMedia } from "whatsapp-web.js";
 import { AppConfig } from "../configs/app.config";
 import { UserI18n } from "../utils/i18n.util";
-import { BotContentModel } from "../crm/models/bot-content.model";
+import prisma from "../database/prisma";
 import logger from "../configs/logger.config";
 
 export const run = async (message: Message, args: string[], userI18n: UserI18n) => {
    try {
-      const contentBlock = await BotContentModel.findOne({ key: 'command_precios' });
+      const contentBlock = await prisma.botContent.findUnique({ where: { key: 'command_precios' } });
 
       if (!contentBlock) {
          logger.warn('Content block "command_precios" not found');

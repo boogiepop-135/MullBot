@@ -1,7 +1,7 @@
 import { Message } from "whatsapp-web.js";
-import { ContactModel } from "../crm/models/contact.model";
-import { NotificationModel } from "../crm/models/notification.model";
+import prisma from "../database/prisma";
 import logger from "../configs/logger.config";
+import { SaleStatus, NotificationType } from "@prisma/client";
 
 /**
  * Detecta si un mensaje contiene una propuesta de horario/cita
@@ -49,10 +49,10 @@ export async function detectAppointmentProposal(message: Message): Promise<{ isA
     // Verificar si el contacto está en un estado relevante para citas
     // Extraer número del mensaje sin usar getContact (para evitar errores)
     const phoneNumber = message.from.split('@')[0];
-    const contact = await ContactModel.findOne({ phoneNumber });
+    const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
     
     // Solo considerar propuestas de cita si el contacto está en payment_pending o appointment_scheduled
-    if (contact && (contact.saleStatus === 'payment_pending' || contact.saleStatus === 'appointment_scheduled')) {
+    if (contact && (contact.saleStatus === SaleStatus.PAYMENT_PENDING || contact.saleStatus === SaleStatus.APPOINTMENT_SCHEDULED)) {
         return {
             isAppointmentProposal: true,
             proposedDates: proposedDates.length > 0 ? proposedDates : undefined
@@ -69,24 +69,26 @@ export async function handleAppointmentProposal(message: Message, proposedDates?
     try {
         // Extraer número del mensaje sin usar getContact (para evitar errores)
         const phoneNumber = message.from.split('@')[0];
-        const contact = await ContactModel.findOne({ phoneNumber });
+        const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
 
         if (!contact) {
             return;
         }
 
         // Crear notificación para el admin
-        await NotificationModel.create({
-            type: 'appointment_proposed',
-            contactId: contact._id.toString(),
-            phoneNumber: contact.phoneNumber,
-            contactName: contact.name || contact.pushName || 'Unknown',
-            message: message.body,
-            metadata: {
-                proposedDates: proposedDates || [],
-                saleStatus: contact.saleStatus
-            },
-            read: false
+        await prisma.notification.create({
+            data: {
+                type: NotificationType.APPOINTMENT_PROPOSED,
+                contactId: contact.id,
+                phoneNumber: contact.phoneNumber,
+                contactName: contact.name || contact.pushName || 'Unknown',
+                message: message.body || '',
+                metadata: {
+                    proposedDates: proposedDates || [],
+                    saleStatus: contact.saleStatus
+                },
+                read: false
+            }
         });
 
         logger.info(`Appointment proposal notification created for ${phoneNumber}`);
@@ -100,16 +102,18 @@ export async function handleAppointmentProposal(message: Message, proposedDates?
  */
 export async function createPaymentReceiptNotification(contactId: string, phoneNumber: string, contactName?: string, message?: string): Promise<void> {
     try {
-        await NotificationModel.create({
-            type: 'payment_receipt',
-            contactId,
-            phoneNumber,
-            contactName: contactName || 'Unknown',
-            message: message || 'Comprobante de pago recibido',
-            metadata: {
-                receivedAt: new Date()
-            },
-            read: false
+        await prisma.notification.create({
+            data: {
+                type: NotificationType.PAYMENT_RECEIPT,
+                contactId,
+                phoneNumber,
+                contactName: contactName || 'Unknown',
+                message: message || 'Comprobante de pago recibido',
+                metadata: {
+                    receivedAt: new Date()
+                },
+                read: false
+            }
         });
 
         logger.info(`Payment receipt notification created for ${phoneNumber}`);

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
-import { BotConfigModel } from "../crm/models/bot-config.model";
+import prisma from "../database/prisma";
 
 export type GeminiModel = "gemini-2.0-flash-exp";
 const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
@@ -28,7 +28,7 @@ export const geminiCompletion = async (query: string, modelName: GeminiModel = "
         }
 
         // Cargar configuración del bot
-        const botConfigDoc = await BotConfigModel.findOne();
+        const botConfigDoc = await prisma.botConfig.findFirst();
         const sellerPersonality = botConfigDoc?.sellerPersonality || defaultSellerConfig.sellerPersonality;
         const canOfferDiscounts = botConfigDoc?.canOfferDiscounts ?? defaultSellerConfig.canOfferDiscounts;
         const maxDiscountPercent = botConfigDoc?.maxDiscountPercent || defaultSellerConfig.maxDiscountPercent;

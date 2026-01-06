@@ -1,6 +1,5 @@
 import { Message } from "whatsapp-web.js";
-import { BotConfigModel } from "../crm/models/bot-config.model";
-import { MessageModel } from "../crm/models/message.model";
+import prisma from "../database/prisma";
 import { getSystemInfo } from "./ngrok.util";
 import logger from "../configs/logger.config";
 import EnvConfig from "../configs/env.config";
@@ -10,7 +9,7 @@ import EnvConfig from "../configs/env.config";
  */
 export async function isAdminPhone(phoneNumber: string): Promise<boolean> {
     try {
-        const botConfig = await BotConfigModel.findOne();
+        const botConfig = await prisma.botConfig.findFirst();
         if (!botConfig || !botConfig.humanAgentPhone) {
             return false;
         }
@@ -35,11 +34,13 @@ async function hasReceivedInfo(phoneNumber: string): Promise<boolean> {
         oneDayAgo.setHours(oneDayAgo.getHours() - 24);
         
         // Buscar si ya existe un mensaje del bot con información del sistema en las últimas 24h
-        const infoMessage = await MessageModel.findOne({
-            phoneNumber: phoneNumber,
-            isFromBot: true,
-            timestamp: { $gte: oneDayAgo },
-            body: { $regex: /🌐.*Información del Sistema|🔄.*Información Actualizada/i }
+        const infoMessage = await prisma.message.findFirst({
+            where: {
+                phoneNumber: phoneNumber,
+                isFromBot: true,
+                timestamp: { gte: oneDayAgo },
+                body: { contains: 'Información del Sistema' }
+            }
         });
 
         return !!infoMessage;

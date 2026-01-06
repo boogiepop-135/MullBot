@@ -188,12 +188,28 @@ export class EvolutionAPIv2Service {
             await this.axiosInstance.delete(`/instance/delete/${this.instanceName}`);
             logger.info(`✅ Instancia '${this.instanceName}' eliminada`);
         } catch (error: any) {
+            // Error 404: Instancia no encontrada (ya eliminada)
             if (error.response?.status === 404) {
                 logger.info(`ℹ️ Instancia '${this.instanceName}' no encontrada (puede estar ya eliminada)`);
-            } else {
-                logger.error('Error deleting instance:', error.response?.data || error.message);
-                throw error;
+                return; // No es un error crítico
             }
+            
+            // Errores de conexión (servicio no disponible, DNS, etc.)
+            if (error.code === 'ECONNREFUSED' || 
+                error.code === 'ENOTFOUND' || 
+                error.code === 'EAI_AGAIN' ||
+                error.message?.includes('getaddrinfo') ||
+                error.message?.includes('EAI_AGAIN')) {
+                logger.warn(`⚠️ Evolution API no está accesible en ${this.apiUrl}. La instancia puede no haberse eliminado, pero continuando con el logout.`);
+                logger.warn(`   Error: ${error.message || error.code}`);
+                return; // Permitir continuar sin fallar
+            }
+            
+            // Otros errores
+            logger.error('Error deleting instance:', error.response?.data || error.message);
+            // No lanzar error para evitar que el proceso falle completamente
+            // Si Evolution API no está disponible, aún podemos continuar
+            logger.warn('⚠️ Continuando con el logout a pesar del error de Evolution API');
         }
     }
 

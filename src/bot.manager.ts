@@ -11,8 +11,7 @@ import commands from "./commands";
 import { isUrl } from "./utils/common.util";
 import { identifySocialNetwork, YtDlpDownloader } from "./utils/get.util";
 import { onboard } from "./utils/onboarding.util";
-import { ContactModel } from "./crm/models/contact.model";
-import { MessageModel } from "./crm/models/message.model";
+import prisma from "./database/prisma";
 import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
 import { detectAppointmentProposal, handleAppointmentProposal } from "./utils/appointment-detection.util";
 import { EvolutionAPIv2Service } from "./services/evolution-api-v2.service";
@@ -136,8 +135,13 @@ export class BotManager {
                 this.qrPollInterval = null;
             }
 
-            // Eliminar instancia de Evolution API
-            await this.evolutionAPI.logout();
+            // Eliminar instancia de Evolution API (tolerante a errores)
+            try {
+                await this.evolutionAPI.logout();
+            } catch (error: any) {
+                // Si Evolution API no está disponible, continuar de todas formas
+                logger.warn(`⚠️ No se pudo desvincular de Evolution API, pero continuando con el logout: ${error.message || error}`);
+            }
             
             // Resetear QR data
             this.qrData = {
@@ -149,11 +153,15 @@ export class BotManager {
             return 1; // Retornar 1 para compatibilidad con código existente
         } catch (error) {
             logger.error(`❌ Error durante logout: ${error}`);
+            // Aún así, resetear QR data para permitir reconexión
             this.qrData = {
                 qrCodeData: "",
                 qrScanned: false
             };
-            throw error;
+            // No lanzar error para permitir que el proceso continúe
+            // El usuario podrá intentar reconectar después
+            logger.warn('⚠️ Continuando a pesar del error para permitir reconexión');
+            return 0; // Retornar 0 indicando que hubo problemas pero no es crítico
         }
     }
 
@@ -202,7 +210,7 @@ export class BotManager {
             logger.info(`📨 Mensaje recibido de ${pushName} (${phoneNumber}): ${content || '[Media/Sticker]'}`);
 
             // Verificar si el usuario está pausado
-            const contact = await ContactModel.findOne({ phoneNumber });
+            const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
             if (contact && contact.isPaused) {
                 logger.info(`⏸️ Mensaje de usuario pausado ${phoneNumber} - ignorando`);
                 return;
@@ -308,34 +316,51 @@ export class BotManager {
                           messageData.message.extendedTextMessage?.text || 
                           '[Media/Sticker]';
 
-            await MessageModel.findOneAndUpdate(
-                {
+            const timestamp = new Date(messageData.messageTimestamp * 1000);
+            const messageId = `${messageData.key.remoteJid}-${messageData.messageTimestamp}`;
+
+            await prisma.message.upsert({
+                where: { messageId },
+                update: {
                     phoneNumber: phoneNumber,
-                    timestamp: new Date(messageData.messageTimestamp * 1000)
-                },
-                {
-                    $set: {
-                        phoneNumber: phoneNumber,
-                        from: messageData.key.remoteJid,
-                        to: EnvConfig.EVOLUTION_INSTANCE_NAME,
-                        body: content,
-                        type: 'text',
-                        isFromBot: false,
-                        timestamp: new Date(messageData.messageTimestamp * 1000),
-                        hasMedia: !!(messageData.message.imageMessage || 
-                                   messageData.message.videoMessage || 
-                                   messageData.message.audioMessage || 
-                                   messageData.message.documentMessage),
-                        requiresAttention: false,
-                        metadata: {
-                            pushName: messageData.pushName,
-                            isGroup: messageData.key.remoteJid.includes('@g.us'),
-                            fromMe: messageData.key.fromMe
-                        }
+                    from: messageData.key.remoteJid,
+                    to: EnvConfig.EVOLUTION_INSTANCE_NAME || 'evolution-instance',
+                    body: content,
+                    type: 'text',
+                    isFromBot: false,
+                    timestamp: timestamp,
+                    hasMedia: !!(messageData.message.imageMessage || 
+                               messageData.message.videoMessage || 
+                               messageData.message.audioMessage || 
+                               messageData.message.documentMessage),
+                    requiresAttention: false,
+                    metadata: {
+                        pushName: messageData.pushName,
+                        isGroup: messageData.key.remoteJid.includes('@g.us'),
+                        fromMe: messageData.key.fromMe
                     }
                 },
-                { upsert: true, new: true }
-            );
+                create: {
+                    messageId,
+                    phoneNumber: phoneNumber,
+                    from: messageData.key.remoteJid,
+                    to: EnvConfig.EVOLUTION_INSTANCE_NAME || 'evolution-instance',
+                    body: content,
+                    type: 'text',
+                    isFromBot: false,
+                    timestamp: timestamp,
+                    hasMedia: !!(messageData.message.imageMessage || 
+                               messageData.message.videoMessage || 
+                               messageData.message.audioMessage || 
+                               messageData.message.documentMessage),
+                    requiresAttention: false,
+                    metadata: {
+                        pushName: messageData.pushName,
+                        isGroup: messageData.key.remoteJid.includes('@g.us'),
+                        fromMe: messageData.key.fromMe
+                    }
+                }
+            });
         } catch (error) {
             logger.error('Error guardando mensaje en BD:', error);
         }
@@ -346,18 +371,29 @@ export class BotManager {
      */
     private async trackContactSimple(phoneNumber: string, pushName: string, userI18n: UserI18n): Promise<void> {
         try {
-            await ContactModel.findOneAndUpdate(
-                { phoneNumber },
-                {
-                    $set: {
+            const existingContact = await prisma.contact.findUnique({ where: { phoneNumber } });
+            
+            if (existingContact) {
+                await prisma.contact.update({
+                    where: { phoneNumber },
+                    data: {
                         pushName: pushName,
                         language: userI18n.getLanguage(),
-                        lastInteraction: new Date()
-                    },
-                    $inc: { interactionsCount: 1 }
-                },
-                { upsert: true, new: true }
-            );
+                        lastInteraction: new Date(),
+                        interactionsCount: { increment: 1 }
+                    }
+                });
+            } else {
+                await prisma.contact.create({
+                    data: {
+                        phoneNumber,
+                        pushName: pushName,
+                        language: userI18n.getLanguage(),
+                        lastInteraction: new Date(),
+                        interactionsCount: 1
+                    }
+                });
+            }
         } catch (error) {
             logger.error('Failed to track contact:', error);
         }
@@ -390,31 +426,43 @@ export class BotManager {
      */
     public async saveSentMessage(phoneNumber: string, message: string, messageId?: string | null): Promise<void> {
         try {
-            await MessageModel.findOneAndUpdate(
-                {
+            const uniqueMessageId = messageId || `${phoneNumber}-${Date.now()}-${Math.random()}`;
+            const timestamp = new Date();
+
+            await prisma.message.upsert({
+                where: { messageId: uniqueMessageId },
+                update: {
                     phoneNumber: phoneNumber,
+                    from: EnvConfig.EVOLUTION_INSTANCE_NAME || 'evolution-instance',
+                    to: phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`,
                     body: message,
-                    isFromBot: true
-                },
-                {
-                    $set: {
-                        phoneNumber: phoneNumber,
-                        from: EnvConfig.EVOLUTION_INSTANCE_NAME,
-                        to: phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`,
-                        body: message,
-                        type: 'text',
-                        isFromBot: true,
-                        timestamp: new Date(),
-                        hasMedia: false,
-                        requiresAttention: false,
-                        metadata: {
-                            messageId: messageId || null,
-                            fromMe: true
-                        }
+                    type: 'text',
+                    isFromBot: true,
+                    timestamp: timestamp,
+                    hasMedia: false,
+                    requiresAttention: false,
+                    metadata: {
+                        messageId: messageId || null,
+                        fromMe: true
                     }
                 },
-                { upsert: true, new: true }
-            );
+                create: {
+                    messageId: uniqueMessageId,
+                    phoneNumber: phoneNumber,
+                    from: EnvConfig.EVOLUTION_INSTANCE_NAME || 'evolution-instance',
+                    to: phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`,
+                    body: message,
+                    type: 'text',
+                    isFromBot: true,
+                    timestamp: timestamp,
+                    hasMedia: false,
+                    requiresAttention: false,
+                    metadata: {
+                        messageId: messageId || null,
+                        fromMe: true
+                    }
+                }
+            });
         } catch (error) {
             logger.error('Error guardando mensaje enviado en BD:', error);
         }

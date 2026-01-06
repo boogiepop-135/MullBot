@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  templates      Template[]
+  campaigns      Campaign[]
+  automations    Automation[]
+  customStatuses CustomStatus[]
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Contact {
+  id                   String   @id @default(uuid())
+  phoneNumber          String   @unique
+  name                 String?
+  pushName             String?
+  language             String?
+  lastInteraction      DateTime @default(now())
+  interactionsCount    Int      @default(1)
+  tags                 String[]
+  saleStatus           SaleStatus @default(LEAD)
+  saleStatusNotes      String?  @db.Text
+  paidAt               DateTime?
+  isPaused             Boolean  @default(false)
+  appointmentDate      DateTime?
+  appointmentConfirmed Boolean  @default(false)
+  appointmentNotes     String?  @db.Text
+  paymentConfirmedAt   DateTime?
+  assignedAgentPhone   String?  @default("")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relaciones
+  messages Message[]
+  notifications Notification[]
+}
+
+enum SaleStatus {
+  LEAD
+  INTERESTED
+  INFO_REQUESTED
+  PAYMENT_PENDING
+  APPOINTMENT_SCHEDULED
+  APPOINTMENT_CONFIRMED
+  COMPLETED
+}
+
+model Message {
+  id                String    @id @default(uuid())
+  phoneNumber       String
+  contactId         String?
+  messageId         String    @unique
+  from              String
+  to                String
+  body              String    @default("") @db.Text
+  type              String    @default("TEXT")
+  isFromBot         Boolean   @default(false)
+  timestamp         DateTime  @default(now())
+  hasMedia          Boolean   @default(false)
+  mediaUrl          String?
+  requiresAttention Boolean   @default(false)
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relaciones
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([phoneNumber, timestamp(sort: Desc)])
+  @@index([contactId, timestamp(sort: Desc)])
+  @@index([requiresAttention, timestamp(sort: Desc)])
+}
+
+model Campaign {
+  id               String          @id @default(uuid())
+  name             String
+  message          String          @db.Text
+  scheduledAt      DateTime?
+  status           CampaignStatus  @default(DRAFT)
+  contacts         String[]
+  sentCount        Int             @default(0)
+  failedCount      Int             @default(0)
+  createdBy        String
+  isBatchCampaign  Boolean         @default(false)
+  batchSize        Int?
+  batchInterval    Int?            // en minutos
+  currentBatchIndex Int            @default(0)
+  totalBatches     Int?
+  saleStatusFilter String[]
+  nextBatchAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relaciones
+  creator User? @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  FAILED
+  SENDING
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  name      String
+  content   String   @db.Text
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  creator User? @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  price       Float
+  sizes       String[]
+  promotions  String?  @db.Text
+  imageUrl    String?
+  category    String?
+  inStock     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BotConfig {
+  id                            String   @id @default(uuid())
+  botName                       String   @default("MüllBot")
+  botEmoji                      String   @default("🌱")
+  botDelay                      Int      @default(10000)
+  businessName                  String   @default("Müllblue")
+  businessDescription           String   @default("Transforma residuos en vida con nuestros sistemas de compostaje") @db.Text
+  businessPhone                 String   @default("")
+  businessEmail                 String   @default("")
+  businessAddress               String   @default("")
+  businessWebsite               String   @default("")
+  businessHours                 String   @default("Lunes a Viernes 9am - 7pm")
+  socialFacebook                String   @default("")
+  socialInstagram               String   @default("")
+  socialTiktok                  String   @default("")
+  aiSystemPrompt                String   @default("") @db.Text
+  aiModel                       String   @default("gemini-2.0-flash-exp")
+  sellerPersonality             String   @default("experto")
+  canOfferDiscounts             Boolean  @default(false)
+  maxDiscountPercent            Int      @default(10)
+  discountConditions            String   @default("Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones o descuentos. No ofrecer descuentos de forma proactiva.") @db.Text
+  welcomeMessage                String   @default("") @db.Text
+  pauseMessage                  String   @default("✅ *Solicitud Recibida*\n\nTu solicitud ha sido registrada correctamente.\n\n👤 *Estado:* En cola para atención humana\n⏰ *Horario de atención:* {businessHours}\n\n📝 Enseguida vendrá un asesor a atenderte. El bot ha sido pausado temporalmente para evitar respuestas automáticas.\n\n¡Gracias por tu paciencia! 🌱") @db.Text
+  paymentConfirmationMessage    String   @default("") @db.Text
+  appointmentConfirmationMessage String  @default("") @db.Text
+  bankInfo                      String   @default("") @db.Text
+  paypalEmail                   String   @default("")
+  humanAgentPhone               String?  @default("")
+  notifyAgentOnAttention        Boolean  @default(false)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+}
+
+model BotContent {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  content     String           @db.Text
+  mediaPath   String?
+  description String?
+  category    BotContentCategory @default(OTHER)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+enum BotContentCategory {
+  QUICK_RESPONSE
+  COMMAND
+  OTHER
+}
+
+model Automation {
+  id               String            @id @default(uuid())
+  name             String
+  description      String?           @db.Text
+  triggerType      AutomationTrigger
+  triggerConditions Json             // { fromStatus, toStatus, messageContains, tags, afterHours }
+  actions          Json              // Array de { type, value }
+  isActive         Boolean           @default(true)
+  createdBy        String
+  lastTriggered    DateTime?
+  triggerCount     Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Relaciones
+  creator User? @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+  @@index([triggerType])
+}
+
+enum AutomationTrigger {
+  STATUS_CHANGE
+  MESSAGE_RECEIVED
+  TIME_BASED
+  TAG_ADDED
+}
+
+model Notification {
+  id          String             @id @default(uuid())
+  type        NotificationType
+  contactId   String
+  phoneNumber String
+  contactName String?
+  message     String?            @db.Text
+  metadata    Json?
+  read        Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relaciones
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([read])
+  @@index([type])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum NotificationType {
+  PAYMENT_RECEIPT
+  APPOINTMENT_REQUEST
+  APPOINTMENT_PROPOSED
+}
+
+model CustomStatus {
+  id          String   @id @default(uuid())
+  name        String
+  value       String   @unique
+  color       String   @default("#3B82F6")
+  description String?  @db.Text
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  creator User? @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([order])
+  @@index([isActive])
+}
+

@@ -1,10 +1,15 @@
 import { RemoteAuth } from "whatsapp-web.js";
 import EnvConfig from "./env.config";
-import { getMongoStore } from "./mongo-store.config";
+// NOTA: Este archivo ya no se usa con Evolution API, pero se mantiene por compatibilidad
+// MongoStore eliminado en migración a PostgreSQL/Prisma
 
 export async function getClientConfig() {
-    // Obtener MongoStore para RemoteAuth
-    const store = await getMongoStore();
+    // DEPRECATED: Este archivo ya no se usa con Evolution API
+    // Evolution API maneja las sesiones directamente en PostgreSQL
+    throw new Error('getClientConfig is deprecated. Evolution API handles sessions directly.');
+    
+    // Código legacy (no ejecutado):
+    // const store = await getMongoStore();
 
     return {
         authStrategy: new RemoteAuth({
