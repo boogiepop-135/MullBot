@@ -116,8 +116,11 @@
           throw new Error(error.error || 'Error de autenticación');
         }
 
-        const { token } = await response.json();
-        localStorage.setItem('token', token);
+        const data = await response.json();
+        if (!data.token) {
+          throw new Error('Token no recibido del servidor');
+        }
+        localStorage.setItem('token', data.token);
 
         // Success state
         submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i>¡Bienvenido!';

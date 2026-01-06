@@ -4,12 +4,24 @@ import logger from '../../configs/logger.config';
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
+    // Intentar obtener el token de múltiples formas
+    const authHeader = req.header('Authorization') || req.get('Authorization') || req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Access Token Required' });
     }
 
-    const decoded = await AuthService.verifyToken(token);
+    // Extraer el token (puede venir como "Bearer <token>" o solo "<token>")
+    let token = authHeader;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+
+    if (!token || token.trim() === '') {
+      return res.status(401).json({ error: 'Access Token Required' });
+    }
+
+    const decoded = await AuthService.verifyToken(token.trim());
     if (!decoded) {
       return res.status(401).json({ error: 'Invalid token' });
     }
