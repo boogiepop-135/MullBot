@@ -10,7 +10,8 @@ export async function getClientConfig() {
         authStrategy: new RemoteAuth({
             clientId: "mullbot-client",
             store: store,
-            backupSyncIntervalMs: 300000 // Sincronizar cada 5 minutos
+            backupSyncIntervalMs: 300000, // Sincronizar cada 5 minutos
+            dataPath: './.wwebjs_auth', // Ruta para datos de autenticación local (backup)
             // La sesión se guarda automáticamente en MongoDB en la colección 'auth_sessions'
             // wwebjs-mongo maneja automáticamente el guardado y restauración de sesiones
         }),
@@ -18,10 +19,11 @@ export async function getClientConfig() {
             headless: true,
             // Solo especificar executablePath si está definido
             // Si no está definido, whatsapp-web.js/puppeteer-core intentará encontrarlo automáticamente
-            // pero puede fallar si Chrome no está instalado en el sistema
             ...(EnvConfig.PUPPETEER_EXECUTABLE_PATH ? {
                 executablePath: EnvConfig.PUPPETEER_EXECUTABLE_PATH
             } : {}),
+            // Timeout aumentado para conexiones lentas
+            timeout: 60000,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -34,8 +36,6 @@ export async function getClientConfig() {
                 '--disable-features=VizDisplayCompositor',
                 '--disable-extensions',
                 '--disable-plugins',
-                '--disable-images',
-                '--disable-javascript',
                 '--disable-default-apps',
                 '--disable-background-networking',
                 '--disable-sync',
@@ -55,7 +55,6 @@ export async function getClientConfig() {
                 '--ignore-certificate-errors',
                 '--ignore-ssl-errors',
                 '--ignore-certificate-errors-spki-list',
-                '--ignore-certificate-errors-spki-list',
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
                 '--disable-renderer-backgrounding',
@@ -64,13 +63,42 @@ export async function getClientConfig() {
                 '--enable-features=NetworkService,NetworkServiceLogging',
                 '--force-color-profile=srgb',
                 '--metrics-recording-only',
+                '--disable-blink-features=AutomationControlled',
+                // Argumentos adicionales para mejor estabilidad
+                '--disable-software-rasterizer',
+                '--disable-background-downloads',
+                '--disable-breakpad',
+                '--disable-crash-reporter',
+                '--disable-domain-reliability',
+                '--disable-features=AudioServiceOutOfProcess',
+                '--disable-hang-monitor',
+                '--disable-prompt-on-repost',
+                '--disable-site-isolation-trials',
+                '--disable-web-resources',
+                '--enable-automation',
+                '--enable-features=NetworkService,NetworkServiceLogging',
+                '--force-color-profile=srgb',
+                '--metrics-recording-only',
+                '--no-crash-upload',
+                '--noerrdialogs',
+                '--remote-debugging-port=0',
+                '--test-type=webdriver',
                 '--use-mock-keychain',
-                '--disable-blink-features=AutomationControlled'
+                '--window-size=1920,1080'
             ]
         },
         restartOnAuthFail: true,
         takeoverOnConflict: true,
         takeoverTimeoutMs: 0,
-        qrMaxRetries: 5
+        qrMaxRetries: 10, // Aumentar reintentos de QR
+        // Configuración adicional para mejor estabilidad
+        webVersionCache: {
+            type: 'remote',
+            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51.html'
+        },
+        // Forzar regeneración de QR si falla
+        authTimeoutMs: 60000, // 60 segundos para autenticación
+        // Mejorar manejo de sesiones
+        session: 'default'
     };
 }

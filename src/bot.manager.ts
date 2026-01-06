@@ -77,17 +77,28 @@ export class BotManager {
         this.client.on('ready', this.handleReady.bind(this));
         this.client.on('qr', this.handleQr.bind(this));
         this.client.on('authenticated', () => {
-            logger.info("Client authenticated successfully");
+            logger.info("✅ Client authenticated successfully");
             // Si se autentica pero no emite ready después de un tiempo, puede haber un problema
             setTimeout(() => {
-                if (!this.qrData.qrScanned && !this.client.info) {
-                    logger.warn("Client authenticated but not ready after 15 seconds. Session may be corrupted.");
+                if (!this.qrData.qrScanned && !this.client?.info) {
+                    logger.warn("⚠ Client authenticated but not ready after 15 seconds. Session may be corrupted.");
+                    logger.warn("💡 Consider logging out and scanning QR again if this persists.");
                 }
             }, 15000);
         });
-        this.client.on('auth_failure', (msg) => {
-            logger.error(`Authentication failure: ${msg}`);
+        this.client.on('auth_failure', async (msg) => {
+            logger.error(`❌ Authentication failure: ${msg}`);
             this.qrData.qrScanned = false;
+            this.qrData.qrCodeData = "";
+            
+            // Intentar limpiar sesión corrupta y regenerar QR
+            logger.info("Intentando limpiar sesión corrupta y regenerar QR...");
+            try {
+                await this.clearSessionFromMongoDB();
+                logger.info("Sesión corrupta limpiada, se generará nuevo QR en el próximo intento");
+            } catch (error) {
+                logger.error(`Error limpiando sesión después de auth_failure: ${error}`);
+            }
         });
         this.client.on('loading_screen', (percent, message) => {
             logger.info(`Loading screen: ${percent}% - ${message}`);
@@ -174,12 +185,26 @@ export class BotManager {
     }
 
     private handleDisconnect(reason: string) {
-        logger.info(`Client disconnected: ${reason}`);
+        logger.warn(`⚠ Client disconnected: ${reason}`);
         this.qrData.qrScanned = false;
+        
+        // Si la desconexión es por autenticación, limpiar sesión
+        if (reason.includes('LOGOUT') || reason.includes('401') || reason.includes('authentication')) {
+            logger.warn("Desconexión por problema de autenticación, limpiando sesión...");
+            this.clearSessionFromMongoDB().catch(err => {
+                logger.error(`Error limpiando sesión después de desconexión: ${err}`);
+            });
+        }
+        
+        // Intentar reconectar después de un delay
         setTimeout(async () => {
             if (this.client) {
-                logger.info("Attempting to reconnect after disconnect...");
-                await this.client.initialize();
+                logger.info("🔄 Intentando reconectar después de desconexión...");
+                try {
+                    await this.client.initialize();
+                } catch (error) {
+                    logger.error(`❌ Error durante reconexión: ${error}`);
+                }
             }
         }, 5000);
     }
