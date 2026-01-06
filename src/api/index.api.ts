@@ -55,9 +55,47 @@ export default function (botManager: BotManager) {
         }
     });
 
-    // QR Code endpoint para API (JSON) - Mejorado con mejor manejo de errores
+    // QR Code endpoint para API (JSON) - Compatible con whatsapp-web.js y Evolution API
     router.get("/qr", async (_req, res) => {
         try {
+            // Verificar si estamos usando Evolution API
+            const useEvolutionAPI = process.env.USE_EVOLUTION_API === 'true';
+            
+            if (useEvolutionAPI) {
+                // Evolution API - el QR ya viene en base64
+                const qr = qrData.qrCodeData;
+                
+                if (qr && qr.length > 0) {
+                    // Evolution API devuelve el QR directamente en base64
+                    // Verificar si está conectado
+                    const isConnected = qrData.qrScanned;
+                    
+                    if (isConnected) {
+                        return res.json({
+                            qr: null,
+                            qrScanned: true,
+                            message: "Client is already connected"
+                        });
+                    }
+                    
+                    logger.info("GET /qr - Returning Evolution API QR (base64)");
+                    return res.json({
+                        qr: qr, // Ya está en base64 desde Evolution API
+                        qrScanned: false,
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    // QR no disponible aún
+                    return res.status(202).json({ 
+                        qr: null,
+                        qrScanned: false,
+                        message: "QR code is being generated, please wait...",
+                        retryAfter: 5
+                    });
+                }
+            }
+            
+            // whatsapp-web.js - código original
             // Verificar si el cliente está listo (conectado)
             const isClientReady = botManager.client?.info ? true : false;
             

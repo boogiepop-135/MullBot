@@ -1492,9 +1492,12 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     });
 
     // WhatsApp logout endpoint - Unificado: desvincula y limpia todas las sesiones
+    // Compatible con whatsapp-web.js y Evolution API
     router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
         try {
             logger.info('=== SOLICITUD DE DESVINCULACIÓN RECIBIDA ===');
+            
+            const useEvolutionAPI = process.env.USE_EVOLUTION_API === 'true';
             
             // Paso 1: Desvincular y limpiar TODAS las sesiones (función unificada)
             logger.info('Paso 1: Desvinculando y limpiando todas las sesiones...');
@@ -1520,8 +1523,10 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             });
             
             // Paso 6: Esperar para que el QR se genere (dar más tiempo)
-            logger.info('Paso 5: Esperando generación del QR...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            // Evolution API es más rápido, pero dar tiempo suficiente
+            const waitTime = useEvolutionAPI ? 3000 : 5000;
+            logger.info(`Paso 5: Esperando generación del QR (${waitTime}ms)...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
             
             logger.info('=== DESVINCULACIÓN COMPLETADA ===');
             res.json({ 

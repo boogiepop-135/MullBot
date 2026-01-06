@@ -41,9 +41,9 @@ export class EvolutionAPIService {
     private axiosInstance: AxiosInstance;
 
     constructor() {
-        this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-        this.apiKey = process.env.EVOLUTION_API_KEY || 'mullbot-evolution-key-2025';
-        this.instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'mullbot';
+        this.apiUrl = EnvConfig.EVOLUTION_API_URL || 'http://localhost:8080';
+        this.apiKey = EnvConfig.EVOLUTION_API_KEY || 'mullbot-evolution-key-2025';
+        this.instanceName = EnvConfig.EVOLUTION_INSTANCE_NAME || 'mullbot';
 
         this.axiosInstance = axios.create({
             baseURL: this.apiUrl,

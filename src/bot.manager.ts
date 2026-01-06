@@ -11,6 +11,8 @@ import { ContactModel } from "./crm/models/contact.model";
 import { MessageModel } from "./crm/models/message.model";
 import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
 import { detectAppointmentProposal, handleAppointmentProposal } from "./utils/appointment-detection.util";
+import { EvolutionAPIService } from "./services/evolution-api.service";
+import EnvConfig from "./configs/env.config";
 const qrcode = require('qrcode-terminal');
 
 export class BotManager {
@@ -22,10 +24,19 @@ export class BotManager {
     };
     private userI18nCache = new Map<string, UserI18n>();
     private prefix = AppConfig.instance.getBotPrefix();
+    private evolutionAPI: EvolutionAPIService | null = null;
+    private useEvolutionAPI: boolean = false;
+    private qrPollInterval: NodeJS.Timeout | null = null;
 
     private constructor() {
         // NO crear el cliente aquí - debe ser asíncrono después de conectar MongoDB
         // El cliente se creará en initializeClient()
+        // Verificar si debemos usar Evolution API
+        this.useEvolutionAPI = EnvConfig.USE_EVOLUTION_API || false;
+        if (this.useEvolutionAPI) {
+            logger.info("🚀 Evolution API habilitado - usando Evolution API en lugar de whatsapp-web.js");
+            this.evolutionAPI = new EvolutionAPIService();
+        }
     }
 
     public static getInstance(): BotManager {
@@ -213,6 +224,25 @@ export class BotManager {
 
     public async initialize(): Promise<void> {
         try {
+            // Si usamos Evolution API, no necesitamos inicializar whatsapp-web.js
+            if (this.useEvolutionAPI && this.evolutionAPI) {
+                logger.info("Using Evolution API - connecting instance...");
+                try {
+                    // Obtener QR de Evolution API
+                    const qr = await this.evolutionAPI.getQR();
+                    if (qr) {
+                        this.qrData.qrCodeData = qr;
+                        this.qrData.qrScanned = false;
+                        logger.info("✅ QR code obtained from Evolution API");
+                    } else {
+                        logger.warn("⚠ No QR code available from Evolution API yet");
+                    }
+                } catch (error) {
+                    logger.error("Error getting QR from Evolution API:", error);
+                }
+                return;
+            }
+
             // Verificar si el cliente existe, si no, inicializarlo
             if (!this.client) {
                 logger.info("Cliente no existe, inicializando...");
@@ -286,12 +316,87 @@ export class BotManager {
     }
 
     /**
+     * Iniciar polling de QR desde Evolution API
+     */
+    private startQRPolling(): void {
+        if (!this.useEvolutionAPI || !this.evolutionAPI) return;
+        
+        // Limpiar intervalo anterior si existe
+        if (this.qrPollInterval) {
+            clearInterval(this.qrPollInterval);
+        }
+        
+        // Polling cada 5 segundos para obtener QR
+        this.qrPollInterval = setInterval(async () => {
+            try {
+                if (this.qrData.qrScanned) {
+                    // Si ya está escaneado, verificar conexión
+                    const isConnected = await this.evolutionAPI!.isConnected();
+                    if (isConnected) {
+                        clearInterval(this.qrPollInterval!);
+                        this.qrPollInterval = null;
+                    }
+                    return;
+                }
+                
+                const qr = await this.evolutionAPI!.getQR();
+                if (qr && qr !== this.qrData.qrCodeData) {
+                    this.qrData.qrCodeData = qr;
+                    this.qrData.qrScanned = false;
+                    logger.info("✅ QR code actualizado desde Evolution API");
+                }
+                
+                // Verificar si está conectado
+                const isConnected = await this.evolutionAPI!.isConnected();
+                if (isConnected && !this.qrData.qrScanned) {
+                    this.qrData.qrScanned = true;
+                    logger.info("✅ WhatsApp conectado vía Evolution API");
+                    clearInterval(this.qrPollInterval!);
+                    this.qrPollInterval = null;
+                }
+            } catch (error) {
+                logger.error("Error en polling de QR de Evolution API:", error);
+            }
+        }, 5000);
+        
+        logger.info("🔄 Polling de QR de Evolution API iniciado");
+    }
+
+    /**
      * Desvincular WhatsApp actual y limpiar TODAS las sesiones
      * Esta función unifica logout y clearAllSessions para garantizar una limpieza completa
      */
     public async logout(): Promise<number> {
         try {
             logger.info("=== INICIANDO LOGOUT COMPLETO ===");
+            
+            // Si usamos Evolution API, usar su método de logout
+            if (this.useEvolutionAPI && this.evolutionAPI) {
+                logger.info("Paso 1: Desvinculando instancia de Evolution API...");
+                try {
+                    await this.evolutionAPI.logout();
+                    logger.info("✓ Instancia de Evolution API eliminada");
+                } catch (error) {
+                    logger.warn(`⚠ Error eliminando instancia de Evolution API: ${error}`);
+                }
+                
+                // Limpiar polling de QR
+                if (this.qrPollInterval) {
+                    clearInterval(this.qrPollInterval);
+                    this.qrPollInterval = null;
+                }
+                
+                // Resetear QR data
+                this.qrData.qrCodeData = "";
+                this.qrData.qrScanned = false;
+                
+                // Limpiar sesiones de MongoDB también
+                const deletedCount = await this.clearAllSessions();
+                logger.info(`✓ ${deletedCount} sesión(es) eliminada(s) de MongoDB`);
+                
+                return deletedCount;
+            }
+            
             logger.info("Paso 1: Desvinculando y destruyendo cliente...");
 
             // Cerrar y destruir el cliente actual
