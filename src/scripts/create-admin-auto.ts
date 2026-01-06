@@ -1,7 +1,7 @@
-import { connectDB } from "../src/configs/db.config";
-import logger from "../src/configs/logger.config";
-import { AuthService } from "../src/crm/utils/auth.util";
-import prisma from "../src/database/prisma";
+import { connectDB } from "../configs/db.config";
+import logger from "../configs/logger.config";
+import { AuthService } from "../crm/utils/auth.util";
+import prisma from "../database/prisma";
 
 async function createAdminAuto() {
     try {
@@ -42,3 +42,4 @@ async function createAdminAuto() {
 }
 
 createAdminAuto();
+
