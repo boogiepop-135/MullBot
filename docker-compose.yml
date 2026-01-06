@@ -6,7 +6,7 @@ services:
     environment:
       NODE_ENV: production
       ENV: production
-      PORT: 3000
+      PORT: 3001
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
       MONGODB_URI: mongodb://root:example@mongo:27017/mullbot?authSource=admin
@@ -15,7 +15,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       NGROK_API_HOST: ngrok
     ports:
-      - "3000:3000"
+      - "3001:3001"
     depends_on:
       mongo:
         condition: service_healthy

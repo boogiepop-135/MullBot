@@ -5,7 +5,7 @@ version: "2"
 authtoken: TU_NGROK_AUTHTOKEN_AQUI
 tunnels:
   mullbot:
-    addr: app:3000
+    addr: app:3001
     proto: http
     schemes:
       - https
