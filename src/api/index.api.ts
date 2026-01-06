@@ -117,20 +117,19 @@ export default function (botManager: BotManager) {
 
             // Si el cliente no está autenticado, intentar regenerar
             if (!qrData.qrScanned) {
-                // Destruir cliente actual si existe
-                if (botManager.client) {
-                    try {
-                        await botManager.client.destroy();
-                    } catch (error) {
-                        logger.warn("Error destroying client during regeneration:", error);
-                    }
-                }
-
                 // Resetear qrData
                 qrData.qrCodeData = "";
                 qrData.qrScanned = false;
 
-                // Inicializar nuevo cliente (esto generará un nuevo QR)
+                // Desvincular y crear nueva instancia (esto generará un nuevo QR)
+                try {
+                    await botManager.logout();
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } catch (error) {
+                    logger.warn("Error during logout for QR regeneration:", error);
+                }
+
+                // Inicializar nueva instancia (esto generará un nuevo QR)
                 await botManager.initializeClient();
                 await botManager.initialize();
 
