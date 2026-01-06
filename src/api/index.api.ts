@@ -33,7 +33,7 @@ export default function (botManager: BotManager) {
 
             const healthStatus = {
                 status: isConnected ? "healthy" : "unhealthy",
-                clientReady: isClientReady,
+                connected: isConnected,
                 uptime: process.uptime(),
                 memoryUsage: process.memoryUsage(),
                 qrScanned: isConnected ? true : qrData.qrScanned,
