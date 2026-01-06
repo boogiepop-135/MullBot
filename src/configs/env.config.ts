@@ -15,11 +15,14 @@ class EnvConfig {
     static ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
     static ENV = process.env.ENV;
     static PORT = process.env.PORT;
-    // Evolution API (opcional - alternativa más robusta)
+    // Evolution API v2 - Configuración principal
+    static EVOLUTION_URL = process.env.EVOLUTION_URL || process.env.EVOLUTION_API_URL || 'http://evolution-api:8080';
+    static EVOLUTION_APIKEY = process.env.EVOLUTION_APIKEY || process.env.EVOLUTION_API_KEY || '';
+    static EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || 'mullbot-principal';
+    // Legacy support (deprecated)
     static USE_EVOLUTION_API = process.env.USE_EVOLUTION_API === 'true';
     static EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
     static EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
-    static EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || 'mullbot';
     // En Railway, preferir usar el endpoint privado para evitar costos de egress
     // Railway puede crear variables como MONGO_URL, MONGO_PUBLIC_URL, etc.
     static MONGODB_URI: string | undefined = undefined;

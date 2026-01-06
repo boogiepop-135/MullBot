@@ -58,13 +58,7 @@ const botManager = BotManager.getInstance();
 
 // Conectar a MongoDB primero, luego inicializar el bot
 connectDB().then(async () => {
-    // Inicializar el cliente de WhatsApp después de conectar MongoDB
-    await botManager.initializeClient();
-    
-    // Inicializar crons
-    initCrons(botManager);
-    
-    // Configurar rutas
+    // Configurar rutas PRIMERO (para que el webhook esté disponible)
     app.use("/", apiRoutes(botManager));
     
     // Iniciar servidor Express
@@ -72,9 +66,18 @@ connectDB().then(async () => {
         logger.info(readAsciiArt());
         logger.info(`Server running on port ${port}`);
         logger.info(`Access: http://localhost:${port}/`);
+        logger.info(`Webhook endpoint: http://localhost:${port}/webhook/evolution`);
         
-        // Inicializar el bot de WhatsApp
-        await botManager.initialize();
+        // Inicializar Evolution API v2 (crea instancia si no existe)
+        try {
+            await botManager.initializeClient();
+            logger.info("✅ Bot inicializado correctamente");
+        } catch (error) {
+            logger.error("❌ Error inicializando bot:", error);
+        }
+        
+        // Inicializar crons
+        initCrons(botManager);
     });
 }).catch((error) => {
     logger.error("Failed to start application:", error);

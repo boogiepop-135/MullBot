@@ -1,6 +1,10 @@
-import { Client, Message, MessageTypes } from "whatsapp-web.js";
-import { AppConfig } from "./configs/app.config";
-import { getClientConfig } from "./configs/client.config";
+/**
+ * BotManager - Gestión del bot de WhatsApp usando Evolution API v2
+ * 
+ * Este módulo ha sido completamente refactorizado para usar Evolution API v2
+ * en lugar de whatsapp-web.js. Ahora funciona mediante webhooks y REST API.
+ */
+
 import logger from "./configs/logger.config";
 import { UserI18n } from "./utils/i18n.util";
 import commands from "./commands";
@@ -11,32 +15,35 @@ import { ContactModel } from "./crm/models/contact.model";
 import { MessageModel } from "./crm/models/message.model";
 import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
 import { detectAppointmentProposal, handleAppointmentProposal } from "./utils/appointment-detection.util";
-import { EvolutionAPIService } from "./services/evolution-api.service";
+import { EvolutionAPIv2Service } from "./services/evolution-api-v2.service";
+import { AppConfig } from "./configs/app.config";
 import EnvConfig from "./configs/env.config";
-const qrcode = require('qrcode-terminal');
+import {
+    EvolutionMessageData,
+    EvolutionConnectionData,
+    EvolutionQRData
+} from "./types/evolution-api.types";
 
 export class BotManager {
     private static instance: BotManager;
-    public client: any;
+    
+    // Evolution API v2 Service
+    private evolutionAPI: EvolutionAPIv2Service;
+    
+    // Estado del bot
     public qrData = {
         qrCodeData: "",
         qrScanned: false
     };
+    
     private userI18nCache = new Map<string, UserI18n>();
     private prefix = AppConfig.instance.getBotPrefix();
-    private evolutionAPI: EvolutionAPIService | null = null;
-    private useEvolutionAPI: boolean = false;
     private qrPollInterval: NodeJS.Timeout | null = null;
 
     private constructor() {
-        // NO crear el cliente aquí - debe ser asíncrono después de conectar MongoDB
-        // El cliente se creará en initializeClient()
-        // Verificar si debemos usar Evolution API
-        this.useEvolutionAPI = EnvConfig.USE_EVOLUTION_API || false;
-        if (this.useEvolutionAPI) {
-            logger.info("🚀 Evolution API habilitado - usando Evolution API en lugar de whatsapp-web.js");
-            this.evolutionAPI = new EvolutionAPIService();
-        }
+        // Inicializar Evolution API v2 Service
+        this.evolutionAPI = new EvolutionAPIv2Service();
+        logger.info("🤖 BotManager inicializado con Evolution API v2");
     }
 
     public static getInstance(): BotManager {
@@ -46,409 +53,102 @@ export class BotManager {
         return BotManager.instance;
     }
 
-    public async initializeClient(skipSessionClear: boolean = false) {
-        // Verificar si el cliente ya existe
-        if (this.client) {
-            logger.info("Client already initialized");
-            return;
-        }
-
+    /**
+     * Inicializar instancia de Evolution API
+     * Verifica si existe, si no la crea automáticamente
+     */
+    public async initializeClient(): Promise<void> {
         try {
-            logger.info("Initializing WhatsApp client...");
-
-            // Limpiar sesión anterior de MongoDB antes de crear nuevo cliente
-            // Solo si no se especifica saltar (ej: después de logout ya se limpió)
-            if (!skipSessionClear) {
-                await this.clearSessionFromMongoDB();
-                logger.info("Previous session cleared from MongoDB");
-            }
-
-            // Obtener configuración del cliente (incluye RemoteAuth con MongoStore)
-            const clientConfig = await getClientConfig();
-
-            // Crear el cliente de WhatsApp
-            this.client = new Client(clientConfig);
-
-            // Configurar event handlers
-            this.setupEventHandlers();
-
-            logger.info("WhatsApp client created successfully");
+            logger.info("🚀 Inicializando Evolution API v2...");
+            await this.evolutionAPI.initInstance();
+            logger.info("✅ Evolution API v2 inicializado correctamente");
+            
+            // Iniciar polling de QR si no está conectado
+            this.startQRPolling();
         } catch (error) {
-            logger.error("Error initializing client:", error);
+            logger.error("❌ Error inicializando Evolution API:", error);
             throw error;
         }
     }
 
-    private setupEventHandlers() {
-        if (!this.client) {
-            throw new Error("Client must be initialized before setting up event handlers");
-        }
-
-        logger.info("Setting up event handlers...");
-        this.client.on('ready', this.handleReady.bind(this));
-        this.client.on('qr', this.handleQr.bind(this));
-        this.client.on('authenticated', () => {
-            logger.info("✅ Client authenticated successfully");
-            // Si se autentica pero no emite ready después de un tiempo, puede haber un problema
-            setTimeout(() => {
-                if (!this.qrData.qrScanned && !this.client?.info) {
-                    logger.warn("⚠ Client authenticated but not ready after 15 seconds. Session may be corrupted.");
-                    logger.warn("💡 Consider logging out and scanning QR again if this persists.");
-                }
-            }, 15000);
-        });
-        this.client.on('auth_failure', async (msg) => {
-            logger.error(`❌ Authentication failure: ${msg}`);
-            this.qrData.qrScanned = false;
-            this.qrData.qrCodeData = "";
-            
-            // Intentar limpiar sesión corrupta y regenerar QR
-            logger.info("Intentando limpiar sesión corrupta y regenerar QR...");
-            try {
-                await this.clearSessionFromMongoDB();
-                logger.info("Sesión corrupta limpiada, se generará nuevo QR en el próximo intento");
-            } catch (error) {
-                logger.error(`Error limpiando sesión después de auth_failure: ${error}`);
-            }
-        });
-        this.client.on('loading_screen', (percent, message) => {
-            logger.info(`Loading screen: ${percent}% - ${message}`);
-        });
-        this.client.on('message_create', this.handleMessage.bind(this));
-        this.client.on('message', this.handleSentMessage.bind(this)); // Capturar mensajes enviados
-        this.client.on('disconnected', this.handleDisconnect.bind(this));
-    }
-
-
-    private async handleReady() {
-        this.qrData.qrScanned = true;
-        logger.info("Client is ready!");
-        
-        // Limpiar sesiones antiguas y mantener solo la sesión actual
-        // Esto asegura que no haya conflictos con sesiones previas
-        try {
-            await this.cleanupOldSessions();
-            logger.info("Old sessions cleaned up, keeping only current active session");
-        } catch (error) {
-            logger.warn(`Failed to cleanup old sessions: ${error}`);
-        }
-        
-        logger.info("WhatsApp session is now authenticated and saved in MongoDB");
-        logger.info("Session will persist across Railway deployments");
-
-        try {
-            await YtDlpDownloader.getInstance().initialize();
-        } catch (error) {
-            logger.error("Downloader check failed:", error);
-        }
-    }
-
-    private async handleQr(qr: string) {
-        try {
-            logger.info('🔷 QR RECEIVED - Generating QR code...');
-            logger.info(`QR string length: ${qr?.length || 0}`);
-            
-            // Validar que el QR no esté vacío
-            if (!qr || qr.trim().length === 0) {
-                logger.error('❌ Received empty QR code');
-                return;
-            }
-            
-            this.qrData.qrCodeData = qr;
-            this.qrData.qrScanned = false;
-            logger.info(`✅ QR Code generated successfully (length: ${qr.length})`);
-            logger.info(`✅ QR data stored in qrData.qrCodeData`);
-            
-            // Generar QR en terminal
-            try {
-                qrcode.generate(qr, { small: true });
-            } catch (error) {
-                logger.warn(`⚠ Error generating QR in terminal: ${error}`);
-            }
-            
-            logger.info("📱 QR Code ready for scanning. Waiting for device authentication...");
-            logger.info("⏰ QR will expire in approximately 20 seconds. If not scanned, a new QR will be generated.");
-        } catch (error) {
-            logger.error(`❌ Error handling QR code: ${error}`);
-            // Resetear QR data en caso de error
-            this.qrData.qrCodeData = "";
-            this.qrData.qrScanned = false;
-        }
-    }
-
     /**
-     * Maneja mensajes enviados por el bot (para guardarlos en la base de datos)
+     * Inicializar el bot (alias para compatibilidad)
      */
-    private async handleSentMessage(message: Message): Promise<void> {
-        try {
-            // Solo guardar mensajes enviados por el bot (fromMe)
-            if (message.fromMe) {
-                // Verificar que no sea un mensaje de estado o de grupo
-                if (!message.isStatus && !message.to.includes('@g.us')) {
-                    // Solo guardar mensajes a contactos individuales (@c.us)
-                    if (message.to.includes('@c.us')) {
-                        await this.saveMessage(message, true);
-                    }
-                }
-            }
-        } catch (error) {
-            logger.error(`Error handling sent message: ${error}`);
-            // No fallar si no se puede guardar
-        }
-    }
-
-    private handleDisconnect(reason: string) {
-        logger.warn(`⚠ Client disconnected: ${reason}`);
-        this.qrData.qrScanned = false;
-        
-        // Si la desconexión es por autenticación, limpiar sesión
-        if (reason.includes('LOGOUT') || reason.includes('401') || reason.includes('authentication')) {
-            logger.warn("Desconexión por problema de autenticación, limpiando sesión...");
-            this.clearSessionFromMongoDB().catch(err => {
-                logger.error(`Error limpiando sesión después de desconexión: ${err}`);
-            });
-        }
-        
-        // Intentar reconectar después de un delay
-        setTimeout(async () => {
-            if (this.client) {
-                logger.info("🔄 Intentando reconectar después de desconexión...");
-                try {
-                    await this.client.initialize();
-                } catch (error) {
-                    logger.error(`❌ Error durante reconexión: ${error}`);
-                }
-            }
-        }, 5000);
-    }
-
     public async initialize(): Promise<void> {
-        try {
-            // Si usamos Evolution API, no necesitamos inicializar whatsapp-web.js
-            if (this.useEvolutionAPI && this.evolutionAPI) {
-                logger.info("Using Evolution API - connecting instance...");
-                try {
-                    // Obtener QR de Evolution API
-                    const qr = await this.evolutionAPI.getQR();
-                    if (qr) {
-                        this.qrData.qrCodeData = qr;
-                        this.qrData.qrScanned = false;
-                        logger.info("✅ QR code obtained from Evolution API");
-                    } else {
-                        logger.warn("⚠ No QR code available from Evolution API yet");
-                    }
-                } catch (error) {
-                    logger.error("Error getting QR from Evolution API:", error);
-                }
-                return;
-            }
-
-            // Verificar si el cliente existe, si no, inicializarlo
-            if (!this.client) {
-                logger.info("Cliente no existe, inicializando...");
-                await this.initializeClient();
-            }
-
-            // Inicializar el cliente de WhatsApp
-            logger.info("Iniciando inicialización del cliente de WhatsApp...");
-            
-            // Resetear QR data antes de inicializar para asegurar que se genere nuevo QR si es necesario
-            const hadQR = !!this.qrData.qrCodeData;
-            if (hadQR) {
-                logger.info("Limpiando QR anterior antes de inicializar...");
-                this.qrData.qrCodeData = "";
-                this.qrData.qrScanned = false;
-            }
-            
-            // Timeout para detectar si no se genera QR o no se conecta
-            const initTimeout = setTimeout(() => {
-                if (!this.qrData.qrScanned && !this.client?.info && !this.qrData.qrCodeData) {
-                    logger.warn("⚠ Timeout: No se recibió QR ni ready después de 30 segundos");
-                    logger.warn("Esto puede indicar un problema con la sesión. Intentando regenerar...");
-                }
-            }, 30000);
-
-            try {
-                await this.client.initialize();
-                logger.info("✓ Cliente de WhatsApp inicializado");
-            } catch (error) {
-                clearTimeout(initTimeout);
-                logger.error(`❌ Error durante initialize(): ${error}`);
-                throw error;
-            }
-            
-            // Esperar un momento para que los eventos se emitan
-            // Aumentar tiempo de espera a 20 segundos para dar más tiempo al QR
-            await new Promise(resolve => setTimeout(resolve, 20000));
-            clearTimeout(initTimeout);
-            
-            // Verificar estado después de la inicialización
-            const hasQR = !!this.qrData.qrCodeData;
-            const isReady = !!this.client?.info;
-            const isScanned = this.qrData.qrScanned;
-            
-            logger.info(`Estado después de inicialización - QR: ${hasQR}, Ready: ${isReady}, Scanned: ${isScanned}`);
-            
-            // Si no hay QR, no está listo y no está escaneado, puede haber un problema
-            if (!hasQR && !isReady && !isScanned) {
-                logger.warn("⚠ Cliente inicializado pero no hay QR ni ready después de 20 segundos");
-                logger.warn("Esto puede indicar un problema con la sesión. La sesión puede estar corrupta.");
-                logger.info("💡 Sugerencia: Intenta desvincular y escanear el QR nuevamente");
-                logger.info("💡 Intentando forzar regeneración de QR...");
-                
-                // Intentar forzar regeneración destruyendo y recreando el cliente
-                try {
-                    if (this.client) {
-                        await this.client.destroy();
-                        this.client = null;
-                        logger.info("Cliente destruido, se recreará en el próximo intento");
-                    }
-                } catch (error) {
-                    logger.error(`Error destruyendo cliente para regenerar QR: ${error}`);
-                }
-            }
-            
-        } catch (error) {
-            logger.error(`❌ Error durante inicialización del cliente: ${error}`);
-            // No lanzar error inmediatamente, permitir que el sistema intente recuperarse
-            logger.info("El sistema intentará regenerar el QR automáticamente si es necesario");
-        }
+        await this.initializeClient();
     }
 
     /**
      * Iniciar polling de QR desde Evolution API
      */
     private startQRPolling(): void {
-        if (!this.useEvolutionAPI || !this.evolutionAPI) return;
-        
         // Limpiar intervalo anterior si existe
         if (this.qrPollInterval) {
             clearInterval(this.qrPollInterval);
         }
-        
-        // Polling cada 5 segundos para obtener QR
+
+        // Polling cada 5 segundos para obtener QR y verificar conexión
         this.qrPollInterval = setInterval(async () => {
             try {
-                if (this.qrData.qrScanned) {
-                    // Si ya está escaneado, verificar conexión
-                    const isConnected = await this.evolutionAPI!.isConnected();
-                    if (isConnected) {
-                        clearInterval(this.qrPollInterval!);
+                // Verificar si está conectado
+                const isConnected = await this.evolutionAPI.isConnected();
+                
+                if (isConnected) {
+                    if (!this.qrData.qrScanned) {
+                        this.qrData.qrScanned = true;
+                        this.qrData.qrCodeData = "";
+                        logger.info("✅ WhatsApp conectado vía Evolution API");
+                    }
+                    
+                    // Si está conectado, detener polling
+                    if (this.qrPollInterval) {
+                        clearInterval(this.qrPollInterval);
                         this.qrPollInterval = null;
                     }
                     return;
                 }
-                
-                const qr = await this.evolutionAPI!.getQR();
+
+                // Si no está conectado, obtener QR
+                const qr = await this.evolutionAPI.getQR();
                 if (qr && qr !== this.qrData.qrCodeData) {
                     this.qrData.qrCodeData = qr;
                     this.qrData.qrScanned = false;
-                    logger.info("✅ QR code actualizado desde Evolution API");
-                }
-                
-                // Verificar si está conectado
-                const isConnected = await this.evolutionAPI!.isConnected();
-                if (isConnected && !this.qrData.qrScanned) {
-                    this.qrData.qrScanned = true;
-                    logger.info("✅ WhatsApp conectado vía Evolution API");
-                    clearInterval(this.qrPollInterval!);
-                    this.qrPollInterval = null;
+                    logger.info("📱 QR code actualizado desde Evolution API");
                 }
             } catch (error) {
                 logger.error("Error en polling de QR de Evolution API:", error);
             }
         }, 5000);
-        
+
         logger.info("🔄 Polling de QR de Evolution API iniciado");
     }
 
     /**
-     * Desvincular WhatsApp actual y limpiar TODAS las sesiones
-     * Esta función unifica logout y clearAllSessions para garantizar una limpieza completa
+     * Desvincular WhatsApp y eliminar instancia
      */
     public async logout(): Promise<number> {
         try {
             logger.info("=== INICIANDO LOGOUT COMPLETO ===");
             
-            // Si usamos Evolution API, usar su método de logout
-            if (this.useEvolutionAPI && this.evolutionAPI) {
-                logger.info("Paso 1: Desvinculando instancia de Evolution API...");
-                try {
-                    await this.evolutionAPI.logout();
-                    logger.info("✓ Instancia de Evolution API eliminada");
-                } catch (error) {
-                    logger.warn(`⚠ Error eliminando instancia de Evolution API: ${error}`);
-                }
-                
-                // Limpiar polling de QR
-                if (this.qrPollInterval) {
-                    clearInterval(this.qrPollInterval);
-                    this.qrPollInterval = null;
-                }
-                
-                // Resetear QR data
-                this.qrData.qrCodeData = "";
-                this.qrData.qrScanned = false;
-                
-                // Limpiar sesiones de MongoDB también
-                const deletedCount = await this.clearAllSessions();
-                logger.info(`✓ ${deletedCount} sesión(es) eliminada(s) de MongoDB`);
-                
-                return deletedCount;
+            // Detener polling
+            if (this.qrPollInterval) {
+                clearInterval(this.qrPollInterval);
+                this.qrPollInterval = null;
             }
+
+            // Eliminar instancia de Evolution API
+            await this.evolutionAPI.logout();
             
-            logger.info("Paso 1: Desvinculando y destruyendo cliente...");
-
-            // Cerrar y destruir el cliente actual
-            if (this.client) {
-                try {
-                    // Remover todos los event listeners primero para evitar errores
-                    this.client.removeAllListeners();
-                    logger.info("✓ Event listeners removidos");
-                } catch (error) {
-                    logger.warn(`⚠ Error removiendo event listeners: ${error}`);
-                }
-                
-                try {
-                    await this.client.logout();
-                    logger.info("✓ Cliente desvinculado exitosamente");
-                } catch (error) {
-                    logger.warn(`⚠ Error durante logout (puede estar ya desvinculado): ${error}`);
-                }
-                
-                try {
-                    await this.client.destroy();
-                    logger.info("✓ Cliente destruido exitosamente");
-                } catch (error) {
-                    logger.warn(`⚠ Error durante destroy: ${error}`);
-                }
-                
-                this.client = null;
-                logger.info("✓ Referencia del cliente limpiada");
-            }
-
-            // Esperar un momento para asegurar que el cliente se destruyó completamente
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Limpiar TODAS las sesiones de MongoDB (no solo la actual)
-            logger.info("Paso 2: Limpiando TODAS las sesiones de MongoDB...");
-            const deletedCount = await this.clearAllSessions();
-            logger.info(`✓ ${deletedCount} sesión(es) eliminada(s) de MongoDB`);
-
             // Resetear QR data
-            logger.info("Paso 3: Reseteando datos del QR...");
             this.qrData = {
                 qrCodeData: "",
                 qrScanned: false
             };
-            logger.info("✓ Datos del QR reseteados");
 
             logger.info("=== LOGOUT COMPLETO EXITOSO ===");
-            return deletedCount;
+            return 1; // Retornar 1 para compatibilidad con código existente
         } catch (error) {
             logger.error(`❌ Error durante logout: ${error}`);
-            // Asegurar que el cliente se limpie incluso si hay errores
-            this.client = null;
             this.qrData = {
                 qrCodeData: "",
                 qrScanned: false
@@ -458,328 +158,192 @@ export class BotManager {
     }
 
     /**
-     * Limpiar TODAS las sesiones de WhatsApp de MongoDB
-     * Limpia completamente todas las colecciones relacionadas con sesiones
-     * IMPORTANTE: Elimina TODAS las sesiones sin filtros para forzar nuevo QR
+     * Enviar mensaje usando Evolution API
+     * @param phoneNumber Número de teléfono (formato: 1234567890 o 1234567890@c.us)
+     * @param message Texto del mensaje
      */
-    public async clearAllSessions(): Promise<number> {
+    public async sendMessage(phoneNumber: string, message: string): Promise<void> {
         try {
-            const mongoose = require('mongoose');
-            const db = mongoose.connection.db;
-            if (!db) {
-                logger.warn("MongoDB connection not available");
-                return 0;
-            }
-
-            let totalDeleted = 0;
-
-            // Lista de todas las colecciones que pueden contener sesiones
-            const sessionCollections = [
-                'authsessions',      // Colección usada por RemoteAuth
-                'auth_sessions',     // Colección usada por MongoStore/wwebjs-mongo
-                'sessions',          // Colección genérica de sesiones
-                'whatsapp_sessions', // Sesiones de WhatsApp
-                'wwebjs_sessions'    // Sesiones de wwebjs
-            ];
-
-            // Eliminar TODAS las sesiones de TODAS las colecciones sin filtros
-            for (const collectionName of sessionCollections) {
-                try {
-                    const collection = db.collection(collectionName);
-                    const count = await collection.countDocuments({});
-                    if (count > 0) {
-                        const result = await collection.deleteMany({}); // Sin filtros - eliminar TODO
-                        totalDeleted += result.deletedCount;
-                        logger.info(`Cleared ${result.deletedCount} session(s) from '${collectionName}' collection (TOTAL CLEAR)`);
-                    } else {
-                        logger.info(`Collection '${collectionName}' is empty`);
-                    }
-                } catch (error: any) {
-                    // Si la colección no existe, continuar
-                    if (error.codeName !== 'NamespaceNotFound') {
-                        logger.warn(`Error clearing ${collectionName}: ${error}`);
-                    }
-                }
-            }
-
-            // También intentar eliminar cualquier documento que pueda contener 'mullbot' o 'client' en cualquier campo
-            try {
-                const allCollections = await db.listCollections().toArray();
-                for (const collInfo of allCollections) {
-                    const collName = collInfo.name;
-                    // Solo verificar colecciones que puedan contener sesiones
-                    if (collName.includes('auth') || collName.includes('session') || collName.includes('whatsapp')) {
-                        try {
-                            const collection = db.collection(collName);
-                            // Buscar documentos que puedan ser sesiones relacionadas con nuestro cliente
-                            const relatedDocs = await collection.find({
-                                $or: [
-                                    { _id: { $regex: /mullbot/i } },
-                                    { clientId: { $regex: /mullbot/i } },
-                                    { clientId: 'mullbot-client' }
-                                ]
-                            }).toArray();
-                            
-                            if (relatedDocs.length > 0) {
-                                const result = await collection.deleteMany({
-                                    $or: [
-                                        { _id: { $regex: /mullbot/i } },
-                                        { clientId: { $regex: /mullbot/i } },
-                                        { clientId: 'mullbot-client' }
-                                    ]
-                                });
-                                totalDeleted += result.deletedCount;
-                                logger.info(`Cleared ${result.deletedCount} related session(s) from '${collName}' collection`);
-                            }
-                        } catch (error) {
-                            // Continuar con la siguiente colección
-                        }
-                    }
-                }
-            } catch (error) {
-                logger.warn(`Error scanning collections for related sessions: ${error}`);
-            }
-
-            logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB (COMPLETE CLEAR)`);
-            
-            // Esperar un momento para asegurar que MongoDB procese las eliminaciones
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            return totalDeleted;
+            await this.evolutionAPI.sendMessage(phoneNumber, message);
         } catch (error) {
-            logger.error(`Error clearing all sessions from MongoDB: ${error}`);
+            logger.error(`Error enviando mensaje a ${phoneNumber}:`, error);
             throw error;
         }
     }
 
     /**
-     * Limpiar sesión de MongoDB
-     * También limpia la colección 'auth_sessions' que usa wwebjs-mongo
+     * Procesar mensaje recibido desde webhook de Evolution API
+     * @param messageData Datos del mensaje desde Evolution API
      */
-    private async clearSessionFromMongoDB(): Promise<void> {
+    public async handleIncomingMessage(messageData: EvolutionMessageData): Promise<void> {
         try {
-            const mongoose = require('mongoose');
-            const db = mongoose.connection.db;
-            if (db) {
-                let totalDeleted = 0;
-
-                // Borrar todas las sesiones de 'authsessions' (colección usada por RemoteAuth)
-                const authsessionsResult = await db.collection('authsessions').deleteMany({
-                    _id: { $regex: /^mullbot-client/ }
-                });
-                totalDeleted += authsessionsResult.deletedCount;
-                logger.info(`Cleared ${authsessionsResult.deletedCount} session(s) from 'authsessions' collection`);
-
-                // Borrar todas las sesiones de 'auth_sessions' (colección usada por MongoStore/wwebjs-mongo)
-                const authSessionsResult = await db.collection('auth_sessions').deleteMany({
-                    _id: { $regex: /^mullbot-client/ }
-                });
-                totalDeleted += authSessionsResult.deletedCount;
-                logger.info(`Cleared ${authSessionsResult.deletedCount} session(s) from 'auth_sessions' collection`);
-
-                // También intentar borrar cualquier sesión que contenga 'mullbot' en el ID
-                const allSessionsResult = await db.collection('auth_sessions').deleteMany({
-                    $or: [
-                        { _id: { $regex: /mullbot/i } },
-                        { clientId: 'mullbot-client' }
-                    ]
-                });
-                totalDeleted += allSessionsResult.deletedCount;
-                logger.info(`Cleared ${allSessionsResult.deletedCount} additional session(s) from 'auth_sessions' collection`);
-
-                logger.info(`Total: Cleared ${totalDeleted} session(s) from MongoDB`);
-            }
-        } catch (error) {
-            logger.error(`Error clearing session from MongoDB: ${error}`);
-            // No lanzar error para que la inicialización continúe incluso si hay un problema limpiando sesiones
-            logger.warn("Continuing with client initialization despite session cleanup error");
-        }
-    }
-
-    /**
-     * Limpiar sesiones antiguas pero mantener solo la sesión actual activa
-     * Se llama cuando se conecta un nuevo celular para evitar conflictos
-     */
-    private async cleanupOldSessions(): Promise<void> {
-        try {
-            const mongoose = require('mongoose');
-            const db = mongoose.connection.db;
-            if (!db) {
-                logger.warn("MongoDB connection not available for cleanup");
+            // Filtrar mensajes del propio bot
+            if (messageData.key.fromMe) {
                 return;
             }
 
-            let totalDeleted = 0;
-
-            // Limpiar todas las sesiones antiguas de 'authsessions'
-            // Mantener solo la más reciente si hay múltiples
-            const authsessionsCollection = db.collection('authsessions');
-            const authsessionsQuery: any = { _id: { $regex: /^mullbot-client/ } };
+            // Extraer información del mensaje
+            const remoteJid = messageData.key.remoteJid;
+            const phoneNumber = remoteJid.split('@')[0];
+            const pushName = messageData.pushName || 'Usuario';
             
-            const allAuthSessions = await authsessionsCollection.find(authsessionsQuery).sort({ _id: -1 }).toArray();
-            if (allAuthSessions.length > 1) {
-                // Mantener solo la más reciente, eliminar las demás
-                const sessionsToDelete = allAuthSessions.slice(1);
-                for (const session of sessionsToDelete) {
-                    await authsessionsCollection.deleteOne({ _id: session._id });
-                    totalDeleted++;
-                }
-                logger.info(`Cleaned up ${sessionsToDelete.length} old session(s) from 'authsessions', kept most recent`);
+            // Extraer contenido del mensaje
+            let content = '';
+            if (messageData.message.conversation) {
+                content = messageData.message.conversation;
+            } else if (messageData.message.extendedTextMessage?.text) {
+                content = messageData.message.extendedTextMessage.text;
+            } else if (messageData.message.imageMessage?.caption) {
+                content = messageData.message.imageMessage.caption;
+            } else if (messageData.message.videoMessage?.caption) {
+                content = messageData.message.videoMessage.caption;
             }
 
-            // Limpiar todas las sesiones antiguas de 'auth_sessions'
-            // Mantener solo la más reciente si hay múltiples
-            const authSessionsCollection = db.collection('auth_sessions');
-            const authSessionsQuery: any = {
-                $or: [
-                    { _id: { $regex: /mullbot/i } },
-                    { clientId: 'mullbot-client' }
-                ]
-            };
-
-            const allSessions = await authSessionsCollection.find(authSessionsQuery).sort({ _id: -1 }).toArray();
-            if (allSessions.length > 1) {
-                // Mantener solo la más reciente, eliminar las demás
-                const sessionsToDelete = allSessions.slice(1);
-                for (const session of sessionsToDelete) {
-                    await authSessionsCollection.deleteOne({ _id: session._id });
-                    totalDeleted++;
-                }
-                logger.info(`Cleaned up ${sessionsToDelete.length} old session(s) from 'auth_sessions', kept most recent`);
-            }
-
-            if (totalDeleted > 0) {
-                logger.info(`Total: Cleaned up ${totalDeleted} old session(s) from MongoDB`);
-            } else {
-                logger.info("No old sessions to clean up - only one session exists");
-            }
-        } catch (error) {
-            logger.error(`Error cleaning up old sessions: ${error}`);
-            // No lanzar error, solo loguear
-        }
-    }
-
-    private async trackContact(message: Message, userI18n: UserI18n) {
-        try {
-            const user = await message.getContact();
-
-            await ContactModel.findOneAndUpdate(
-                { phoneNumber: user.number },
-                {
-                    $set: {
-                        name: user.name || user.pushname,
-                        pushName: user.pushname,
-                        language: userI18n.getLanguage(),
-                        lastInteraction: new Date()
-                    },
-                    $inc: { interactionsCount: 1 }
-                },
-                { upsert: true, new: true }
-            );
-        } catch (error) {
-            logger.error('Failed to track contact:', error);
-        }
-    }
-
-    private async handleMessage(message: Message) {
-        // Verificar que el cliente esté inicializado
-        if (!this.client) {
-            await this.initializeClient();
-        }
-
-        let chat = null;
-        let userI18n: UserI18n;
-        let userNumber: string = '';
-        let userPushname: string = '';
-
-        // Permitir mensajes con media aunque no tengan texto
-        const content = message.body?.trim() || '';
-
-        if (AppConfig.instance.getSupportedMessageTypes().indexOf(message.type) === -1) {
-            return;
-        }
-
-        try {
-            // Intentar obtener información del contacto de manera robusta
-            try {
-                const user = await message.getContact();
-                userNumber = user?.number || '';
-                userPushname = user?.pushname || '';
-            } catch (contactError) {
-                // Si falla getContact, extraer número del message.from
-                logger.warn(`Could not get contact info, using fallback: ${contactError}`);
-                userNumber = message.from.split('@')[0];
-                userPushname = 'Usuario';
-            }
-
-            logger.info(`Message from @${userPushname} (${userNumber}): ${content}`);
-
-            if (!userNumber) {
-                logger.warn('Could not determine user number, skipping message');
-                return;
-            }
+            logger.info(`📨 Mensaje recibido de ${pushName} (${phoneNumber}): ${content || '[Media/Sticker]'}`);
 
             // Verificar si el usuario está pausado
-            const contact = await ContactModel.findOne({ phoneNumber: userNumber });
+            const contact = await ContactModel.findOne({ phoneNumber });
             if (contact && contact.isPaused) {
-                logger.info(`Message from paused user ${userNumber} - ignoring`);
-                return; // No procesar mensajes de usuarios pausados
+                logger.info(`⏸️ Mensaje de usuario pausado ${phoneNumber} - ignorando`);
+                return;
             }
 
-            userI18n = this.getUserI18n(userNumber);
+            // Obtener o crear UserI18n
+            const userI18n = this.getUserI18n(phoneNumber);
 
-            // Solo trackear si no es mensaje propio
-            if (!message.fromMe) {
-                await this.trackContactSimple(userNumber, userPushname, userI18n);
-                // Guardar mensaje recibido en la base de datos
-                await this.saveMessage(message, false, userNumber);
-            }
-            
-            chat = await message.getChat();
+            // Trackear contacto
+            await this.trackContactSimple(phoneNumber, pushName, userI18n);
 
-            // Verificar si es el administrador y enviar información del sistema
+            // Guardar mensaje en base de datos
+            await this.saveIncomingMessage(messageData, phoneNumber);
+
+            // Verificar si es administrador
             try {
                 const { isAdminPhone, sendAdminInfo, sendUpdatedAdminInfo } = await import('./utils/admin-info.util');
-                const isAdmin = await isAdminPhone(userNumber);
+                const isAdmin = await isAdminPhone(phoneNumber);
                 
                 if (isAdmin) {
-                    // Si el mensaje es /info, enviar información actualizada
                     if (content.toLowerCase().trim() === '/info') {
-                        await sendUpdatedAdminInfo(this.client, userNumber);
-                        return; // No procesar más el mensaje
+                        await sendUpdatedAdminInfoEvolution(this.evolutionAPI, phoneNumber);
+                        return;
                     }
                     
-                    // Si es el primer mensaje del admin, enviar información automáticamente
-                    // Esperar un poco para que el chat esté listo
                     setTimeout(async () => {
-                        await sendAdminInfo(this.client, userNumber);
+                        await sendAdminInfoEvolution(this.evolutionAPI, phoneNumber);
                     }, 2000);
                 }
             } catch (error) {
                 logger.error('Error checking/sending admin info:', error);
             }
 
-            if (message.from === this.client.info.wid._serialized || message.isStatus) {
-                return;
-            }
-
+            // Procesar mensaje (onboard y comandos)
             await Promise.all([
-                onboard(message, userI18n),
-                this.processMessageContent(message, content, userI18n, chat)
+                onboardEvolution(this.evolutionAPI, phoneNumber, content, userI18n),
+                this.processMessageContentEvolution(phoneNumber, content, userI18n, messageData)
             ]);
 
         } catch (error) {
-            logger.error(`Message handling error: ${error}`);
-            if (chat) {
-                const errorMessage = userI18n?.t('errorOccurred') || 'An error occurred';
-                chat.sendMessage(`> 🤖 ${errorMessage}`);
-            }
-        } finally {
-            if (chat) await chat.clearState();
+            logger.error(`❌ Error procesando mensaje entrante: ${error}`);
         }
     }
 
-    private async trackContactSimple(phoneNumber: string, pushName: string, userI18n: UserI18n) {
+    /**
+     * Procesar contenido del mensaje (comandos, URLs, etc.)
+     */
+    private async processMessageContentEvolution(
+        phoneNumber: string,
+        content: string,
+        userI18n: UserI18n,
+        messageData: EvolutionMessageData
+    ): Promise<void> {
+        try {
+            // Detectar comprobantes de pago
+            const hasImage = !!messageData.message.imageMessage;
+            if (hasImage) {
+                // Aquí puedes agregar lógica para detectar comprobantes de pago
+                // Por ahora, solo procesamos texto
+            }
+
+            // Procesar comandos
+            if (content.startsWith(this.prefix)) {
+                const command = content.slice(this.prefix.length).split(' ')[0].toLowerCase();
+                const args = content.slice(this.prefix.length + command.length).trim();
+
+                if (commands[command]) {
+                    logger.info(`Ejecutando comando: ${command}`);
+                    await commands[command].execute(this.evolutionAPI, phoneNumber, args, userI18n);
+                    return;
+                }
+            }
+
+            // Procesar URLs
+            if (isUrl(content)) {
+                try {
+                    const network = identifySocialNetwork(content);
+                    if (network) {
+                        const downloader = new YtDlpDownloader();
+                        await downloader.downloadAndSend(this.evolutionAPI, phoneNumber, content, network);
+                        return;
+                    }
+                } catch (error) {
+                    logger.error(`Error procesando URL: ${error}`);
+                }
+            }
+
+            // Si no es comando ni URL, procesar como mensaje normal del bot
+            // Aquí puedes agregar lógica de IA o respuestas automáticas
+
+        } catch (error) {
+            logger.error(`Error procesando contenido del mensaje: ${error}`);
+        }
+    }
+
+    /**
+     * Guardar mensaje entrante en base de datos
+     */
+    private async saveIncomingMessage(messageData: EvolutionMessageData, phoneNumber: string): Promise<void> {
+        try {
+            const content = messageData.message.conversation || 
+                          messageData.message.extendedTextMessage?.text || 
+                          '[Media/Sticker]';
+
+            await MessageModel.findOneAndUpdate(
+                {
+                    phoneNumber: phoneNumber,
+                    timestamp: new Date(messageData.messageTimestamp * 1000)
+                },
+                {
+                    $set: {
+                        phoneNumber: phoneNumber,
+                        from: messageData.key.remoteJid,
+                        to: EnvConfig.EVOLUTION_INSTANCE_NAME,
+                        body: content,
+                        type: 'text',
+                        isFromBot: false,
+                        timestamp: new Date(messageData.messageTimestamp * 1000),
+                        hasMedia: !!(messageData.message.imageMessage || 
+                                   messageData.message.videoMessage || 
+                                   messageData.message.audioMessage || 
+                                   messageData.message.documentMessage),
+                        requiresAttention: false,
+                        metadata: {
+                            pushName: messageData.pushName,
+                            isGroup: messageData.key.remoteJid.includes('@g.us'),
+                            fromMe: messageData.key.fromMe
+                        }
+                    }
+                },
+                { upsert: true, new: true }
+            );
+        } catch (error) {
+            logger.error('Error guardando mensaje en BD:', error);
+        }
+    }
+
+    /**
+     * Trackear contacto simple
+     */
+    private async trackContactSimple(phoneNumber: string, pushName: string, userI18n: UserI18n): Promise<void> {
         try {
             await ContactModel.findOneAndUpdate(
                 { phoneNumber },
@@ -798,327 +362,68 @@ export class BotManager {
         }
     }
 
+    /**
+     * Obtener o crear UserI18n
+     */
     private getUserI18n(userNumber: string): UserI18n {
         if (!this.userI18nCache.has(userNumber)) {
             const userI18n = new UserI18n(userNumber);
             this.userI18nCache.set(userNumber, userI18n);
-            logger.info(`New user detected: ${userNumber} (${userI18n.getLanguage()})`);
+            logger.info(`Nuevo usuario detectado: ${userNumber} (${userI18n.getLanguage()})`);
         }
         return this.userI18nCache.get(userNumber)!;
     }
 
-    private async processMessageContent(message: Message, content: string, userI18n: UserI18n, chat: any) {
-        // Detectar comprobantes de pago primero
-        try {
-            const isPaymentReceipt = await detectPaymentReceipt(message);
-            if (isPaymentReceipt) {
-                // Extraer número del mensaje sin usar getContact (para evitar errores)
-                const phoneNumber = message.from.split('@')[0];
-                const contact = await ContactModel.findOne({ phoneNumber });
-
-                await handlePaymentReceipt(message);
-
-                // Mensaje personalizado según el estado del contacto
-                let receiptMessage = '';
-
-                if (contact && contact.saleStatus === 'appointment_confirmed') {
-                    receiptMessage = `✅ *Comprobante Recibido*
-
-Gracias por enviar tu comprobante de pago. Lo hemos recibido.
-
-📝 *Nota:* Ya tienes una cita confirmada para la instalación. Este comprobante adicional será revisado por nuestro equipo.
-
-Te confirmaremos cualquier actualización si es necesario.
-
-¿Tienes alguna pregunta?`;
-                } else {
-                    receiptMessage = `✅ *Comprobante Recibido*
-
-Gracias por enviar tu comprobante de pago. Lo hemos recibido y lo estamos revisando.
-
-⏳ *Estado:* Esperando confirmación
-
-Te confirmaremos el pago en breve. Una vez confirmado, coordinaremos la fecha para la instalación de tu compostero Müllblue.
-
-¿Tienes alguna pregunta mientras tanto?`;
-                }
-
-                if (chat) {
-                    const sentMsg = await chat.sendMessage(receiptMessage);
-                    // Guardar mensaje enviado
-                    if (sentMsg) {
-                        await this.saveMessage(sentMsg, true);
-                    }
-                }
-
-                logger.info(`Payment receipt detected and processed for ${message.from}`);
-                return;
-            }
-        } catch (error) {
-            logger.error(`Error processing payment receipt detection: ${error}`);
-        }
-
-        // Detectar propuestas de horarios/citas
-        try {
-            const appointmentResult = await detectAppointmentProposal(message);
-            if (appointmentResult.isAppointmentProposal) {
-                await handleAppointmentProposal(message, appointmentResult.proposedDates);
-                // Continuar procesando el mensaje normalmente
-            }
-        } catch (error) {
-            logger.error(`Error processing appointment proposal detection: ${error}`);
-        }
-
-        if (message.type === MessageTypes.VOICE) {
-            await this.handleVoiceMessage(message, userI18n);
-            return;
-        }
-
-        // Manejar mensajes con media que no sean comprobantes de pago
-        if (message.hasMedia && (message.type === MessageTypes.IMAGE || message.type === MessageTypes.DOCUMENT)) {
-            // Si es media pero no es comprobante, tratarlo como mensaje de texto normal
-            await this.handleTextMessage(message, content, userI18n, chat);
-            return;
-        }
-
-        if (message.type === MessageTypes.TEXT) {
-            await this.handleTextMessage(message, content, userI18n, chat);
-        }
-    }
-
-    private async handleVoiceMessage(message: Message, userI18n: UserI18n) {
-        const args = message.body.trim().split(/ +/).slice(1);
-        await commands[AppConfig.instance.getDefaultAudioAiCommand()].run(message, args, userI18n);
-    }
-
-    private async handleTextMessage(message: Message, content: string, userI18n: UserI18n, chat: any) {
-        const url = content.trim().split(/ +/)[0];
-        const socialNetwork = identifySocialNetwork(url);
-
-        if (url && isUrl(url) && socialNetwork) {
-            await commands["get"].run(message, null, url, socialNetwork, userI18n);
-            return;
-        }
-
-        // Verificar si es un comando con prefijo
-        if (content.startsWith(this.prefix)) {
-            const args = content.slice(this.prefix.length).trim().split(/ +/);
-            const command = args.shift()?.toLowerCase();
-
-            if (command && command in commands) {
-                if (chat) await chat.sendStateTyping();
-                await commands[command].run(message, args, userI18n);
-            } else {
-                const errorMessage = userI18n.t('unknownCommand', {
-                    command: command || '',
-                    prefix: this.prefix
-                });
-                const sentMsg = await chat.sendMessage(`> 🤖 ${errorMessage}`);
-                // Guardar mensaje enviado
-                if (sentMsg) {
-                    await this.saveMessage(sentMsg, true);
-                }
-            }
-        } else {
-            // Si no es un comando, tratar como conversación con el agente de ventas
-            if (chat) await chat.sendStateTyping();
-            await commands["chat"].run(message, content.split(/ +/), userI18n);
-        }
-    }
-
     /**
-     * Guarda un mensaje en la base de datos
-     * @param message - El mensaje de WhatsApp
-     * @param isFromBot - Si el mensaje fue enviado por el bot
-     * @param knownPhoneNumber - Número de teléfono si ya se conoce (evita llamar a getContact)
+     * Obtener servicio Evolution API (para uso externo)
      */
-    private async saveMessage(message: Message, isFromBot: boolean, knownPhoneNumber?: string): Promise<void> {
-        try {
-            // Determinar el número de teléfono del contacto
-            let phoneNumber: string;
-            let contact;
-
-            if (isFromBot) {
-                // Mensaje enviado por el bot: el destinatario está en message.to
-                phoneNumber = message.to.split('@')[0];
-                contact = await ContactModel.findOne({ phoneNumber });
-            } else if (knownPhoneNumber) {
-                // Si ya conocemos el número, usarlo directamente
-                phoneNumber = knownPhoneNumber;
-                contact = await ContactModel.findOne({ phoneNumber });
-            } else {
-                // Fallback: extraer del message.from
-                phoneNumber = message.from.split('@')[0];
-                contact = await ContactModel.findOne({ phoneNumber });
-            }
-
-            // Intentar obtener media si existe
-            let mediaUrl: string | undefined = undefined;
-            let hasMedia = false;
-
-            if (message.hasMedia) {
-                hasMedia = true;
-                try {
-                    const media = await message.downloadMedia();
-                    if (media) {
-                        // Guardar media en un path temporal o procesarlo
-                        // Por ahora, solo marcamos que tiene media
-                        mediaUrl = `media_${message.id._serialized}`;
-                    }
-                } catch (error) {
-                    logger.warn(`Failed to download media for message ${message.id._serialized}: ${error}`);
-                }
-            }
-
-            // Obtener pushName del contacto en la base de datos
-            let pushName: string | undefined = undefined;
-            if (contact) {
-                pushName = contact.pushName;
-            }
-
-            // Detectar si el mensaje requiere atención (solicitud de agente humano)
-            let requiresAttention = false;
-            if (!isFromBot && message.body) {
-                const content = message.body.toLowerCase();
-                const agentKeywords = ['agente', 'humano', 'persona', 'representante', 'atencion', 'atención', 'hablar con', 'hablar con un', 'quiero hablar', 'necesito hablar'];
-                requiresAttention = agentKeywords.some(keyword => content.includes(keyword));
-
-                // También detectar si es la opción 8 del menú
-                const cleanContent = content.trim();
-                const isOption8 = /^8[\s\.\)\-]*$/.test(cleanContent) ||
-                    /^8[\s\.\)\-]/.test(cleanContent) ||
-                    cleanContent === '8';
-
-                requiresAttention = requiresAttention || isOption8;
-            }
-
-            await MessageModel.findOneAndUpdate(
-                { messageId: message.id._serialized },
-                {
-                    phoneNumber: phoneNumber,
-                    contactId: contact?._id?.toString(),
-                    from: message.from,
-                    to: message.to,
-                    body: message.body || '',
-                    type: message.type,
-                    isFromBot: isFromBot,
-                    timestamp: new Date(message.timestamp * 1000), // WhatsApp timestamp en segundos
-                    hasMedia: hasMedia,
-                    mediaUrl: mediaUrl,
-                    requiresAttention: requiresAttention,
-                    metadata: {
-                        pushName: pushName,
-                        isGroup: message.from.includes('@g.us') || message.to.includes('@g.us'),
-                        isForwarded: message.isForwarded,
-                        isStarred: message.isStarred
-                    }
-                },
-                { upsert: true, new: true }
-            );
-
-            // Si el mensaje requiere atención, pausar temporalmente al contacto y enviar mensaje
-            if (requiresAttention && contact && !isFromBot && this.client) {
-                try {
-                    // Pausar contacto
-                    await ContactModel.findOneAndUpdate(
-                        { phoneNumber: phoneNumber },
-                        {
-                            $set: { isPaused: true },
-                            $push: { tags: 'requires_human_attention' }
-                        }
-                    );
-                    logger.info(`Contact ${phoneNumber} paused temporarily - requested human agent`);
-
-                    // Enviar mensaje automático de confirmación
-                    try {
-                        const formattedNumber = phoneNumber.includes('@')
-                            ? phoneNumber
-                            : `${phoneNumber}@c.us`;
-
-                        const pauseMessage = `✅ *Solicitud Recibida*
-
-Tu solicitud ha sido registrada correctamente.
-
-👤 *Estado:* En cola para atención humana
-⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
-
-📝 Enseguida vendrá un asesor a atenderte. El bot ha sido pausado temporalmente para evitar respuestas automáticas.
-
-¡Gracias por tu paciencia! 🌱`;
-
-                        const sentMessage = await this.client.sendMessage(formattedNumber, pauseMessage);
-
-                        // Guardar mensaje enviado en la base de datos
-                        if (sentMessage) {
-                            await this.saveMessage(sentMessage, true);
-                        }
-
-                        logger.info(`Pause confirmation message sent automatically to ${phoneNumber}`);
-
-                        // NOTIFICAR AL AGENTE HUMANO SI ESTÁ CONFIGURADO
-                        try {
-                            const { BotConfigModel } = await import('./crm/models/bot-config.model');
-                            const botCfg = await BotConfigModel.findOne();
-
-                            if (botCfg && botCfg.humanAgentPhone && botCfg.notifyAgentOnAttention) {
-                                const agentNumber = botCfg.humanAgentPhone;
-                                const formattedAgent = agentNumber.includes('@') ? agentNumber : `${agentNumber}@c.us`;
-                                const excerpt = (message.body || '').toString().substring(0, 300);
-                                const notifyText = `📣 *Nueva solicitud de atención humana*\n\n*De:* ${phoneNumber}\n*Nombre:* ${pushName || 'Desconocido'}\n*Mensaje:* ${excerpt}\n\nResponde desde el panel de administración o envía mensaje directo usando este número.`;
-
-                                try {
-                                    const sentToAgent = await this.client.sendMessage(formattedAgent, notifyText);
-                                    if (sentToAgent) await this.saveSentMessage(agentNumber, notifyText);
-
-                                    // Asociar agente al contacto para seguimiento
-                                    await ContactModel.findOneAndUpdate({ phoneNumber: phoneNumber }, { $set: { assignedAgentPhone: agentNumber } });
-
-                                    logger.info(`Agent ${agentNumber} notified about ${phoneNumber}`);
-                                } catch (notifyErr) {
-                                    logger.error(`Error notifying agent ${agentNumber}:`, notifyErr);
-                                }
-                            }
-                        } catch (cfgErr) {
-                            logger.error('Error loading bot config for agent notification:', cfgErr);
-                        }
-
-                    } catch (messageError) {
-                        logger.error(`Error sending automatic pause confirmation message to ${phoneNumber}:`, messageError);
-                        // No fallar la operación de pausa si el mensaje falla
-                    }
-                } catch (error) {
-                    logger.error(`Error pausing contact ${phoneNumber}: ${error}`);
-                }
-            }
-        } catch (error) {
-            logger.error(`Error saving message: ${error}`);
-            // No fallar el procesamiento del mensaje si no se puede guardar
-        }
+    public getEvolutionAPI(): EvolutionAPIv2Service {
+        return this.evolutionAPI;
     }
 
-    /**
-     * Guarda un mensaje enviado manualmente por el admin
-     */
-    public async saveSentMessage(phoneNumber: string, messageBody: string, messageId?: string): Promise<void> {
-        try {
-            const contact = await ContactModel.findOne({ phoneNumber });
-            const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
+    // Métodos legacy para compatibilidad (deprecated)
+    public get client(): any {
+        logger.warn("⚠️ BotManager.client está deprecado. Usa getEvolutionAPI() en su lugar.");
+        return null;
+    }
+}
 
-            await MessageModel.create({
-                phoneNumber: phoneNumber,
-                contactId: contact?._id.toString(),
-                messageId: messageId || `admin_${Date.now()}_${phoneNumber}`,
-                from: this.client?.info?.wid?._serialized || 'admin',
-                to: formattedNumber,
-                body: messageBody,
-                type: 'TEXT',
-                isFromBot: true,
-                timestamp: new Date(),
-                hasMedia: false,
-                requiresAttention: false // Los mensajes del admin no requieren atención
-            });
-        } catch (error) {
-            logger.error(`Error saving sent message: ${error}`);
-        }
+/**
+ * Funciones helper para Evolution API
+ */
+
+async function onboardEvolution(
+    evolutionAPI: EvolutionAPIv2Service,
+    phoneNumber: string,
+    content: string,
+    userI18n: UserI18n
+): Promise<void> {
+    // Implementar lógica de onboarding si es necesario
+    // Por ahora, solo un placeholder
+}
+
+async function sendAdminInfoEvolution(
+    evolutionAPI: EvolutionAPIv2Service,
+    phoneNumber: string
+): Promise<void> {
+    try {
+        const { sendAdminInfo } = await import('./utils/admin-info.util');
+        // Adaptar sendAdminInfo para usar Evolution API
+        // Por ahora, solo un placeholder
+    } catch (error) {
+        logger.error('Error sending admin info:', error);
+    }
+}
+
+async function sendUpdatedAdminInfoEvolution(
+    evolutionAPI: EvolutionAPIv2Service,
+    phoneNumber: string
+): Promise<void> {
+    try {
+        const { sendUpdatedAdminInfo } = await import('./utils/admin-info.util');
+        // Adaptar sendUpdatedAdminInfo para usar Evolution API
+        // Por ahora, solo un placeholder
+    } catch (error) {
+        logger.error('Error sending updated admin info:', error);
     }
 }

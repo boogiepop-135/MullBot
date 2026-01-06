@@ -104,6 +104,7 @@ services:
       AUTHENTICATION_EXPOSE_INTERNAL: "false"
       WEBHOOK_GLOBAL_ENABLED: "true"
       WEBHOOK_GLOBAL_URL: ${API_BASE_URL:-http://localhost:3001}/webhook/evolution
+      WEBHOOK_EVENTS: messages.upsert,connection.update,qrcode.updated
       QRCODE_LIMIT: "30"
       QRCODE_COLOR: "198,31,31"
       LOG_LEVEL: "ERROR"
