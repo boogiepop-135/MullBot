@@ -235,14 +235,12 @@ Tu solicitud ha sido registrada correctamente.
 
             // Enviar mensaje automático de confirmación de cita
             try {
-                if (botManager.client) {
-                    await sendAppointmentConfirmationMessage(
-                        botManager.client,
-                        phoneNumber,
-                        contact.appointmentDate ? new Date(contact.appointmentDate) : undefined,
-                        contact.appointmentNotes
-                    );
-                }
+                await sendAppointmentConfirmationMessage(
+                    botManager,
+                    phoneNumber,
+                    contact.appointmentDate ? new Date(contact.appointmentDate) : undefined,
+                    contact.appointmentNotes
+                );
             } catch (msgError) {
                 logger.error('Error sending appointment confirmation message:', msgError);
                 // No fallar la confirmación si el mensaje falla

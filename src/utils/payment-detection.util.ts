@@ -128,9 +128,9 @@ export async function handlePaymentReceipt(message: Message): Promise<void> {
 /**
  * Envía mensaje automático cuando se confirma un pago (desde el admin)
  */
-export async function sendPaymentConfirmationMessage(client: any, phoneNumber: string): Promise<void> {
+export async function sendPaymentConfirmationMessage(botManager: any, phoneNumber: string): Promise<void> {
     try {
-        const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
+        const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
         
         const message = `✅ *Pago Confirmado*
 
@@ -148,9 +148,7 @@ Una vez que recibamos tu disponibilidad, coordinaremos la fecha exacta de instal
 
 ¿Qué días de la semana te funcionan mejor para la instalación?`;
 
-        const { BotManager } = await import('./bot.manager');
-        const botManager = BotManager.getInstance();
-        await botManager.sendMessage(phoneNumber.replace(/@[cg]\.us$/, ''), message);
+        await botManager.sendMessage(formattedNumber, message);
         logger.info(`Payment confirmation message sent to ${phoneNumber}`);
     } catch (error) {
         logger.error(`Error sending payment confirmation message: ${error}`);
@@ -160,9 +158,9 @@ Una vez que recibamos tu disponibilidad, coordinaremos la fecha exacta de instal
 /**
  * Envía mensaje cuando se confirma una cita
  */
-export async function sendAppointmentConfirmationMessage(client: any, phoneNumber: string, appointmentDate?: Date, notes?: string): Promise<void> {
+export async function sendAppointmentConfirmationMessage(botManager: any, phoneNumber: string, appointmentDate?: Date, notes?: string): Promise<void> {
     try {
-        const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@c.us`;
+        const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
         
         let message = `✅ *Cita Confirmada*
 
@@ -192,9 +190,7 @@ export async function sendAppointmentConfirmationMessage(client: any, phoneNumbe
 
         message += `\n\nSi tienes alguna pregunta o necesitas cambiar la fecha, por favor contáctanos.`;
 
-        const { BotManager } = await import('./bot.manager');
-        const botManager = BotManager.getInstance();
-        await botManager.sendMessage(phoneNumber.replace(/@[cg]\.us$/, ''), message);
+        await botManager.sendMessage(formattedNumber, message);
         logger.info(`Appointment confirmation message sent to ${phoneNumber}`);
     } catch (error) {
         logger.error(`Error sending appointment confirmation message: ${error}`);
