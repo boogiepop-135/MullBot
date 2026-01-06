@@ -8,6 +8,7 @@
 import express from "express";
 import logger from "../configs/logger.config";
 import { BotManager } from "../bot.manager";
+import EnvConfig from "../configs/env.config";
 import {
     EvolutionWebhookMessage,
     EvolutionMessageData,
@@ -32,8 +33,8 @@ export default function (botManager: BotManager) {
             const webhookData: EvolutionWebhookMessage = req.body;
 
             // Validar que el evento sea de nuestra instancia
-            if (webhookData.instance !== process.env.EVOLUTION_INSTANCE_NAME) {
-                logger.warn(`⚠️ Webhook recibido de instancia diferente: ${webhookData.instance}`);
+            if (webhookData.instance !== EnvConfig.EVOLUTION_INSTANCE_NAME) {
+                logger.warn(`⚠️ Webhook recibido de instancia diferente: ${webhookData.instance} (esperado: ${EnvConfig.EVOLUTION_INSTANCE_NAME})`);
                 return res.status(200).json({ received: true }); // Responder 200 para evitar reintentos
             }
 

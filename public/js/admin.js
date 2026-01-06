@@ -1456,13 +1456,10 @@ async function loadWhatsAppStatus() {
     if (!response.ok) throw new Error('Failed to check status');
     const data = await response.json();
     
-    // Si clientReady es true, el cliente está conectado (aunque qrScanned pueda ser false temporalmente)
-    if (data.clientReady) {
+    // Si connected es true, Evolution API está conectado
+    if (data.connected || data.status === 'healthy') {
       if (statusEl) {
         statusEl.innerHTML = `<span class="text-green-600 font-medium">✅ Conectado</span>`;
-        if (data.botContact) {
-          statusEl.innerHTML += ` - ${data.botPushName || ''} (${data.botContact})`;
-        }
       }
       if (qrDisplay) qrDisplay.classList.add('hidden');
     } else {

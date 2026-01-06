@@ -100,7 +100,7 @@ services:
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: "mongodb"
       DATABASE_CONNECTION_URI: mongodb://root:example@mongo:27017/mullbot?authSource=admin
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-mullbot-evolution-key-2025}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-TuClaveSecretaChangeMe123}
       AUTHENTICATION_EXPOSE_INTERNAL: "false"
       WEBHOOK_GLOBAL_ENABLED: "true"
       WEBHOOK_GLOBAL_URL: ${API_BASE_URL:-http://localhost:3001}/webhook/evolution
