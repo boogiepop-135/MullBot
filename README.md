@@ -213,10 +213,38 @@ ASSEMBLYAI_API_KEY=tu_api_key
 
 ## 🌐 Panel de Administración
 
-- Accede en: `http://localhost:3000`
+- **Web**: Accede en `http://localhost:3000/admin`
+- **Desktop App**: Aplicación de escritorio disponible (ver [DESKTOP_APP.md](DESKTOP_APP.md))
 - Gestión de usuarios y configuraciones
 - Monitoreo del estado del bot
 - Estadísticas de ventas y leads
+
+## 🖥️ Aplicación de Escritorio
+
+MullBot ahora incluye una aplicación de escritorio para Windows, Linux y macOS.
+
+### Inicio Rápido
+
+```bash
+cd desktop
+npm install
+npm start
+```
+
+### Construir para Producción
+
+```bash
+# Linux
+npm run build:linux
+
+# Windows
+npm run build:win
+
+# macOS
+npm run build:mac
+```
+
+Para más detalles, consulta [DESKTOP_APP.md](DESKTOP_APP.md)
 
 ## 🛠️ Solución de Problemas
 

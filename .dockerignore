@@ -1,9 +1,9 @@
-# Dependencies
+# Dependencies (se instalan en el contenedor)
 node_modules
 npm-debug.log
 yarn-error.log
 
-# Build outputs
+# Build outputs (se generan en el contenedor)
 dist
 build
 *.tsbuildinfo
@@ -12,10 +12,12 @@ build
 .env
 .env.local
 .env.*.local
+.env.example
 
-# Git
+# Git (no necesario en producción)
 .git
 .gitignore
+.github
 
 # IDE
 .vscode
@@ -40,18 +42,53 @@ logs
 # Testing
 coverage
 .nyc_output
+jest.config.js
 
 # WhatsApp Web.js cache
 .wwebjs_auth
 .wwebjs_cache
 
-# Husky
+# Husky (solo desarrollo)
 .husky
 
-# Other
+# Documentation (no necesaria en producción)
 *.md
 !README.md
+CONFIGURAR_*.md
+SETUP_*.md
+DESKTOP_*.md
+README_*.md
+CREDENCIALES.md
+
+# Docker files (no necesarios dentro del contenedor)
 docker-compose.yml
 Dockerfile
 .dockerignore
+
+# Scripts de desarrollo/local
+start.sh
+verify.sh
+cleanup.sh
+scripts/create-admin.ts
+scripts/verify-mullbot.ts
+
+# Desktop app (no se usa en producción)
+desktop/
+
+# Railway config (no se usa en Digital Ocean)
 railway.json
+.railway
+
+# Ngrok config (se pasa como volumen o variable)
+ngrok.yml
+
+# Archivos temporales
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Archivos de backup
+*.bak
+*.backup
+*~

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MullBot - Error de Conexión</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .icon {
+            font-size: 64px;
+            color: #ef4444;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #111827;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+        
+        p {
+            color: #6b7280;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .server-url {
+            background: #f3f4f6;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            color: #111827;
+            margin: 16px 0;
+            word-break: break-all;
+        }
+        
+        .button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 16px;
+        }
+        
+        .button:hover {
+            background: #059669;
+        }
+        
+        .instructions {
+            text-align: left;
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+        
+        .instructions h3 {
+            color: #111827;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        
+        .instructions ol {
+            color: #6b7280;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚠️</div>
+        <h1>Servidor no disponible</h1>
+        <p>No se pudo conectar al servidor de MullBot.</p>
+        
+        <div class="server-url" id="serverUrl">http://localhost:3000</div>
+        
+        <button class="button" onclick="reconnect()">Reintentar Conexión</button>
+        
+        <div class="instructions">
+            <h3>Para solucionar esto:</h3>
+            <ol>
+                <li>Asegúrate de que el servidor esté corriendo</li>
+                <li>Verifica que Docker esté ejecutándose</li>
+                <li>Ejecuta: <code>docker compose up -d</code></li>
+                <li>Espera unos segundos y recarga esta ventana</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // Obtener URL del servidor
+        if (window.electronAPI) {
+            window.electronAPI.getServerUrl().then(url => {
+                document.getElementById('serverUrl').textContent = url;
+            });
+        }
+        
+        function reconnect() {
+            window.location.reload();
+        }
+        
+        // Intentar reconectar automáticamente cada 5 segundos
+        setInterval(() => {
+            if (window.electronAPI) {
+                window.electronAPI.checkServer().then(result => {
+                    if (result.connected) {
+                        window.location.href = result.url + '/admin';
+                    }
+                });
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

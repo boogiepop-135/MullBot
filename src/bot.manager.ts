@@ -560,6 +560,28 @@ export class BotManager {
             
             chat = await message.getChat();
 
+            // Verificar si es el administrador y enviar información del sistema
+            try {
+                const { isAdminPhone, sendAdminInfo, sendUpdatedAdminInfo } = await import('./utils/admin-info.util');
+                const isAdmin = await isAdminPhone(userNumber);
+                
+                if (isAdmin) {
+                    // Si el mensaje es /info, enviar información actualizada
+                    if (content.toLowerCase().trim() === '/info') {
+                        await sendUpdatedAdminInfo(this.client, userNumber);
+                        return; // No procesar más el mensaje
+                    }
+                    
+                    // Si es el primer mensaje del admin, enviar información automáticamente
+                    // Esperar un poco para que el chat esté listo
+                    setTimeout(async () => {
+                        await sendAdminInfo(this.client, userNumber);
+                    }, 2000);
+                }
+            } catch (error) {
+                logger.error('Error checking/sending admin info:', error);
+            }
+
             if (message.from === this.client.info.wid._serialized || message.isStatus) {
                 return;
             }

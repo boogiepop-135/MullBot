@@ -71,6 +71,21 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 ```
 
+## 📱 Configurar Administrador en WhatsApp
+
+El bot puede enviarte automáticamente información importante (URLs, credenciales) cuando te conectas.
+
+**Para configurar:**
+1. Ve al panel de administración → Configuración
+2. Configura tu número de WhatsApp en "Teléfono de Agente Humano"
+3. Envía un mensaje al bot desde tu número configurado
+4. Recibirás automáticamente la información del sistema
+
+**Comando útil:**
+- Envía `/info` al bot para obtener información actualizada en cualquier momento
+
+📖 **Guía completa:** Ver [CONFIGURAR_ADMIN_WHATSAPP.md](./CONFIGURAR_ADMIN_WHATSAPP.md)
+
 ## 🛠️ Comandos Útiles
 
 ### Ver logs

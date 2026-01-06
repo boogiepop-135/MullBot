@@ -1,12 +1,39 @@
-FROM node:20-slim
+# Multi-stage build para optimizar tamaño
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Instalar solo dependencias de build necesarias
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar archivos de dependencias
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copiar archivos fuente
+COPY tsconfig.json ./
+COPY scripts/ ./scripts/
+COPY src/ ./src/
+COPY public/ ./public/
+
+# Compilar proyecto
+RUN npm run build
+
+# Copiar script de admin compilado
+RUN mkdir -p dist/scripts && \
+    cp scripts/create-admin-auto.js dist/scripts/ || true
+
+# Stage de producción - imagen final optimizada
+FROM node:20-slim
+
+WORKDIR /app
+
+# Instalar solo runtime dependencies para Puppeteer/Chromium
+RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     ca-certificates \
     fonts-liberation \
@@ -31,27 +58,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcomposite1 \
     libxdamage1 \
     libxrandr2 \
-  && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get autoremove -y
 
-# Copiar archivos de dependencias primero para aprovechar el cache de Docker
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Copiar solo archivos necesarios desde builder
+COPY --from=builder /app/package.json /app/package-lock.json* ./
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/src/views ./src/views
 
-# Copiar archivos necesarios para el build
-COPY tsconfig.json ./
-COPY scripts/ ./scripts/
-COPY src/ ./src/
-COPY public/ ./public/
-
-# Compilar el proyecto
-RUN npm run build
-
-# Copiar script de creación de admin (versión JS)
-RUN mkdir -p dist/scripts && \
-    cp scripts/create-admin-auto.js dist/scripts/ || echo "Script JS copied"
-
-# Limpiar devDependencies después del build para reducir el tamaño de la imagen
-RUN npm prune --production
+# Instalar solo dependencias de producción
+RUN npm ci --only=production && \
+    npm cache clean --force && \
+    rm -rf /tmp/*
 
 EXPOSE 3000
+
 CMD ["npm", "start"]

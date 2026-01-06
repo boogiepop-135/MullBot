@@ -13,6 +13,7 @@ services:
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      NGROK_API_HOST: ngrok
     ports:
       - "3000:3000"
     depends_on:
