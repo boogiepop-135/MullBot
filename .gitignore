@@ -89,6 +89,10 @@ web_modules/
 .env.production.local
 .env.local
 
+# Ngrok configuration (puede contener tokens)
+ngrok.yml
+!ngrok.yml.example
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

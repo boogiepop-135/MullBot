@@ -1,0 +1,14 @@
+version: "2"
+# ⚠️ IMPORTANTE: 
+# 1. Copia este archivo: cp ngrok.yml.example ngrok.yml
+# 2. Obtén tu token en: https://dashboard.ngrok.com/get-started/your-authtoken
+# 3. Reemplaza 'TU_NGROK_AUTHTOKEN_AQUI' con tu token real
+# 4. O usa la variable de entorno NGROK_AUTHTOKEN en docker-compose.yml (recomendado)
+authtoken: TU_NGROK_AUTHTOKEN_AQUI
+tunnels:
+  mullbot:
+    addr: app:3000
+    proto: http
+    schemes:
+      - https
+    inspect: true

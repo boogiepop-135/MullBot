@@ -1,5 +1,8 @@
 version: "2"
-authtoken: 32R0zcy88zNsf9mGgXmXYpF0VlQ_6FNoHX1a6nhWi7bP682vG
+# ⚠️ IMPORTANTE: Reemplaza 'TU_NGROK_AUTHTOKEN_AQUI' con tu token real
+# Obtén tu token en: https://dashboard.ngrok.com/get-started/your-authtoken
+# O usa la variable de entorno NGROK_AUTHTOKEN en docker-compose.yml
+authtoken: TU_NGROK_AUTHTOKEN_AQUI
 tunnels:
   mullbot:
     addr: app:3000

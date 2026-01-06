@@ -42,6 +42,8 @@ services:
     command: 
       - "start"
       - "--all"
+      - "--authtoken"
+      - "${NGROK_AUTHTOKEN}"
       - "--config"
       - "/etc/ngrok.yml"
     volumes:

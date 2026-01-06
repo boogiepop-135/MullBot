@@ -52,7 +52,7 @@ PUPPETEER_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
 ENV=development
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/mullbot
-JWT_SECRET=mullbot_jwt_secret_muy_seguro_2024
+JWT_SECRET=tu_jwt_secret_muy_seguro_minimo_32_caracteres_aqui
 ```
 
 ### 3. Obtener API Key de Gemini
