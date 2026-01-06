@@ -47,6 +47,20 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # Servicio de Ngrok (OPCIONAL - solo si no tienes dominio propio)
   # Descomenta este servicio si necesitas usar ngrok en lugar de tu dominio
   # ngrok:
@@ -108,6 +122,8 @@ services:
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: "postgresql"
       DATABASE_CONNECTION_URI: postgresql://evolution:evolutionpass@postgres:5432/mullbot_db?schema=public
+      REDIS_ENABLED: "true"
+      REDIS_URI: redis://redis:6379
       AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-TuClaveSecretaChangeMe123}
       AUTHENTICATION_EXPOSE_INTERNAL: "false"
       WEBHOOK_GLOBAL_ENABLED: "true"
@@ -123,10 +139,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - default
 
 volumes:
   postgres_data:
+  redis_data:
   evolution_instances:
   evolution_store:
