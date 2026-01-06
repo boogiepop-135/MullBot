@@ -7,169 +7,83 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-        }
-      }
-    }
-  </script>
-
-  <style>
-    :root {
-      --primary: #1a472a;
-      --primary-dark: #0f2818;
-      --text-primary: #1f2937;
-      --text-secondary: #4b5563;
-      --border-color: #d1d5db;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #f9fafb;
-      min-height: 100vh;
-    }
-
-    /* Card simple */
-    .login-card {
-      background: #ffffff;
-      border: 1px solid var(--border-color);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    /* Inputs simples */
-    .input-simple {
-      background: #ffffff;
-      border: 1px solid var(--border-color);
-      color: var(--text-primary);
-      transition: all 0.2s ease;
-    }
-
-    .input-simple:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(26, 71, 42, 0.1);
-    }
-
-    .input-simple::placeholder {
-      color: #9ca3af;
-    }
-
-    /* Botón simple */
-    .btn-simple {
-      background: var(--primary);
-      color: #ffffff;
-      transition: all 0.2s ease;
-    }
-
-    .btn-simple:hover {
-      background: var(--primary-dark);
-    }
-
-    .btn-simple:active {
-      background: var(--primary-dark);
-    }
-
-    /* Logo simple */
-    .logo-container {
-      background: #ffffff;
-      border: 1px solid var(--border-color);
-    }
-  </style>
+  <link rel="stylesheet" href="/public/css/admin.css">
 </head>
 
-<body class="flex items-center justify-center p-4">
-
-  <!-- Contenedor principal -->
-  <div class="w-full max-w-md">
+<body>
+  <div class="login-container">
 
     <!-- Card de Login -->
-    <div class="login-card rounded-lg p-8 md:p-10">
+    <div class="login-card">
 
       <!-- Logo -->
       <div class="flex justify-center mb-6">
-        <div class="logo-container w-24 h-24 rounded-lg p-3">
-          <div class="w-full h-full rounded flex items-center justify-center overflow-hidden">
-            <img src="/public/Logo_cara.png" alt="MüllBot" class="w-full h-full object-contain">
-          </div>
+        <div class="logo-container">
+          <img src="/public/Logo_cara.png" alt="MüllBot">
         </div>
       </div>
 
       <!-- Título -->
-      <div class="text-center mb-8">
-        <h1 class="text-4xl md:text-5xl font-bold mb-2" style="color: var(--primary);">
-          Müllblue
-        </h1>
-        <p class="text-lg font-medium" style="color: var(--text-secondary);">
+      <div class="login-title">
+        <h1>Müllblue</h1>
+        <p>
           <i class="fas fa-leaf mr-2"></i>
           Portal de Administración
         </p>
-        <div class="mt-4 h-1 w-24 mx-auto rounded-full" style="background: var(--primary);"></div>
+        <div class="divider"></div>
       </div>
 
       <!-- Formulario -->
-      <form id="login-form" class="space-y-5">
+      <form id="login-form">
 
         <!-- Usuario -->
-        <div>
-          <label class="block font-semibold mb-2 ml-1" style="color: var(--text-primary);">
+        <div class="input-group">
+          <label>
             <i class="fas fa-user mr-2"></i>Usuario
           </label>
-          <div class="relative">
-            <input
-              type="text"
-              id="username"
-              name="username"
-              required
-              class="input-simple w-full px-4 py-3.5 rounded-lg focus:outline-none"
-              placeholder="Tu nombre de usuario">
-          </div>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            class="input-simple"
+            placeholder="Tu nombre de usuario">
         </div>
 
         <!-- Contraseña -->
-        <div>
-          <label class="block font-semibold mb-2 ml-1" style="color: var(--text-primary);">
+        <div class="input-group">
+          <label>
             <i class="fas fa-lock mr-2"></i>Contraseña
           </label>
-          <div class="relative">
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-              class="input-simple w-full px-4 py-3.5 rounded-lg focus:outline-none"
-              placeholder="Tu contraseña">
-          </div>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            class="input-simple"
+            placeholder="Tu contraseña">
         </div>
 
         <!-- Botón -->
-        <button
-          type="submit"
-          class="btn-simple w-full py-4 rounded-lg font-bold text-lg mt-6 focus:outline-none">
+        <button type="submit" class="btn-simple">
           <i class="fas fa-sign-in-alt mr-2"></i>
           Iniciar Sesión
         </button>
 
         <!-- Error -->
-        <div id="error-message" class="hidden mt-4 p-4 bg-white rounded-lg text-center" style="border: 1px solid #fca5a5; color: #991b1b; background: #fee2e2;">
-        </div>
+        <div id="error-message" class="error-message hidden"></div>
       </form>
 
       <!-- Footer -->
-      <div class="mt-8 pt-6" style="border-top: 1px solid var(--border-color);">
-        <div class="flex items-center justify-center gap-3 text-sm" style="color: var(--text-secondary);">
+      <div class="login-footer">
+        <div class="security-info">
           <i class="fas fa-shield-alt"></i>
           <span>Sistema Seguro</span>
           <span>•</span>
           <i class="fas fa-leaf"></i>
           <span>Gestión Sostenible</span>
         </div>
-        <p class="text-center text-xs mt-3" style="color: var(--text-secondary);">
+        <p class="copyright">
           MüllBot © 2025 - Tecnología Verde
         </p>
       </div>

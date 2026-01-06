@@ -50,6 +50,9 @@ async function checkAuth() {
       if (usersNav) usersNav.classList.remove('hidden');
     }
 
+    // Check and show version notes if needed
+    checkVersionNotes();
+
   } catch (error) {
     console.error('Auth error:', error);
     localStorage.removeItem('token');
@@ -2289,3 +2292,114 @@ window.logout = function() {
   localStorage.removeItem('token');
   window.location.href = '/admin/login';
 };
+
+// --- Version Notes Functions ---
+async function checkVersionNotes() {
+  try {
+    // Check if user has dismissed version notes
+    const dismissedVersions = JSON.parse(localStorage.getItem('dismissedVersions') || '[]');
+    const dontShowAgain = localStorage.getItem('dontShowVersionNotes') === 'true';
+    
+    if (dontShowAgain) {
+      return;
+    }
+
+    const response = await fetch('/crm/version-notes', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+    const latestVersion = data.currentVersion;
+
+    // Check if this version has been dismissed
+    if (dismissedVersions.includes(latestVersion)) {
+      return;
+    }
+
+    // Show version notes modal
+    showVersionNotesModal(data.notes[0]);
+  } catch (error) {
+    console.error('Error checking version notes:', error);
+  }
+}
+
+function showVersionNotesModal(versionNote) {
+  const modal = document.getElementById('version-notes-modal');
+  const badge = document.getElementById('version-badge');
+  const date = document.getElementById('version-date');
+  const changes = document.getElementById('version-changes');
+
+  if (!modal || !badge || !date || !changes) {
+    return;
+  }
+
+  // Set version badge
+  badge.textContent = `v${versionNote.version}`;
+
+  // Set date
+  const dateObj = new Date(versionNote.date);
+  const formattedDate = dateObj.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  date.querySelector('span').textContent = formattedDate;
+
+  // Render changes
+  changes.innerHTML = '';
+  versionNote.changes.forEach(change => {
+    const li = document.createElement('li');
+    li.className = change.type;
+    li.textContent = change.description;
+    changes.appendChild(li);
+  });
+
+  // Show modal
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+window.closeVersionNotesModal = function() {
+  const modal = document.getElementById('version-notes-modal');
+  const checkbox = document.getElementById('dont-show-again-checkbox');
+  
+  if (!modal) {
+    return;
+  }
+
+  // Check if "don't show again" is checked
+  if (checkbox && checkbox.checked) {
+    localStorage.setItem('dontShowVersionNotes', 'true');
+  } else {
+    // Mark this version as dismissed
+    const badge = document.getElementById('version-badge');
+    if (badge) {
+      const version = badge.textContent.replace('v', '');
+      const dismissedVersions = JSON.parse(localStorage.getItem('dismissedVersions') || '[]');
+      if (!dismissedVersions.includes(version)) {
+        dismissedVersions.push(version);
+        localStorage.setItem('dismissedVersions', JSON.stringify(dismissedVersions));
+      }
+    }
+  }
+
+  // Hide modal
+  modal.classList.add('hidden');
+  document.body.style.overflow = '';
+};
+
+// Setup overlay click handler for version notes modal
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('version-notes-modal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeVersionNotesModal();
+      }
+    });
+  }
+});

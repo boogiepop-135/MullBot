@@ -1879,5 +1879,19 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         }
     });
 
+    // Version Notes API
+    router.get('/version-notes', authenticate, async (req, res) => {
+        try {
+            const { VERSION_NOTES, CURRENT_VERSION } = await import('../../configs/version.config');
+            res.json({
+                currentVersion: CURRENT_VERSION,
+                notes: VERSION_NOTES
+            });
+        } catch (error) {
+            logger.error('Failed to fetch version notes:', error);
+            res.status(500).json({ error: 'Failed to fetch version notes' });
+        }
+    });
+
     return router;
 }

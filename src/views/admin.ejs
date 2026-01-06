@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/admin.css">
 
   <script>
     tailwind.config = {
@@ -1660,6 +1661,38 @@
                 Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Version Notes Modal -->
+      <div id="version-notes-modal" class="modal-overlay hidden">
+        <div class="modal-content version-notes-modal">
+          <div class="version-notes-header">
+            <h3>
+              <i class="fas fa-bullhorn"></i>
+              Notas de Versión
+              <span class="version-badge" id="version-badge">v1.1.0</span>
+            </h3>
+          </div>
+          <div class="version-notes-body">
+            <div class="version-date" id="version-date">
+              <i class="fas fa-calendar"></i>
+              <span>15 de Enero, 2025</span>
+            </div>
+            <ul class="version-changes" id="version-changes">
+              <!-- Changes will be loaded here -->
+            </ul>
+          </div>
+          <div class="version-notes-footer">
+            <label class="dont-show-again">
+              <input type="checkbox" id="dont-show-again-checkbox">
+              <span>No mostrar de nuevo</span>
+            </label>
+            <button onclick="closeVersionNotesModal()" class="btn-primary">
+              <i class="fas fa-check mr-2"></i>
+              Entendido
+            </button>
           </div>
         </div>
       </div>
