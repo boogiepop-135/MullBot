@@ -215,6 +215,107 @@ export class EvolutionAPIv2Service {
     }
 
     /**
+     * Enviar archivo multimedia (imagen, video, audio, documento)
+     * @param phoneNumber Número de teléfono
+     * @param filePath Ruta del archivo local
+     * @param caption Texto opcional para el archivo
+     * @param mediaType Tipo de media: 'image', 'video', 'audio', 'document'
+     */
+    async sendMedia(
+        phoneNumber: string,
+        filePath: string,
+        caption?: string,
+        mediaType: 'image' | 'video' | 'audio' | 'document' = 'video'
+    ): Promise<EvolutionSendMessageResponse> {
+        try {
+            const fs = require('fs');
+            const FormData = require('form-data');
+            
+            // Normalizar número de teléfono
+            const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+
+            // Verificar que el archivo existe
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`File not found: ${filePath}`);
+            }
+
+            // Leer el archivo
+            const fileBuffer = fs.readFileSync(filePath);
+            const fileName = require('path').basename(filePath);
+            const mimeType = this.getMimeType(filePath, mediaType);
+
+            // Crear FormData
+            const formData = new FormData();
+            formData.append('number', normalizedPhone);
+            formData.append('media', fileBuffer, {
+                filename: fileName,
+                contentType: mimeType
+            });
+            
+            if (caption) {
+                formData.append('caption', caption);
+            }
+
+            // Determinar el endpoint según el tipo de media
+            let endpoint = `/message/sendMedia/${this.instanceName}`;
+            if (mediaType === 'image') {
+                endpoint = `/message/sendMedia/${this.instanceName}`;
+            } else if (mediaType === 'video') {
+                endpoint = `/message/sendMedia/${this.instanceName}`;
+            } else if (mediaType === 'audio') {
+                endpoint = `/message/sendMedia/${this.instanceName}`;
+            } else if (mediaType === 'document') {
+                endpoint = `/message/sendMedia/${this.instanceName}`;
+            }
+
+            // Enviar con Content-Type multipart/form-data
+            const response = await axios.post<EvolutionSendMessageResponse>(
+                `${this.apiUrl}${endpoint}`,
+                formData,
+                {
+                    headers: {
+                        ...formData.getHeaders(),
+                        'apikey': this.apiKey
+                    },
+                    timeout: 60000 // 60 segundos para archivos grandes
+                }
+            );
+
+            if (!response.data?.success) {
+                throw new Error(response.data?.message || 'Failed to send media');
+            }
+
+            logger.info(`✅ Media enviado a ${normalizedPhone}: ${fileName}`);
+            return response.data;
+        } catch (error: any) {
+            logger.error(`❌ Error enviando media a ${phoneNumber}:`, error.response?.data || error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Obtener MIME type basado en extensión y tipo de media
+     */
+    private getMimeType(filePath: string, mediaType: string): string {
+        const ext = require('path').extname(filePath).toLowerCase();
+        
+        const mimeTypes: { [key: string]: string } = {
+            '.mp4': 'video/mp4',
+            '.mp3': 'audio/mpeg',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        };
+
+        return mimeTypes[ext] || (mediaType === 'video' ? 'video/mp4' : mediaType === 'audio' ? 'audio/mpeg' : 'image/jpeg');
+    }
+
+    /**
      * Normalizar número de teléfono
      * Convierte formatos como "1234567890@c.us" o "1234567890" a formato estándar
      */

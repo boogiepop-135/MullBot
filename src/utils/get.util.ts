@@ -139,6 +139,72 @@ export class YtDlpDownloader {
                 });
         });
     }
+
+    /**
+     * Descargar y enviar archivo multimedia usando Evolution API
+     * @param evolutionAPI Instancia del servicio Evolution API
+     * @param phoneNumber Número de teléfono destino
+     * @param url URL del contenido a descargar
+     * @param network Red social (para determinar el método de descarga)
+     */
+    public async downloadAndSend(
+        evolutionAPI: any,
+        phoneNumber: string,
+        url: string,
+        network: TSocialNetwork
+    ): Promise<void> {
+        let downloadedFilePath: string | null = null;
+        
+        try {
+            logger.info(`📥 Descargando ${network} desde: ${url}`);
+            
+            // Descargar el archivo
+            downloadedFilePath = await this.download(url);
+            
+            if (!downloadedFilePath || !fs.existsSync(downloadedFilePath)) {
+                throw new Error('Archivo descargado no encontrado');
+            }
+
+            // Determinar el tipo de media basado en la extensión
+            const ext = path.extname(downloadedFilePath).toLowerCase();
+            let mediaType: 'image' | 'video' | 'audio' | 'document' = 'video';
+            
+            if (['.mp4', '.avi', '.mov', '.webm'].includes(ext)) {
+                mediaType = 'video';
+            } else if (['.mp3', '.wav', '.ogg', '.m4a'].includes(ext)) {
+                mediaType = 'audio';
+            } else if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) {
+                mediaType = 'image';
+            } else {
+                mediaType = 'document';
+            }
+
+            // Enviar el archivo usando Evolution API
+            logger.info(`📤 Enviando archivo a ${phoneNumber}: ${path.basename(downloadedFilePath)}`);
+            await evolutionAPI.sendMedia(
+                phoneNumber,
+                downloadedFilePath,
+                `📥 Contenido descargado de ${network}`,
+                mediaType
+            );
+
+            logger.info(`✅ Archivo enviado exitosamente a ${phoneNumber}`);
+            
+        } catch (error: any) {
+            logger.error(`❌ Error en downloadAndSend:`, error);
+            throw error;
+        } finally {
+            // Limpiar archivo temporal después de enviar
+            if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
+                try {
+                    fs.unlinkSync(downloadedFilePath);
+                    logger.debug(`🗑️ Archivo temporal eliminado: ${downloadedFilePath}`);
+                } catch (cleanupError) {
+                    logger.warn(`⚠️ No se pudo eliminar archivo temporal: ${downloadedFilePath}`, cleanupError);
+                }
+            }
+        }
+    }
 }
 
 class LinkedIn {
