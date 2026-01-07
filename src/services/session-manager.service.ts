@@ -234,11 +234,14 @@ export class SessionManagerService {
         }
 
         // Si está en IDLE o ERROR, intentar inicializar
-        if (this.sessionData.state === SessionState.IDLE || this.sessionData.state === SessionState.ERROR) {
+        const stateBeforeInit = this.sessionData.state;
+        if (stateBeforeInit === SessionState.IDLE || stateBeforeInit === SessionState.ERROR) {
             try {
                 await this.initializeSession();
-                // Después de inicializar, verificar el estado actual (puede haber cambiado)
-                const currentState = this.sessionData.state;
+                // Después de inicializar, obtener el estado actual (puede haber cambiado)
+                // Usar getSessionData() para obtener una copia fresca del estado
+                const updatedSessionData = this.getSessionData();
+                const currentState = updatedSessionData.state;
                 
                 // Si ahora está autenticado, no hay QR
                 if (currentState === SessionState.AUTHENTICATED) {
@@ -246,8 +249,8 @@ export class SessionManagerService {
                 }
                 
                 // Si ahora tiene QR listo, devolverlo
-                if (currentState === SessionState.QR_READY && this.sessionData.qrCode) {
-                    return { qr: this.sessionData.qrCode, state: SessionState.QR_READY };
+                if (currentState === SessionState.QR_READY && updatedSessionData.qrCode) {
+                    return { qr: updatedSessionData.qrCode, state: SessionState.QR_READY };
                 }
                 
                 // Si sigue en ERROR después de intentar inicializar
@@ -255,7 +258,7 @@ export class SessionManagerService {
                     return { 
                         qr: null, 
                         state: SessionState.ERROR, 
-                        error: this.sessionData.errorMessage || 'Failed to initialize session' 
+                        error: updatedSessionData.errorMessage || 'Failed to initialize session' 
                     };
                 }
                 
@@ -263,6 +266,9 @@ export class SessionManagerService {
                 if (currentState === SessionState.INITIALIZING) {
                     return { qr: null, state: SessionState.INITIALIZING };
                 }
+                
+                // Cualquier otro estado no esperado
+                return { qr: null, state: currentState };
             } catch (error: any) {
                 return { 
                     qr: null, 
