@@ -8,6 +8,7 @@ import { sendPaymentConfirmationMessage, sendAppointmentConfirmationMessage } fr
 import { sendCampaignMessages } from '../../crons/campaign.cron';
 import { AutomationService } from '../utils/automation.util';
 import { SaleStatus, CampaignStatus, BotContentCategory, NotificationType, Role, AutomationTrigger } from '@prisma/client';
+import { SessionState } from '../../services/session-manager.service';
 
 export const router = express.Router();
 
@@ -1551,7 +1552,7 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             // Paso 4: Verificar que el estado esté reseteado antes de crear nueva instancia
             const currentState = sessionManager.getState();
-            if (currentState !== 'IDLE' && currentState !== 'ERROR') {
+            if (currentState !== SessionState.IDLE && currentState !== SessionState.ERROR) {
                 logger.warn(`⚠️ Estado inesperado después del logout: ${currentState}, forzando reset`);
                 sessionManager.forceReset();
                 await new Promise(resolve => setTimeout(resolve, 1000));

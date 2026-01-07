@@ -82,7 +82,7 @@ export default function (botManager: BotManager) {
             if (sessionData.state === 'INITIALIZING') {
                 // Verificar si está atascado (timeout)
                 const now = Date.now();
-                const initTime = sessionData.initializedAt || 0;
+                const initTime = (sessionData as any).initializedAt || 0;
                 const timeElapsed = now - initTime;
                 const timeoutMs = 60000; // 60 segundos
 
@@ -116,7 +116,7 @@ export default function (botManager: BotManager) {
 
             // Caso 4: Error - 500 Internal Server Error
             if (sessionData.state === 'ERROR') {
-                const errorMsg = sessionData.errorMessage || 'Unknown error';
+                const errorMsg = (sessionData as any).errorMessage || 'Unknown error';
                 logger.error(`GET /qr - Error state: ${errorMsg}`);
                 return res.status(500).json({
                     qr: null,

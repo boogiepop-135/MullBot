@@ -15,7 +15,7 @@ import prisma from "./database/prisma";
 import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
 import { detectAppointmentProposal, handleAppointmentProposal } from "./utils/appointment-detection.util";
 import { EvolutionAPIv2Service } from "./services/evolution-api-v2.service";
-import { SessionManagerService } from "./services/session-manager.service";
+import { SessionManagerService, SessionState } from "./services/session-manager.service";
 import { AppConfig } from "./configs/app.config";
 import EnvConfig from "./configs/env.config";
 import {
@@ -107,7 +107,7 @@ export class BotManager {
                 
                 if (isConnected) {
                     // Actualizar Session Manager
-                    if (this.sessionManager.getState() !== 'AUTHENTICATED') {
+                    if (this.sessionManager.getState() !== SessionState.AUTHENTICATED) {
                         this.sessionManager.markAsAuthenticated();
                     }
                     
