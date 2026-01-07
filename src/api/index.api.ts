@@ -48,45 +48,52 @@ export default function (botManager: BotManager) {
         }
     });
 
-    // QR Code endpoint para API (JSON) - Compatible con whatsapp-web.js y Evolution API
+    // QR Code endpoint para API (JSON) - Usa Evolution API
     router.get("/qr", async (_req, res) => {
         try {
-            // Verificar si estamos usando Evolution API
-            const useEvolutionAPI = process.env.USE_EVOLUTION_API === 'true';
+            // Siempre usar Evolution API (ya no hay whatsapp-web.js)
+            const evolutionAPI = botManager.getEvolutionAPI();
             
-            if (useEvolutionAPI) {
-                // Evolution API - el QR ya viene en base64
-                const qr = qrData.qrCodeData;
-                
-                if (qr && qr.length > 0) {
-                    // Evolution API devuelve el QR directamente en base64
-                    // Verificar si está conectado
-                    const isConnected = qrData.qrScanned;
-                    
-                    if (isConnected) {
-                        return res.json({
-                            qr: null,
-                            qrScanned: true,
-                            message: "Client is already connected"
-                        });
-                    }
-                    
-                    logger.info("GET /qr - Returning Evolution API QR (base64)");
-                    return res.json({
-                        qr: qr, // Ya está en base64 desde Evolution API
-                        qrScanned: false,
-                        timestamp: new Date().toISOString()
-                    });
-                } else {
-                    // QR no disponible aún
-                    return res.status(202).json({ 
-                        qr: null,
-                        qrScanned: false,
-                        message: "QR code is being generated, please wait...",
-                        retryAfter: 5
-                    });
-                }
+            // Verificar si ya está conectado
+            const isConnected = await evolutionAPI.isConnected();
+            if (isConnected) {
+                qrData.qrScanned = true;
+                return res.json({
+                    qr: null,
+                    qrScanned: true,
+                    message: "Client is already connected"
+                });
             }
+            
+            // Intentar obtener QR de los datos en memoria (actualizado por webhook)
+            if (qrData.qrCodeData && qrData.qrCodeData.length > 0) {
+                logger.info("GET /qr - Returning QR from memory (webhook data)");
+                return res.json({
+                    qr: qrData.qrCodeData,
+                    qrScanned: false,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            // Si no hay QR en memoria, solicitarlo directamente a Evolution API
+            const qr = await evolutionAPI.getQR();
+            if (qr) {
+                qrData.qrCodeData = qr;
+                logger.info("GET /qr - Returning QR from Evolution API");
+                return res.json({
+                    qr: qr,
+                    qrScanned: false,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            // QR no disponible aún
+            return res.status(202).json({ 
+                qr: null,
+                qrScanned: false,
+                message: "QR code is being generated, please wait...",
+                retryAfter: 5
+            });
             
         } catch (error) {
             logger.error("Failed to generate QR code:", error);
