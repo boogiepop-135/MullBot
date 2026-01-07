@@ -237,9 +237,31 @@ export class SessionManagerService {
         if (this.sessionData.state === SessionState.IDLE || this.sessionData.state === SessionState.ERROR) {
             try {
                 await this.initializeSession();
-                // Después de inicializar, intentar obtener QR nuevamente
-                if (this.sessionData.state === SessionState.QR_READY && this.sessionData.qrCode) {
+                // Después de inicializar, verificar el estado actual (puede haber cambiado)
+                const currentState = this.sessionData.state;
+                
+                // Si ahora está autenticado, no hay QR
+                if (currentState === SessionState.AUTHENTICATED) {
+                    return { qr: null, state: SessionState.AUTHENTICATED };
+                }
+                
+                // Si ahora tiene QR listo, devolverlo
+                if (currentState === SessionState.QR_READY && this.sessionData.qrCode) {
                     return { qr: this.sessionData.qrCode, state: SessionState.QR_READY };
+                }
+                
+                // Si sigue en ERROR después de intentar inicializar
+                if (currentState === SessionState.ERROR) {
+                    return { 
+                        qr: null, 
+                        state: SessionState.ERROR, 
+                        error: this.sessionData.errorMessage || 'Failed to initialize session' 
+                    };
+                }
+                
+                // Si está en INITIALIZING, el QR no está disponible aún
+                if (currentState === SessionState.INITIALIZING) {
+                    return { qr: null, state: SessionState.INITIALIZING };
                 }
             } catch (error: any) {
                 return { 
@@ -250,8 +272,9 @@ export class SessionManagerService {
             }
         }
 
-        // Estado INITIALIZING sin QR aún
-        return { qr: null, state: SessionState.INITIALIZING };
+        // Estado INITIALIZING sin QR aún (o cualquier otro estado no manejado)
+        const currentState = this.sessionData.state;
+        return { qr: null, state: currentState };
     }
 
     /**
