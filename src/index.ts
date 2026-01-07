@@ -40,9 +40,34 @@ viewsPaths.forEach(viewPath => {
     }
 });
 // Configurar archivos estáticos - intentar dist/public primero, luego public como fallback
-app.use("/public", express.static(path.join(__dirname, "../public")));
-app.use("/public", express.static(path.join(__dirname, "public")));
-app.use("/public", express.static("public"));
+// Agregar headers no-cache para archivos JS para evitar problemas de caché durante desarrollo
+app.use("/public", express.static(path.join(__dirname, "../public"), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
+app.use("/public", express.static(path.join(__dirname, "public"), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
+app.use("/public", express.static("public", {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
