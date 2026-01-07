@@ -15,6 +15,7 @@ import prisma from "./database/prisma";
 import { detectPaymentReceipt, handlePaymentReceipt } from "./utils/payment-detection.util";
 import { detectAppointmentProposal, handleAppointmentProposal } from "./utils/appointment-detection.util";
 import { EvolutionAPIv2Service } from "./services/evolution-api-v2.service";
+import { SessionManagerService } from "./services/session-manager.service";
 import { AppConfig } from "./configs/app.config";
 import EnvConfig from "./configs/env.config";
 import {
@@ -29,7 +30,10 @@ export class BotManager {
     // Evolution API v2 Service
     private evolutionAPI: EvolutionAPIv2Service;
     
-    // Estado del bot
+    // Session Manager
+    private sessionManager: SessionManagerService;
+    
+    // Estado del bot (mantenido por compatibilidad)
     public qrData = {
         qrCodeData: "",
         qrScanned: false
@@ -42,6 +46,8 @@ export class BotManager {
     private constructor() {
         // Inicializar Evolution API v2 Service
         this.evolutionAPI = new EvolutionAPIv2Service();
+        // Inicializar Session Manager
+        this.sessionManager = SessionManagerService.getInstance(this.evolutionAPI);
         logger.info("🤖 BotManager inicializado con Evolution API v2");
     }
 
@@ -53,13 +59,20 @@ export class BotManager {
     }
 
     /**
+     * Obtener Session Manager
+     */
+    public getSessionManager(): SessionManagerService {
+        return this.sessionManager;
+    }
+
+    /**
      * Inicializar instancia de Evolution API
      * Verifica si existe, si no la crea automáticamente
      */
     public async initializeClient(): Promise<void> {
         try {
             logger.info("🚀 Inicializando Evolution API v2...");
-            await this.evolutionAPI.initInstance();
+            await this.sessionManager.initializeSession();
             logger.info("✅ Evolution API v2 inicializado correctamente");
             
             // Iniciar polling de QR si no está conectado
@@ -93,6 +106,11 @@ export class BotManager {
                 const isConnected = await this.evolutionAPI.isConnected();
                 
                 if (isConnected) {
+                    // Actualizar Session Manager
+                    if (this.sessionManager.getState() !== 'AUTHENTICATED') {
+                        this.sessionManager.markAsAuthenticated();
+                    }
+                    
                     if (!this.qrData.qrScanned) {
                         this.qrData.qrScanned = true;
                         this.qrData.qrCodeData = "";
@@ -135,15 +153,16 @@ export class BotManager {
                 this.qrPollInterval = null;
             }
 
-            // Eliminar instancia de Evolution API (tolerante a errores)
+            // Desconectar sesión usando Session Manager
             try {
-                await this.evolutionAPI.logout();
+                await this.sessionManager.disconnect();
             } catch (error: any) {
-                // Si Evolution API no está disponible, continuar de todas formas
-                logger.warn(`⚠️ No se pudo desvincular de Evolution API, pero continuando con el logout: ${error.message || error}`);
+                // Si hay error, forzar reset
+                logger.warn(`⚠️ Error en sessionManager.disconnect(), forzando reset: ${error.message || error}`);
+                this.sessionManager.forceReset();
             }
             
-            // Resetear QR data
+            // Resetear QR data (mantenido por compatibilidad)
             this.qrData = {
                 qrCodeData: "",
                 qrScanned: false
@@ -153,15 +172,14 @@ export class BotManager {
             return 1; // Retornar 1 para compatibilidad con código existente
         } catch (error) {
             logger.error(`❌ Error durante logout: ${error}`);
-            // Aún así, resetear QR data para permitir reconexión
+            // Aún así, resetear para permitir reconexión
+            this.sessionManager.forceReset();
             this.qrData = {
                 qrCodeData: "",
                 qrScanned: false
             };
-            // No lanzar error para permitir que el proceso continúe
-            // El usuario podrá intentar reconectar después
             logger.warn('⚠️ Continuando a pesar del error para permitir reconexión');
-            return 0; // Retornar 0 indicando que hubo problemas pero no es crítico
+            return 0;
         }
     }
 

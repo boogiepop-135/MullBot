@@ -56,11 +56,19 @@ export default function (botManager: BotManager) {
                 case 'connection.update':
                     // Actualización de conexión
                     const connectionData = webhookData.data as EvolutionConnectionData;
+                    const sessionManager = botManager.getSessionManager();
+                    
                     if (connectionData.state === 'open') {
+                        // Marcar como autenticado en Session Manager
+                        sessionManager.markAsAuthenticated();
+                        
+                        // Mantener compatibilidad con qrData
                         botManager.qrData.qrScanned = true;
                         botManager.qrData.qrCodeData = "";
                         logger.info("✅ WhatsApp conectado (webhook)");
                     } else if (connectionData.state === 'close') {
+                        // Resetear sesión
+                        sessionManager.forceReset();
                         botManager.qrData.qrScanned = false;
                         logger.warn("⚠️ WhatsApp desconectado (webhook)");
                     }
@@ -70,6 +78,11 @@ export default function (botManager: BotManager) {
                     // QR actualizado
                     const qrData = webhookData.data as EvolutionQRData;
                     if (qrData.qrcode?.base64) {
+                        const sessionManager = botManager.getSessionManager();
+                        // Actualizar QR en Session Manager
+                        sessionManager.updateQRFromWebhook(qrData.qrcode.base64);
+                        
+                        // Mantener compatibilidad con qrData
                         botManager.qrData.qrCodeData = qrData.qrcode.base64;
                         botManager.qrData.qrScanned = false;
                         logger.info("📱 QR actualizado (webhook)");

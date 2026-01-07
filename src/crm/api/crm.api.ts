@@ -1510,14 +1510,17 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             
             const useEvolutionAPI = process.env.USE_EVOLUTION_API === 'true';
             
-            // Paso 1: Desvincular y limpiar TODAS las sesiones (función unificada)
+            // Paso 1: Desvincular y limpiar TODAS las sesiones usando SessionManager
             logger.info('Paso 1: Desvinculando y limpiando todas las sesiones...');
             let deletedCount = 0;
             let logoutWarning = '';
+            const sessionManager = botManager.getSessionManager();
             
             try {
-                deletedCount = await botManager.logout();
-                logger.info(`✓ Logout completado. ${deletedCount} sesión(es) eliminada(s)`);
+                // Desconectar usando SessionManager (esto resetea el estado)
+                await sessionManager.disconnect();
+                deletedCount = 1;
+                logger.info('✓ Sesión desconectada y limpiada correctamente');
             } catch (error: any) {
                 // Capturar errores específicos de conexión
                 if (error.message?.includes('getaddrinfo') || 
@@ -1531,35 +1534,38 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                     logoutWarning = `Advertencia: ${error.message || 'Error desconocido durante logout'}`;
                     logger.warn(`⚠️ ${logoutWarning}`);
                 }
+                // Forzar reset del estado incluso si hubo error
+                sessionManager.forceReset();
             }
             
-            // Paso 2: Esperar para asegurar que todo se limpió completamente
+            // Paso 2: También llamar al logout del botManager para compatibilidad
+            try {
+                await botManager.logout();
+            } catch (error: any) {
+                logger.warn(`⚠️ Error adicional en botManager.logout(): ${error.message || error}`);
+            }
+            
+            // Paso 3: Esperar para asegurar que todo se limpió completamente
             logger.info('Paso 2: Esperando que la limpieza se complete...');
             await new Promise(resolve => setTimeout(resolve, 2000));
             
-            // Paso 3: Crear nuevo cliente limpio
-            logger.info('Paso 3: Creando nuevo cliente limpio...');
-            try {
-                await botManager.initializeClient();
-                logger.info('✓ Nuevo cliente creado');
-            } catch (error: any) {
-                logger.warn(`⚠️ Error al crear nuevo cliente (puede ser normal): ${error.message || error}`);
+            // Paso 4: Verificar que el estado esté reseteado antes de crear nueva instancia
+            const currentState = sessionManager.getState();
+            if (currentState !== 'IDLE' && currentState !== 'ERROR') {
+                logger.warn(`⚠️ Estado inesperado después del logout: ${currentState}, forzando reset`);
+                sessionManager.forceReset();
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
             
-            // Paso 4: Esperar antes de inicializar
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Paso 5: Inicializar el cliente - esto generará un nuevo QR
-            logger.info('Paso 4: Inicializando cliente para generar nuevo QR...');
-            botManager.initialize().catch(err => {
-                logger.error('❌ Error durante inicialización después de logout:', err);
-            });
-            
-            // Paso 6: Esperar para que el QR se genere (dar más tiempo)
-            // Evolution API es más rápido, pero dar tiempo suficiente
-            const waitTime = useEvolutionAPI ? 3000 : 5000;
-            logger.info(`Paso 5: Esperando generación del QR (${waitTime}ms)...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
+            // Paso 5: Inicializar nueva sesión (esto creará nueva instancia y generará QR)
+            logger.info('Paso 3: Inicializando nueva sesión para generar nuevo QR...');
+            try {
+                await sessionManager.initializeSession();
+                logger.info('✓ Nueva sesión inicializada');
+            } catch (error: any) {
+                logger.error(`❌ Error al inicializar nueva sesión: ${error.message || error}`);
+                throw error;
+            }
             
             logger.info('=== DESVINCULACIÓN COMPLETADA ===');
             

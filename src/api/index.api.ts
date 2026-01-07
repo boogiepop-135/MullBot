@@ -48,56 +48,141 @@ export default function (botManager: BotManager) {
         }
     });
 
-    // QR Code endpoint para API (JSON) - Usa Evolution API
+    // QR Code endpoint para API (JSON) - Con máquina de estados estricta
     router.get("/qr", async (_req, res) => {
         try {
-            // Siempre usar Evolution API (ya no hay whatsapp-web.js)
-            const evolutionAPI = botManager.getEvolutionAPI();
-            
-            // Verificar si ya está conectado
-            const isConnected = await evolutionAPI.isConnected();
-            if (isConnected) {
+            const sessionManager = botManager.getSessionManager();
+            const sessionData = sessionManager.getSessionData();
+
+            // Caso 1: Ya autenticado - 200 OK (sin QR)
+            if (sessionData.state === 'AUTHENTICATED') {
                 qrData.qrScanned = true;
-                return res.json({
+                return res.status(200).json({
                     qr: null,
                     qrScanned: true,
+                    state: 'AUTHENTICATED',
                     message: "Client is already connected"
                 });
             }
-            
-            // Intentar obtener QR de los datos en memoria (actualizado por webhook)
-            if (qrData.qrCodeData && qrData.qrCodeData.length > 0) {
-                logger.info("GET /qr - Returning QR from memory (webhook data)");
-                return res.json({
-                    qr: qrData.qrCodeData,
+
+            // Caso 2: QR listo y válido - 200 OK (con QR)
+            if (sessionData.state === 'QR_READY' && sessionData.qrCode) {
+                qrData.qrCodeData = sessionData.qrCode;
+                qrData.qrScanned = false;
+                logger.info("GET /qr - Returning QR (state: QR_READY)");
+                return res.status(200).json({
+                    qr: sessionData.qrCode,
                     qrScanned: false,
+                    state: 'QR_READY',
                     timestamp: new Date().toISOString()
                 });
             }
-            
-            // Si no hay QR en memoria, solicitarlo directamente a Evolution API
-            const qr = await evolutionAPI.getQR();
-            if (qr) {
-                qrData.qrCodeData = qr;
-                logger.info("GET /qr - Returning QR from Evolution API");
-                return res.json({
-                    qr: qr,
+
+            // Caso 3: Inicializando - 202 Accepted (con timeout protection)
+            if (sessionData.state === 'INITIALIZING') {
+                // Verificar si está atascado (timeout)
+                const now = Date.now();
+                const initTime = sessionData.initializedAt || 0;
+                const timeElapsed = now - initTime;
+                const timeoutMs = 60000; // 60 segundos
+
+                if (timeElapsed > timeoutMs) {
+                    // Timeout: forzar reset y error
+                    logger.warn(`⏰ Timeout en inicialización (${timeElapsed}ms), forzando reset`);
+                    sessionManager.forceReset();
+                    return res.status(500).json({
+                        qr: null,
+                        qrScanned: false,
+                        state: 'ERROR',
+                        error: 'Initialization timeout',
+                        message: "QR generation timed out. Please try disconnecting and reconnecting."
+                    });
+                }
+
+                // Aún inicializando: 202 Accepted
+                logger.debug(`GET /qr - Still initializing (${timeElapsed}ms elapsed)`);
+                return res.status(202).json({
+                    qr: null,
                     qrScanned: false,
-                    timestamp: new Date().toISOString()
+                    state: 'INITIALIZING',
+                    message: "QR code is being generated, please wait...",
+                    retryAfter: 3, // 3 segundos
+                    progress: {
+                        elapsedMs: timeElapsed,
+                        timeoutMs: timeoutMs
+                    }
                 });
             }
+
+            // Caso 4: Error - 500 Internal Server Error
+            if (sessionData.state === 'ERROR') {
+                const errorMsg = sessionData.errorMessage || 'Unknown error';
+                logger.error(`GET /qr - Error state: ${errorMsg}`);
+                return res.status(500).json({
+                    qr: null,
+                    qrScanned: false,
+                    state: 'ERROR',
+                    error: errorMsg,
+                    message: `Failed to generate QR: ${errorMsg}. Please try disconnecting and reconnecting.`
+                });
+            }
+
+            // Caso 5: Estado IDLE o desconocido - Intentar inicializar
+            logger.info(`GET /qr - State is ${sessionData.state}, initializing...`);
             
-            // QR no disponible aún
-            return res.status(202).json({ 
-                qr: null,
-                qrScanned: false,
-                message: "QR code is being generated, please wait...",
-                retryAfter: 5
-            });
+            try {
+                // Intentar obtener QR (esto iniciará la inicialización si es necesario)
+                const qrResult = await sessionManager.getQR();
+                
+                if (qrResult.qr && qrResult.state === 'QR_READY') {
+                    // QR obtenido exitosamente
+                    qrData.qrCodeData = qrResult.qr;
+                    qrData.qrScanned = false;
+                    return res.status(200).json({
+                        qr: qrResult.qr,
+                        qrScanned: false,
+                        state: 'QR_READY',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+
+                if (qrResult.error) {
+                    // Error durante la obtención
+                    return res.status(500).json({
+                        qr: null,
+                        qrScanned: false,
+                        state: qrResult.state,
+                        error: qrResult.error,
+                        message: qrResult.error
+                    });
+                }
+
+                // Estado INITIALIZING después de intentar obtener
+                return res.status(202).json({
+                    qr: null,
+                    qrScanned: false,
+                    state: 'INITIALIZING',
+                    message: "QR code is being generated, please wait...",
+                    retryAfter: 3
+                });
+
+            } catch (error: any) {
+                logger.error("Failed to get QR:", error);
+                return res.status(500).json({
+                    qr: null,
+                    qrScanned: false,
+                    state: 'ERROR',
+                    error: error.message || 'Unknown error',
+                    message: "Failed to initialize QR generation"
+                });
+            }
             
         } catch (error) {
             logger.error("Failed to generate QR code:", error);
-            res.status(500).json({ 
+            return res.status(500).json({ 
+                qr: null,
+                qrScanned: false,
+                state: 'ERROR',
                 error: "Failed to generate QR code",
                 message: error instanceof Error ? error.message : "Unknown error occurred"
             });
