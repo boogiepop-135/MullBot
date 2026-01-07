@@ -72,24 +72,17 @@ const tryGemini = async (query: string): Promise<string> => {
     });
     
     // Prompt más corto y eficiente para ahorrar tokens
-    const systemPrompt = `Eres agente de ventas Müllblue. Responde en español con emojis. VENTAS SUTILES.
+    const systemPrompt = `Eres Asistente Técnico Experto para SoporteChes. Responde en español. Consultas sobre cursos de software y química.
 
 IMPORTANTE:
-- Si el usuario dice "no" o rechaza, NO termines la conversación. Ofrece otras opciones o el menú.
-- Siempre mantén la conversación abierta, ofrece alternativas.
-- Vende de forma sutil, sin presión, mostrando beneficios naturales.
-- Si no están listos, sugiere que pueden ver otras opciones del menú.
+- Tono técnico pero accesible (explicaciones detalladas)
+- Responde concisamente para optimizar ancho de banda
+- Si preguntan por estado de servicios, valida que la API esté ON
+- NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
 
-PRODUCTO: Compostero 12.5L - Reduce 2.5x, sin olores/plagas.
-PRECIO: $1,490 MXN (antes $1,890) - Incluye biocatalizador 1kg + envío gratis.
-INCLUYE: Compostero + biocatalizador 1kg + envío + acompañamiento.
-FUNCIONA: Depositar → Espolvorear biocatalizador → Compactar → Tapar. Fermenta 2 semanas.
-DIMENSIONES: 30x30x40 cm, 12.5L.
-PAGOS: Banco Azteca 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas: https://mpago.li/1W2JhS5
-VIDEO: https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
+CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
 
-MENÚ: Si piden menú, volver o regresar, muestra las 8 opciones disponibles.
-TÉCNICAS: Beneficios naturales, sin presión. Si dicen "no", ofrece ver otras opciones. Siempre mantén la conversación abierta.`;
+ÁREAS: Cursos de software y química. Para detalles específicos de cursos, remite al soporte.`;
 
     // Usar solo el query del usuario para reducir tokens de entrada
     const fullQuery = `${systemPrompt}\n\nUsuario: ${query}`;
@@ -113,23 +106,17 @@ const tryClaude = async (query: string): Promise<string> => {
     }
     
     // Prompt más corto para ahorrar tokens (optimizado para Claude Haiku)
-    const systemPrompt = `Eres agente de ventas Müllblue. Responde en español con emojis. VENTAS SUTILES.
+    const systemPrompt = `Eres Asistente Técnico Experto para SoporteChes. Responde en español. Consultas sobre cursos de software y química.
 
 IMPORTANTE:
-- Si el usuario dice "no" o rechaza, NO termines la conversación. Ofrece otras opciones o el menú.
-- Siempre mantén la conversación abierta, ofrece alternativas.
-- Vende de forma sutil, sin presión, mostrando beneficios naturales.
+- Tono técnico pero accesible (explicaciones detalladas)
+- Responde concisamente para optimizar ancho de banda
+- Si preguntan por estado de servicios, valida que la API esté ON
+- NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
 
-PRODUCTO: Compostero 12.5L - Reduce 2.5x, sin olores/plagas.
-PRECIO: $1,490 MXN (antes $1,890) - Incluye biocatalizador 1kg + envío gratis.
-INCLUYE: Compostero + biocatalizador 1kg + envío + acompañamiento.
-FUNCIONA: Depositar → Espolvorear biocatalizador → Compactar → Tapar. Fermenta 2 semanas.
-DIMENSIONES: 30x30x40 cm, 12.5L.
-PAGOS: Banco Azteca 127180013756372173 (Aldair Eduardo Rivera García) o tarjetas: https://mpago.li/1W2JhS5
-VIDEO: https://youtube.com/shorts/Cap3U3eoLvY?si=M6E8icomSvMnK-L
+CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
 
-MENÚ: Si piden menú, volver o regresar, muestra las 8 opciones disponibles.
-TÉCNICAS: Beneficios naturales, sin presión. Si dicen "no", ofrece ver otras opciones. Siempre mantén la conversación abierta.`;
+ÁREAS: Cursos de software y química. Para detalles específicos de cursos, remite al soporte.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',

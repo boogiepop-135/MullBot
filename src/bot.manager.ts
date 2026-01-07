@@ -318,7 +318,29 @@ export class BotManager {
             }
 
             // Si no es comando ni URL, procesar como mensaje normal del bot
-            // Aquí puedes agregar lógica de IA o respuestas automáticas
+            // Verificar si pregunta por estado de servicios antes de usar IA
+            const { isServiceStatusQuery, generateServiceStatusResponse } = await import('./utils/service-status.util');
+            
+            if (isServiceStatusQuery(content)) {
+                logger.info(`🔍 Usuario pregunta por estado de servicios: ${content}`);
+                const statusResponse = await generateServiceStatusResponse(content);
+                await this.evolutionAPI.sendMessage(phoneNumber, statusResponse);
+                await this.saveSentMessage(phoneNumber, statusResponse);
+                return;
+            }
+
+            // Si no pregunta por estado, usar IA para responder
+            try {
+                const { aiCompletion } = await import('./utils/ai-fallback.util');
+                const result = await aiCompletion(content);
+                await this.evolutionAPI.sendMessage(phoneNumber, result.text);
+                await this.saveSentMessage(phoneNumber, result.text);
+            } catch (error) {
+                logger.error(`Error usando IA para responder: ${error}`);
+                const errorMessage = 'Lo siento, no pude procesar tu consulta en este momento. Por favor, intenta de nuevo o contacta al soporte.';
+                await this.evolutionAPI.sendMessage(phoneNumber, errorMessage);
+                await this.saveSentMessage(phoneNumber, errorMessage);
+            }
 
         } catch (error) {
             logger.error(`Error procesando contenido del mensaje: ${error}`);
