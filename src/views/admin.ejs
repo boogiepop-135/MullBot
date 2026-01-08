@@ -533,6 +533,12 @@
         <span class="ml-3">Contenido Bot</span>
       </a>
 
+      <a href="#" onclick="showSection('automations')" id="nav-automations"
+        class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
+        <i class="fas fa-magic w-7 text-center  transition-colors text-lg"></i>
+        <span class="ml-3">Automatizaciones</span>
+      </a>
+
       <a href="#" onclick="showSection('settings')" id="nav-settings"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-cog w-7 text-center  transition-colors text-lg"></i>
@@ -748,6 +754,14 @@
           <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Contactos</h1>
           <p class="text-gray-600 mt-1">Gestiona tus contactos</p>
         </div>
+        <div class="flex gap-3">
+          <button onclick="importContacts()" class="btn-primary bg-blue-600 hover:bg-blue-700">
+            <i class="fas fa-upload mr-2"></i>Importar XLSX
+          </button>
+          <button onclick="exportContacts()" class="btn-primary bg-green-600 hover:bg-green-700">
+            <i class="fas fa-download mr-2"></i>Exportar XLSX
+          </button>
+        </div>
       </div>
 
       <!-- Filters -->
@@ -849,11 +863,47 @@
                   class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"
                   oninput="updateWhatsAppPreview()"></textarea>
               </div>
+              
+              <!-- Filtro por Estado -->
               <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Programar envío (opcional)</label>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Filtrar Contactos por Estado (opcional)</label>
+                <select name="saleStatusFilter" id="campaign-status-filter" multiple class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all" onchange="filterContactsByStatus()">
+                  <option value="LEAD">Lead</option>
+                  <option value="INTERESTED">Interesado</option>
+                  <option value="INFO_REQUESTED">Info Solicitada</option>
+                  <option value="PAYMENT_PENDING">Pago Pendiente</option>
+                  <option value="APPOINTMENT_SCHEDULED">Cita Agendada</option>
+                  <option value="APPOINTMENT_CONFIRMED">Cita Confirmada</option>
+                  <option value="COMPLETED">Completado</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Mantén Ctrl/Cmd para seleccionar múltiples. Deja vacío para selección manual.</p>
+              </div>
+              
+              <!-- Campaña por Lotes -->
+              <div class="border-t pt-4">
+                <div class="flex items-center mb-3">
+                  <input type="checkbox" id="is-batch-campaign" name="isBatchCampaign" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" onchange="toggleBatchOptions()">
+                  <label for="is-batch-campaign" class="ml-2 text-sm font-bold text-gray-700">Campaña por Lotes</label>
+                </div>
+                
+                <div id="batch-options" class="space-y-3 hidden">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tamaño de Lote (contactos por envío)</label>
+                    <input type="number" name="batchSize" min="1" value="25" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Intervalo entre Lotes (minutos)</label>
+                    <input type="number" name="batchInterval" min="1" value="15" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Programar envío inicial (opcional)</label>
                 <input type="datetime-local" name="scheduledAt"
                   class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
               </div>
+              
               <button type="submit" class="btn-primary w-full py-3">
                 Crear Campaña
               </button>
@@ -973,6 +1023,66 @@
         </table>
       </div>
       </div>
+      </div>
+
+      <!-- Automations Section -->
+      <div id="automations-section" class="section-content hidden p-8">
+        <div class="page-header">
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Automatizaciones</h1>
+          <p class="text-gray-600 mt-1">Gestiona Estados Personalizados y Automatizaciones del Bot</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="content-card">
+          <div class="border-b border-gray-200">
+            <nav class="flex -mb-px">
+              <button onclick="showAutomationTab('custom-states')" id="auto-tab-states" class="automation-tab px-6 py-4 text-sm font-semibold text-black border-b-2 border-black">Estados Personalizados</button>
+              <button onclick="showAutomationTab('automations-list')" id="auto-tab-automations" class="automation-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Automatizaciones</button>
+            </nav>
+          </div>
+
+          <!-- Tab: Custom States -->
+          <div id="automation-custom-states" class="automation-panel p-6">
+            <div class="flex justify-between items-center mb-6">
+              <p class="text-gray-600">Define estados personalizados para clasificar tus contactos más allá de los predeterminados (Lead, Interesado, etc.)</p>
+              <button onclick="openCreateStatusModal()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nuevo Estado
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full">
+                <thead>
+                  <tr>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Nombre</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Valor</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Color</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Descripción</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Estado</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="custom-statuses-table-body" class="divide-y divide-gray-100">
+                  <tr><td colspan="6" class="px-6 py-4 text-sm text-gray-500 text-center">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab: Automations List -->
+          <div id="automation-automations-list" class="automation-panel hidden p-6">
+            <div class="flex justify-between items-center mb-6">
+              <p class="text-gray-600">Crea reglas automáticas que se ejecutan cuando se cumple una condición (cambio de estado, mensaje recibido, etc.)</p>
+              <button onclick="openCreateAutomationModal()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nueva Automatización
+              </button>
+            </div>
+
+            <div class="space-y-4" id="automations-container">
+              <div class="text-gray-500 text-center py-8">Cargando...</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Settings Section -->

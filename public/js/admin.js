@@ -635,21 +635,76 @@ function removeContactFromCampaign(phoneNumber) {
   if (checkbox) checkbox.checked = false;
 }
 
+window.toggleBatchOptions = function() {
+  const checkbox = document.getElementById('is-batch-campaign');
+  const options = document.getElementById('batch-options');
+  if (checkbox.checked) {
+    options.classList.remove('hidden');
+  } else {
+    options.classList.add('hidden');
+  }
+};
+
+window.filterContactsByStatus = async function() {
+  const select = document.getElementById('campaign-status-filter');
+  const selectedStatuses = Array.from(select.selectedOptions).map(opt => opt.value);
+  
+  if (selectedStatuses.length === 0) {
+    // Si no hay filtro, cargar todos
+    await loadAvailableContacts();
+    return;
+  }
+  
+  try {
+    // Cargar contactos filtrados por estado
+    const params = new URLSearchParams();
+    selectedStatuses.forEach(status => params.append('saleStatus', status));
+    
+    const response = await fetch(`/crm/contacts?limit=5000&${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to load filtered contacts');
+    
+    const { data } = await response.json();
+    renderAvailableContacts(data);
+    
+    // Información sobre contactos filtrados
+    const container = document.getElementById('available-contacts');
+    const info = document.createElement('div');
+    info.className = 'bg-blue-50 border border-blue-200 rounded p-3 mb-3 text-sm text-blue-800';
+    info.innerHTML = `<i class="fas fa-info-circle mr-2"></i>Se encontraron ${data.length} contactos con el estado seleccionado`;
+    container.insertBefore(info, container.firstChild);
+  } catch (error) {
+    console.error('Error filtering contacts:', error);
+    alert('Error al filtrar contactos por estado');
+  }
+};
+
 async function createCampaign() {
   const form = document.getElementById('campaign-form');
   const formData = new FormData(form);
   const selectedContacts = Array.from(document.querySelectorAll('#selected-contacts [data-phone]')).map(el => el.dataset.phone);
+  
+  // Obtener filtro de estados si existe
+  const statusFilter = Array.from(document.getElementById('campaign-status-filter').selectedOptions).map(opt => opt.value);
 
-  if (selectedContacts.length === 0) {
-    alert('Por favor selecciona al menos un contacto');
+  if (selectedContacts.length === 0 && statusFilter.length === 0) {
+    alert('Por favor selecciona al menos un contacto o un filtro de estado');
     return;
   }
 
+  const isBatch = document.getElementById('is-batch-campaign').checked;
+  
   const data = {
     name: formData.get('name'),
     message: formData.get('message'),
     scheduledAt: formData.get('scheduledAt') || null,
-    contacts: selectedContacts
+    contacts: selectedContacts,
+    saleStatusFilter: statusFilter,
+    isBatchCampaign: isBatch,
+    batchSize: isBatch ? parseInt(formData.get('batchSize') || 25) : null,
+    batchInterval: isBatch ? parseInt(formData.get('batchInterval') || 15) : null
   };
 
   try {
@@ -663,14 +718,90 @@ async function createCampaign() {
     });
 
     if (!response.ok) throw new Error('Failed to create campaign');
-
-    alert('Campaña creada exitosamente');
+    
+    const result = await response.json();
+    
+    let message = '✅ Campaña creada exitosamente\n\n';
+    if (result.summary) {
+      message += `📊 Resumen:\n`;
+      message += `• Total de contactos: ${result.summary.totalContacts}\n`;
+      if (isBatch) {
+        message += `• Total de lotes: ${result.summary.totalBatches}\n`;
+        message += `• Contactos por lote: ${result.summary.contactsPerBatch}\n`;
+      }
+    }
+    
+    alert(message);
     showSection('campaigns');
   } catch (error) {
     console.error('Error creating campaign:', error);
-    alert('Error al crear campaña');
+    alert('Error al crear campaña: ' + error.message);
   }
 }
+
+// --- Contact Import/Export Functions ---
+
+window.exportContacts = async function() {
+  try {
+    const response = await fetch('/crm/contacts/export/xlsx', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to export contacts');
+    
+    // Descargar archivo
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'contactos.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    alert('Contactos exportados exitosamente');
+  } catch (error) {
+    console.error('Error exporting contacts:', error);
+    alert('Error al exportar contactos');
+  }
+};
+
+window.importContacts = async function() {
+  // Crear input de archivo dinámicamente
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.xlsx,.xls,.csv';
+  
+  input.onchange = async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await fetch('/crm/contacts/import/xlsx', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      });
+      
+      if (!response.ok) throw new Error('Failed to import contacts');
+      
+      const result = await response.json();
+      alert(`Importación completada:\n✅ ${result.summary.imported} nuevos contactos\n🔄 ${result.summary.updated} actualizados\n❌ ${result.summary.errors} errores`);
+      
+      // Recargar contactos
+      loadContacts();
+    } catch (error) {
+      console.error('Error importing contacts:', error);
+      alert('Error al importar contactos: ' + error.message);
+    }
+  };
+  
+  input.click();
+};
 
 // --- Template Functions ---
 
@@ -1828,9 +1959,15 @@ function renderUsers(users) {
         </span>
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(user.createdAt)}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-        <button onclick="changeUserPassword('${user.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Cambiar contraseña">
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+        <button onclick="editUsername('${user.id}', '${user.username}')" class="text-blue-600 hover:text-blue-900" title="Editar nombre">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button onclick="changeUserPassword('${user.id}')" class="text-indigo-600 hover:text-indigo-900" title="Cambiar contraseña">
           <i class="fas fa-key"></i>
+        </button>
+        <button onclick="deleteUser('${user.id}', '${user.username}')" class="text-red-600 hover:text-red-900" title="Eliminar usuario">
+          <i class="fas fa-trash"></i>
         </button>
       </td>
     `;
@@ -1880,6 +2017,57 @@ window.saveCreateUser = async function() {
   } catch (error) {
     console.error('Error creating user:', error);
     alert('Error al crear usuario: ' + error.message);
+  }
+};
+
+window.editUsername = async function(userId, currentUsername) {
+  const newUsername = prompt(`Nuevo nombre de usuario (actual: ${currentUsername}):`);
+  if (!newUsername || newUsername === currentUsername) return;
+  
+  try {
+    const response = await fetch(`/crm/auth/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username: newUsername })
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update username');
+    }
+    
+    loadUsers();
+    alert('Nombre de usuario actualizado correctamente');
+  } catch (error) {
+    console.error('Error updating username:', error);
+    alert('Error al actualizar nombre: ' + error.message);
+  }
+};
+
+window.deleteUser = async function(userId, username) {
+  if (!confirm(`¿Estás seguro de eliminar al usuario "${username}"? Esta acción no se puede deshacer.`)) return;
+  
+  try {
+    const response = await fetch(`/crm/auth/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete user');
+    }
+    
+    loadUsers();
+    alert('Usuario eliminado correctamente');
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    alert('Error al eliminar usuario: ' + error.message);
   }
 };
 
