@@ -72,15 +72,17 @@ export class EvolutionAPIv2Service {
      */
     async initInstance(): Promise<void> {
         try {
-            // Protección adicional para instanceName
-            const safeName = this.instanceName || 'mullbot-principal';
+            const safeName = this.getSafeInstanceName();
             logger.info(`🔍 Verificando instancia: ${safeName}`);
 
             // Verificar si la instancia existe
             const instances = await this.fetchInstances();
-            const instanceExists = instances.some(
-                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
-            );
+            
+            // CORREGIDO: Buscar por inst.name
+            const instanceExists = instances.some((inst: any) => {
+                const instanceName = inst?.name || inst?.instanceName || inst?.instance?.instanceName;
+                return instanceName === safeName;
+            });
 
             if (instanceExists) {
                 logger.info(`✅ Instancia '${safeName}' ya existe`);
@@ -135,7 +137,8 @@ export class EvolutionAPIv2Service {
 
             if (existingInstance) {
                 // PASO 2: VALIDATE - Verificar si está "bugeada"
-                const status = existingInstance.instance?.status;
+                // CORREGIDO: Buscar estado en múltiples propiedades posibles
+                const status = (existingInstance as any)?.connectionStatus || (existingInstance as any)?.status || existingInstance.instance?.status || 'unknown';
                 const isBugged = status === 'connecting' || status === 'close';
                 
                 logger.info(`🔎 [ensureInstance] Paso 2: Estado actual: ${status}, Bugeada: ${isBugged}, Force: ${force}`);
@@ -236,12 +239,16 @@ export class EvolutionAPIv2Service {
             logger.info(`🔎 Buscando instancia '${safeName}' en la lista...`);
             
             const instances = await this.fetchInstances();
-            const instance = instances.find(
-                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
-            );
+            
+            // CORREGIDO: Buscar por inst.name en lugar de inst.instance.instanceName
+            const instance = instances.find((inst: any) => {
+                const instanceName = inst?.name || inst?.instanceName || inst?.instance?.instanceName;
+                return instanceName === safeName;
+            });
             
             if (instance) {
-                logger.info(`✅ Instancia '${safeName}' encontrada con estado: ${instance.instance?.status}`);
+                const status = (instance as any)?.connectionStatus || (instance as any)?.status || instance.instance?.status || 'unknown';
+                logger.info(`✅ Instancia '${safeName}' encontrada con estado: ${status}`);
             } else {
                 logger.warn(`⚠️ Instancia '${safeName}' NO encontrada en la lista de ${instances.length} instancias`);
             }
@@ -311,25 +318,18 @@ export class EvolutionAPIv2Service {
             const response = await this.axiosInstance.get<EvolutionInstanceStatus[]>('/instance/fetchInstances');
             logger.info(`✅ Instancias obtenidas: ${response.data?.length || 0} encontradas`);
             
-            // Log RAW para debug - ver estructura real
-            logger.info('📄 Estructura RAW de respuesta:', JSON.stringify(response.data, null, 2));
-            
-            // Log detallado de las instancias con múltiples intentos de acceso
+            // Log detallado de las instancias
             if (response.data && response.data.length > 0) {
                 response.data.forEach((inst: any, index: number) => {
-                    logger.info(`   [${index}] Estructura completa:`, JSON.stringify(inst, null, 2));
+                    // Mostrar TODAS las propiedades del objeto
+                    logger.info(`   [${index}] Propiedades del objeto:`, Object.keys(inst).join(', '));
+                    logger.info(`   [${index}] JSON completo:`, JSON.stringify(inst));
                     
-                    // Intentar diferentes formas de acceder a los datos
-                    const name1 = inst?.instance?.instanceName;
-                    const name2 = inst?.instanceName;
-                    const name3 = inst?.name;
+                    // La estructura real parece ser: { name: "...", ... }
+                    const instanceName = inst?.name || inst?.instanceName || inst?.instance?.instanceName;
+                    const connectionStatus = inst?.connectionStatus || inst?.status || inst?.state || inst?.instance?.status;
                     
-                    const status1 = inst?.instance?.status;
-                    const status2 = inst?.status;
-                    const status3 = inst?.state;
-                    
-                    logger.info(`   [${index}] Posibles nombres: inst.instance.instanceName="${name1}", inst.instanceName="${name2}", inst.name="${name3}"`);
-                    logger.info(`   [${index}] Posibles estados: inst.instance.status="${status1}", inst.status="${status2}", inst.state="${status3}"`);
+                    logger.info(`   [${index}] → Nombre: "${instanceName}", Estado: "${connectionStatus}"`);
                 });
             } else {
                 logger.warn('⚠️ No se encontraron instancias en el servidor');
@@ -493,15 +493,23 @@ export class EvolutionAPIv2Service {
      */
     async isConnected(): Promise<boolean> {
         try {
-            // Protección adicional para instanceName
-            const safeName = this.instanceName || 'mullbot-principal';
+            const safeName = this.getSafeInstanceName();
             
             const instances = await this.fetchInstances();
-            const instance = instances.find(
-                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
-            );
+            
+            // CORREGIDO: Buscar por inst.name
+            const instance = instances.find((inst: any) => {
+                const instanceName = inst?.name || inst?.instanceName || inst?.instance?.instanceName;
+                return instanceName === safeName;
+            });
 
-            return instance?.instance?.status === 'open';
+            if (!instance) {
+                return false;
+            }
+
+            // CORREGIDO: Buscar estado en múltiples propiedades posibles
+            const status = (instance as any)?.connectionStatus || (instance as any)?.status || (instance as any)?.instance?.status;
+            return status === 'open';
         } catch (error: any) {
             logger.error('Error checking connection:', error.response?.data || error.message);
             return false;
@@ -580,13 +588,15 @@ export class EvolutionAPIv2Service {
      */
     async getStatus(): Promise<EvolutionInstanceStatus | null> {
         try {
-            // Protección adicional para instanceName
-            const safeName = this.instanceName || 'mullbot-principal';
+            const safeName = this.getSafeInstanceName();
             
             const instances = await this.fetchInstances();
-            const instance = instances.find(
-                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
-            );
+            
+            // CORREGIDO: Buscar por inst.name
+            const instance = instances.find((inst: any) => {
+                const instanceName = inst?.name || inst?.instanceName || inst?.instance?.instanceName;
+                return instanceName === safeName;
+            });
 
             return instance || null;
         } catch (error: any) {

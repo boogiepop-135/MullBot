@@ -2010,19 +2010,28 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 logger.warn('No se pudo verificar conexión:', err.message);
             }
 
+            // CORREGIDO: Extraer datos con la estructura real de Evolution API
+            const currentInstanceName = currentInstance ? 
+                ((currentInstance as any)?.name || (currentInstance as any)?.instanceName || currentInstance.instance?.instanceName) : 
+                null;
+            const currentInstanceStatus = currentInstance ? 
+                ((currentInstance as any)?.connectionStatus || (currentInstance as any)?.status || currentInstance.instance?.status || 'unknown') : 
+                'not_found';
+
             res.json({
                 success: true,
                 current: {
                     exists: !!currentInstance,
-                    status: currentInstance?.instance?.status || 'not_found',
-                    instanceName: currentInstance?.instance?.instanceName || null,
+                    status: currentInstanceStatus,
+                    instanceName: currentInstanceName,
                     connected: isConnected,
                     data: currentInstance
                 },
                 allInstances: allInstances.map((inst: any) => ({
-                    instanceName: inst?.instance?.instanceName,
-                    status: inst?.instance?.status,
-                    owner: inst?.instance?.owner
+                    // CORREGIDO: Usar inst.name en lugar de inst.instance.instanceName
+                    instanceName: inst?.name || inst?.instanceName || inst?.instance?.instanceName,
+                    status: inst?.connectionStatus || inst?.status || inst?.state || inst?.instance?.status || 'unknown',
+                    owner: inst?.owner || inst?.instance?.owner
                 })),
                 warning: fetchError ? 'Hubo problemas al obtener la lista completa de instancias' : null
             });
