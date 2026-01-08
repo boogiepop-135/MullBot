@@ -674,7 +674,7 @@ export class EvolutionAPIv2Service {
         phoneNumber: string,
         filePath: string,
         caption?: string,
-        mediaType: 'image' | 'video' | 'audio' | 'document' = 'video'
+        mediaType: 'image' | 'video' | 'audio' | 'document' = 'image'
     ): Promise<EvolutionSendMessageResponse> {
         try {
             const fs = require('fs');
@@ -697,13 +697,12 @@ export class EvolutionAPIv2Service {
             // Convertir a base64
             const fileBuffer = fs.readFileSync(filePath);
             const base64Data = fileBuffer.toString('base64');
-            const mimeType = this.getMimeType(filePath, mediaType);
             
-            // Evolution API v2 acepta base64 en el campo "media"
+            // Evolution API v2 requiere SOLO el base64, sin el prefijo data:
             const payload: any = {
                 number: normalizedPhone,
                 mediatype: mediaType,
-                media: `data:${mimeType};base64,${base64Data}`,
+                media: base64Data,  // Solo base64, sin prefijo
                 fileName: fileName
             };
             
@@ -711,7 +710,7 @@ export class EvolutionAPIv2Service {
                 payload.caption = caption;
             }
 
-            logger.debug(`📦 Payload preparado: ${fileName} (${Math.round(base64Data.length / 1024)}KB base64)`);
+            logger.debug(`📦 Payload preparado: ${fileName} (${Math.round(base64Data.length / 1024)}KB base64, tipo: ${mediaType})`);
 
             // Enviar usando el endpoint correcto con axiosInstance configurado
             const response = await this.axiosInstance.post<EvolutionSendMessageResponse>(
