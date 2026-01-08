@@ -6,25 +6,25 @@
  * o errores de servicio (503).
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import logger from "../configs/logger.config";
 import EnvConfig from "../configs/env.config";
 import { AICacheService } from "./ai-cache.service";
 
-// Tipos de modelos soportados
-export type AIModelType = 
-    | "gemini-2.0-flash-exp"
-    | "gemini-1.5-flash"
-    | "gemini-1.5-pro"
-    | "gemini-pro";
+// Modelos soportados (string libre para permitir upgrades sin deploy)
+export type AIModelType = string;
 
 // Estado de un modelo
 export type ModelStatus = "available" | "exhausted" | "error";
 
+type ModelId = string; // `${modelName}#k${index}`
+
 // Configuración de un modelo
 interface ModelConfig {
-    name: AIModelType;
+    id: ModelId;
+    name: AIModelType; // nombre real del modelo (ej: gemini-2.5-flash)
     apiKey: string;
+    keyLabel: string; // ej: GEMINI_API_KEY / GEMINI_API_KEY_2
     priority: number; // Menor número = mayor prioridad
     status: ModelStatus;
     lastError?: string;
@@ -46,7 +46,9 @@ export interface AIGenerationResult {
 // Estado del sistema de IA
 export interface AISystemStatus {
     models: Array<{
+        id: string;
         name: AIModelType;
+        keyLabel: string;
         status: ModelStatus;
         priority: number;
         requestCount: number;
@@ -62,7 +64,7 @@ export interface AISystemStatus {
 
 export class AIModelManager {
     private static instance: AIModelManager;
-    private models: Map<AIModelType, ModelConfig>;
+    private models: Map<ModelId, ModelConfig>;
     private currentModelIndex: number = 0;
     private totalRequests: number = 0;
     private totalErrors: number = 0;
@@ -90,47 +92,41 @@ export class AIModelManager {
      * Inicializar modelos desde variables de entorno
      */
     private initializeModels(): void {
-        // Modelo principal: Gemini 2.0 Flash
-        if (EnvConfig.GEMINI_API_KEY) {
-            this.addModel({
-                name: "gemini-2.0-flash-exp",
-                apiKey: EnvConfig.GEMINI_API_KEY,
-                priority: 1,
-                status: "available",
-                requestCount: 0,
-                errorCount: 0,
-                totalResponseTime: 0,
-                averageResponseTime: 0
-            });
+        // Claves disponibles (rotación)
+        const keys: Array<{ label: string; value?: string; index: number }> = [
+            { label: "GEMINI_API_KEY", value: EnvConfig.GEMINI_API_KEY, index: 1 },
+            { label: "GEMINI_API_KEY_2", value: EnvConfig.GEMINI_API_KEY_2, index: 2 },
+            { label: "GEMINI_API_KEY_3", value: EnvConfig.GEMINI_API_KEY_3, index: 3 }
+        ].filter(k => !!k.value) as any;
+
+        // Modelos preferidos (orden de fallback). Ajustable sin romper si Google agrega nuevos.
+        const preferredModels: AIModelType[] = [
+            // Nuevos (los que estás viendo en consola)
+            "gemini-2.5-flash",
+            "gemini-3-flash",
+            "gemini-2.5-flash-lite",
+            // Fallbacks clásicos
+            "gemini-1.5-flash",
+            "gemini-1.5-pro"
+        ];
+
+        let priority = 1;
+        for (const k of keys) {
+            for (const modelName of preferredModels) {
+                this.addModel({
+                    id: `${modelName}#k${k.index}`,
+                    name: modelName,
+                    apiKey: k.value!,
+                    keyLabel: k.label,
+                    priority: priority++,
+                    status: "available",
+                    requestCount: 0,
+                    errorCount: 0,
+                    totalResponseTime: 0,
+                    averageResponseTime: 0
+                });
+            }
         }
-
-        // Modelos de respaldo - usando la misma clave pero diferentes versiones
-        if (EnvConfig.GEMINI_API_KEY) {
-            this.addModel({
-                name: "gemini-1.5-flash",
-                apiKey: EnvConfig.GEMINI_API_KEY,
-                priority: 2,
-                status: "available",
-                requestCount: 0,
-                errorCount: 0,
-                totalResponseTime: 0,
-                averageResponseTime: 0
-            });
-
-            this.addModel({
-                name: "gemini-1.5-pro",
-                apiKey: EnvConfig.GEMINI_API_KEY,
-                priority: 3,
-                status: "available",
-                requestCount: 0,
-                errorCount: 0,
-                totalResponseTime: 0,
-                averageResponseTime: 0
-            });
-        }
-
-        // Si hay claves adicionales en el futuro, se pueden agregar aquí
-        // Ejemplo: GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc.
         
         const modelCount = this.models.size;
         if (modelCount === 0) {
@@ -144,8 +140,8 @@ export class AIModelManager {
      * Agregar un modelo al pool
      */
     private addModel(config: ModelConfig): void {
-        this.models.set(config.name, config);
-        logger.info(`➕ Modelo agregado: ${config.name} (prioridad: ${config.priority})`);
+        this.models.set(config.id, config);
+        logger.info(`➕ Modelo agregado: ${config.name} (${config.keyLabel}) (prioridad: ${config.priority})`);
     }
 
     /**
@@ -181,28 +177,28 @@ export class AIModelManager {
     /**
      * Marcar modelo como agotado
      */
-    private markModelAsExhausted(modelName: AIModelType, error: string): void {
-        const model = this.models.get(modelName);
+    private markModelAsExhausted(modelId: ModelId, error: string): void {
+        const model = this.models.get(modelId);
         if (model) {
             model.status = "exhausted";
             model.lastError = error;
             model.lastErrorTime = new Date();
             model.errorCount++;
-            logger.warn(`⚠️ Modelo ${modelName} marcado como agotado: ${error}`);
+            logger.warn(`⚠️ Modelo ${model.name} (${model.keyLabel}) marcado como agotado: ${error}`);
         }
     }
 
     /**
      * Marcar modelo como con error
      */
-    private markModelAsError(modelName: AIModelType, error: string): void {
-        const model = this.models.get(modelName);
+    private markModelAsError(modelId: ModelId, error: string): void {
+        const model = this.models.get(modelId);
         if (model) {
             model.status = "error";
             model.lastError = error;
             model.lastErrorTime = new Date();
             model.errorCount++;
-            logger.error(`❌ Modelo ${modelName} con error: ${error}`);
+            logger.error(`❌ Modelo ${model.name} (${model.keyLabel}) con error: ${error}`);
         }
     }
 
@@ -278,8 +274,8 @@ export class AIModelManager {
                 );
             }
 
-            attemptedModels.push(modelConfig.name);
-            logger.info(`🤖 Intentando generar con modelo: ${modelConfig.name} (intento ${attempt + 1}/${this.MAX_RETRIES})`);
+            attemptedModels.push(`${modelConfig.name} (${modelConfig.keyLabel})`);
+            logger.info(`🤖 Intentando generar con modelo: ${modelConfig.name} (${modelConfig.keyLabel}) (intento ${attempt + 1}/${this.MAX_RETRIES})`);
 
             try {
                 // Incrementar contador de requests
@@ -328,12 +324,12 @@ export class AIModelManager {
 
                 // Verificar si es un error retriable
                 if (this.isRetryableError(error)) {
-                    this.markModelAsExhausted(modelConfig.name, error.message);
+                    this.markModelAsExhausted(modelConfig.id, error.message);
                     // Continuar con siguiente modelo
                     continue;
                 } else {
                     // Error no retriable (ej: contenido bloqueado)
-                    this.markModelAsError(modelConfig.name, error.message);
+                    this.markModelAsError(modelConfig.id, error.message);
                     throw error;
                 }
             }
@@ -352,7 +348,9 @@ export class AIModelManager {
      */
     public getSystemStatus(): AISystemStatus {
         const models = Array.from(this.models.values()).map(model => ({
+            id: model.id,
             name: model.name,
+            keyLabel: model.keyLabel,
             status: model.status,
             priority: model.priority,
             requestCount: model.requestCount,
@@ -376,8 +374,8 @@ export class AIModelManager {
     /**
      * Resetear estadísticas de un modelo
      */
-    public resetModelStats(modelName: AIModelType): boolean {
-        const model = this.models.get(modelName);
+    public resetModelStats(modelId: AIModelType): boolean {
+        const model = this.models.get(modelId as any);
         if (model) {
             model.status = "available";
             model.requestCount = 0;
@@ -386,10 +384,33 @@ export class AIModelManager {
             model.lastErrorTime = undefined;
             model.totalResponseTime = 0;
             model.averageResponseTime = 0;
-            logger.info(`🔄 Estadísticas del modelo ${modelName} reseteadas`);
+            logger.info(`🔄 Estadísticas del modelo ${model.name} (${model.keyLabel}) reseteadas`);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Resetear todas las variantes (todas las keys) de un mismo nombre de modelo
+     */
+    public resetModelStatsByName(modelName: string): number {
+        let count = 0;
+        this.models.forEach(model => {
+            if (model.name === modelName) {
+                model.status = "available";
+                model.requestCount = 0;
+                model.errorCount = 0;
+                model.lastError = undefined;
+                model.lastErrorTime = undefined;
+                model.totalResponseTime = 0;
+                model.averageResponseTime = 0;
+                count++;
+            }
+        });
+        if (count > 0) {
+            logger.info(`🔄 Estadísticas reseteadas para ${modelName} en ${count} variante(s)`);
+        }
+        return count;
     }
 
     /**
@@ -408,6 +429,25 @@ export class AIModelManager {
         this.totalRequests = 0;
         this.totalErrors = 0;
         logger.info("🔄 Todas las estadísticas reseteadas");
+    }
+
+    /**
+     * Cambiar prioridad de las API keys (sin reiniciar)
+     * Ej: setActiveKey(2) prioriza GEMINI_API_KEY_2 primero.
+     */
+    public setActiveKey(keyIndex: number): void {
+        const keyOrder = [keyIndex, 1, 2, 3].filter((v, i, a) => a.indexOf(v) === i);
+        const models = Array.from(this.models.values());
+
+        // Recalcular prioridades agrupando por keyIndex
+        let priority = 1;
+        for (const k of keyOrder) {
+            for (const m of models.filter(x => x.id.endsWith(`#k${k}`))) {
+                m.priority = priority++;
+            }
+        }
+
+        logger.info(`🔁 AIModelManager: clave activa priorizada = k${keyIndex} (orden: ${keyOrder.join(",")})`);
     }
 }
 

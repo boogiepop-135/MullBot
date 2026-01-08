@@ -3,6 +3,7 @@ import logger from "../configs/logger.config";
 import { BotManager } from "../bot.manager";
 import crmRouter from "../crm/api/crm.api";
 import webhookRouter from "./webhook.api";
+import { authenticate, authorizeAdmin } from "../crm/middlewares/auth.middleware";
 
 const router = express.Router();
 
@@ -343,32 +344,58 @@ export default function (botManager: BotManager) {
         }
     });
 
+    // Cambiar clave activa (prioridad) de Gemini sin reiniciar
+    router.post("/ai-set-active-key", authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { keyIndex } = req.body;
+            const idx = Number(keyIndex);
+            if (![1, 2, 3].includes(idx)) {
+                return res.status(400).json({ success: false, error: "keyIndex debe ser 1, 2 o 3" });
+            }
+
+            const { AIModelManager } = require("../services/ai-model-manager.service");
+            const aiManager = AIModelManager.getInstance();
+            aiManager.setActiveKey(idx);
+
+            res.status(200).json({ success: true, message: `Clave prioritaria establecida a GEMINI_API_KEY_${idx === 1 ? '' : idx}` });
+        } catch (error: any) {
+            logger.error("Failed to set active AI key:", error);
+            res.status(500).json({ success: false, error: "Failed to set active key", message: error.message });
+        }
+    });
+
     // Endpoint para resetear estadísticas de un modelo específico
     router.post("/ai-reset-model", (req, res) => {
         try {
-            const { modelName } = req.body;
+            const { modelName, modelId } = req.body;
             
-            if (!modelName) {
+            if (!modelName && !modelId) {
                 return res.status(400).json({
                     success: false,
-                    error: "Se requiere el nombre del modelo"
+                    error: "Se requiere modelId o modelName"
                 });
             }
 
             const { AIModelManager } = require("../services/ai-model-manager.service");
             const aiManager = AIModelManager.getInstance();
-            const result = aiManager.resetModelStats(modelName);
+            let result = false;
+            if (modelId) {
+                result = aiManager.resetModelStats(modelId);
+            } else if (modelName) {
+                const count = aiManager.resetModelStatsByName(modelName);
+                result = count > 0;
+            }
             
             if (result) {
-                logger.info(`POST /ai-reset-model - Model ${modelName} stats reset`);
+                logger.info(`POST /ai-reset-model - Model ${modelId || modelName} stats reset`);
                 res.status(200).json({ 
                     success: true,
-                    message: `Estadísticas de ${modelName} reseteadas` 
+                    message: `Estadísticas de ${modelId || modelName} reseteadas` 
                 });
             } else {
                 res.status(404).json({
                     success: false,
-                    error: `Modelo ${modelName} no encontrado`
+                    error: `Modelo ${modelId || modelName} no encontrado`
                 });
             }
         } catch (error) {

@@ -1531,6 +1531,7 @@
             <thead>
               <tr>
                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Modelo</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">API Key</th>
                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Estado</th>
                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Prioridad</th>
                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Requests</th>
@@ -1591,6 +1592,19 @@
           </h3>
         </div>
         <div class="p-6">
+          <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm font-bold text-gray-800"><i class="fas fa-key mr-2 text-blue-600"></i>Priorizar API Key de Gemini</p>
+                <p class="text-xs text-gray-600 mt-1">Si ves modelos “agotados”, cambia la clave prioritaria para repartir cuotas.</p>
+              </div>
+              <div class="flex gap-2 flex-wrap justify-end">
+                <button onclick="setActiveAIKey(1)" class="btn-secondary px-4 py-2 text-sm"><i class="fas fa-1 mr-1"></i>Key 1</button>
+                <button onclick="setActiveAIKey(2)" class="btn-secondary px-4 py-2 text-sm"><i class="fas fa-2 mr-1"></i>Key 2</button>
+                <button onclick="setActiveAIKey(3)" class="btn-secondary px-4 py-2 text-sm"><i class="fas fa-3 mr-1"></i>Key 3</button>
+              </div>
+            </div>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <button onclick="resetAllAIStats()" class="btn-secondary py-4">
               <i class="fas fa-redo-alt mr-2"></i>

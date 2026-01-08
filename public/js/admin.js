@@ -2625,6 +2625,7 @@ function updateAIModelsTable(data) {
     const statusBadge = getModelStatusBadge(model.status);
     const isActive = model.name === data.activeModel;
     const avgTime = model.averageResponseTime || 0;
+    const keyLabel = model.keyLabel || 'GEMINI_API_KEY';
 
     return `
       <tr class="${isActive ? 'bg-green-50' : ''}">
@@ -2633,6 +2634,9 @@ function updateAIModelsTable(data) {
             ${isActive ? '<i class="fas fa-star text-yellow-500 mr-2"></i>' : ''}
             <span class="font-medium text-gray-800">${model.name}</span>
           </div>
+        </td>
+        <td class="px-6 py-4">
+          <span class="text-xs font-mono bg-gray-100 border border-gray-200 rounded px-2 py-1">${keyLabel}</span>
         </td>
         <td class="px-6 py-4">${statusBadge}</td>
         <td class="px-6 py-4">
@@ -2663,7 +2667,7 @@ function updateAIModelsTable(data) {
           ` : '<span class="text-xs text-gray-400">Sin errores</span>'}
         </td>
         <td class="px-6 py-4">
-          <button onclick="resetModelStats('${model.name}')" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+          <button onclick="resetModelStats('${model.id || model.name}')" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
             <i class="fas fa-redo-alt mr-1"></i>Resetear
           </button>
         </td>
@@ -2671,6 +2675,34 @@ function updateAIModelsTable(data) {
     `;
   }).join('');
 }
+
+// Cambiar clave activa de IA (prioridad) - usa /api/ai-set-active-key
+window.setActiveAIKey = async function(keyIndex) {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const response = await fetch('/api/ai-set-active-key', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ keyIndex })
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || result.message || 'No se pudo cambiar la key activa');
+    }
+
+    alert(`✅ ${result.message}`);
+    await loadAIStatus();
+  } catch (e) {
+    console.error('Error setActiveAIKey:', e);
+    alert(`❌ Error: ${e.message || e}`);
+  }
+};
 
 /**
  * Obtener badge de estado del modelo
@@ -2887,8 +2919,8 @@ window.resetAllAIStats = async function() {
 /**
  * Resetear estadísticas de un modelo específico
  */
-window.resetModelStats = async function(modelName) {
-  if (!confirm(`¿Resetear estadísticas de ${modelName}?`)) {
+window.resetModelStats = async function(modelIdOrName) {
+  if (!confirm(`¿Resetear estadísticas de ${modelIdOrName}?`)) {
     return;
   }
 
@@ -2900,14 +2932,15 @@ window.resetModelStats = async function(modelName) {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ modelName })
+      // Compatibilidad: enviamos modelId y modelName
+      body: JSON.stringify({ modelId: modelIdOrName, modelName: modelIdOrName })
     });
 
     if (!response.ok) {
       throw new Error('Error al resetear modelo');
     }
 
-    alert(`✅ Estadísticas de ${modelName} reseteadas`);
+    alert(`✅ Estadísticas de ${modelIdOrName} reseteadas`);
     await loadAIStatus();
 
   } catch (error) {

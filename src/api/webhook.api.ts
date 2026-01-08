@@ -19,6 +19,11 @@ import {
 const router = express.Router();
 
 export default function (botManager: BotManager) {
+    // Healthcheck simple para validar que Evolution puede alcanzar el endpoint
+    router.get("/evolution", (_req, res) => {
+        return res.status(200).json({ ok: true, message: "Evolution webhook endpoint is up" });
+    });
+
     /**
      * Webhook principal de Evolution API
      * POST /webhook/evolution
@@ -30,32 +35,61 @@ export default function (botManager: BotManager) {
      */
     router.post("/evolution", async (req, res) => {
         try {
-            const webhookData: EvolutionWebhookMessage = req.body;
+            const rawBody: any = req.body || {};
+
+            // Normalizar posibles formatos de Evolution API v2 (varía según versión/config)
+            const event: string | undefined =
+                rawBody.event ||
+                rawBody.type ||
+                rawBody.action ||
+                rawBody.eventName;
+
+            const instanceFromBody: string | undefined =
+                rawBody.instance ||
+                rawBody.instanceName ||
+                rawBody.name ||
+                rawBody?.data?.instance ||
+                rawBody?.data?.instanceName ||
+                rawBody?.data?.name;
+
+            // Log mínimo (sin spamear demasiado)
+            logger.info(`📥 Webhook Evolution recibido: event=${event || "unknown"} instance=${instanceFromBody || "unknown"}`);
+            logger.debug(`📥 Webhook headers: ${JSON.stringify(req.headers)}`);
+
+            const webhookData: EvolutionWebhookMessage = {
+                event: (event as any) || 'messages.upsert',
+                instance: instanceFromBody || (rawBody.instance as any) || '',
+                data: rawBody.data
+            };
 
             // Validar que el evento sea de nuestra instancia
-            if (webhookData.instance !== EnvConfig.EVOLUTION_INSTANCE_NAME) {
-                logger.warn(`⚠️ Webhook recibido de instancia diferente: ${webhookData.instance} (esperado: ${EnvConfig.EVOLUTION_INSTANCE_NAME})`);
-                return res.status(200).json({ received: true }); // Responder 200 para evitar reintentos
+            const expectedInstance = EnvConfig.EVOLUTION_INSTANCE_NAME;
+            if (expectedInstance && instanceFromBody && instanceFromBody !== expectedInstance) {
+                // En algunos setups Evolution manda "name" o "instance" distinto; no bloqueamos, solo avisamos.
+                logger.warn(`⚠️ Webhook de instancia diferente: ${instanceFromBody} (esperado: ${expectedInstance}). Procesando igualmente por compatibilidad.`);
             }
-
-            logger.info(`📥 Webhook recibido: ${webhookData.event}`);
 
             // Procesar según el tipo de evento
             switch (webhookData.event) {
                 case 'messages.upsert':
                     // Mensaje entrante
-                    const messageData = webhookData.data as EvolutionMessageData;
-                    if (messageData && !messageData.key.fromMe) {
+                    // Algunos webhooks mandan { data: {...} } o arrays; soportar ambos
+                    const maybeMessage = (webhookData as any)?.data?.data || webhookData.data;
+                    const messageData = Array.isArray(maybeMessage) ? maybeMessage[0] : maybeMessage;
+
+                    if (messageData?.key && messageData?.key?.fromMe !== true) {
                         // Procesar mensaje en background (no bloquear respuesta)
                         botManager.handleIncomingMessage(messageData).catch(error => {
                             logger.error('Error procesando mensaje desde webhook:', error);
                         });
+                    } else {
+                        logger.debug('Webhook messages.upsert ignorado (fromMe=true o payload inválido)');
                     }
                     break;
 
                 case 'connection.update':
                     // Actualización de conexión
-                    const connectionData = webhookData.data as EvolutionConnectionData;
+                    const connectionData = ((webhookData as any)?.data?.data || webhookData.data) as EvolutionConnectionData;
                     const sessionManager = botManager.getSessionManager();
                     
                     if (connectionData.state === 'open') {
@@ -76,7 +110,7 @@ export default function (botManager: BotManager) {
 
                 case 'qrcode.updated':
                     // QR actualizado
-                    const qrData = webhookData.data as EvolutionQRData;
+                    const qrData = ((webhookData as any)?.data?.data || webhookData.data) as EvolutionQRData;
                     if (qrData.qrcode?.base64) {
                         const sessionManager = botManager.getSessionManager();
                         // Actualizar QR en Session Manager
@@ -90,7 +124,7 @@ export default function (botManager: BotManager) {
                     break;
 
                 default:
-                    logger.debug(`Evento no manejado: ${webhookData.event}`);
+                    logger.debug(`Evento no manejado: ${String(webhookData.event)} - body=${JSON.stringify(rawBody).slice(0, 2000)}`);
             }
 
             // Responder rápidamente a Evolution API
