@@ -84,7 +84,9 @@ const botManager = BotManager.getInstance();
 // Conectar a PostgreSQL primero, luego inicializar el bot
 connectDB().then(async () => {
     // Configurar rutas PRIMERO (para que el webhook esté disponible)
-    app.use("/", apiRoutes(botManager));
+    const routes = apiRoutes(botManager);
+    app.use("/", routes);
+    app.use("/api", routes); // Montar también en /api para los nuevos endpoints
     
     // Iniciar servidor Express
     app.listen(port, async () => {

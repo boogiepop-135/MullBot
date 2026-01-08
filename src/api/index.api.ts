@@ -246,6 +246,9 @@ export default function (botManager: BotManager) {
 
     // Endpoint para obtener Pairing Code
     router.post("/pairing-code", async (req, res) => {
+        // Asegurar que SIEMPRE devuelva JSON
+        res.setHeader('Content-Type', 'application/json');
+        
         try {
             const { phoneNumber } = req.body;
 
@@ -259,6 +262,16 @@ export default function (botManager: BotManager) {
             logger.info(`POST /pairing-code - Requesting pairing code for: ${phoneNumber}`);
 
             const evolutionAPI = botManager.getEvolutionAPI();
+            
+            // Verificar que Evolution API esté disponible
+            if (!evolutionAPI) {
+                logger.error("Evolution API no está inicializada");
+                return res.status(503).json({
+                    success: false,
+                    error: "El servicio de WhatsApp no está disponible. Intenta más tarde."
+                });
+            }
+
             const result = await evolutionAPI.connectWithPairingCode(phoneNumber);
 
             if (result.success && result.code) {
@@ -273,12 +286,19 @@ export default function (botManager: BotManager) {
                     error: result.error || "No se pudo generar el código"
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             logger.error("Failed to get pairing code:", error);
+            
+            // Extraer mensaje de error más detallado
+            const errorMessage = error.response?.data?.message || 
+                                error.message || 
+                                "Error desconocido al generar el código";
+            
             return res.status(500).json({
                 success: false,
                 error: "Error al generar código de vinculación",
-                message: error instanceof Error ? error.message : "Unknown error"
+                message: errorMessage,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
         }
     });
