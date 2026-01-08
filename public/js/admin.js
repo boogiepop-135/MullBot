@@ -685,7 +685,7 @@ async function createCampaign() {
   const form = document.getElementById('campaign-form');
   const formData = new FormData(form);
   const selectedContacts = Array.from(document.querySelectorAll('#selected-contacts [data-phone]')).map(el => el.dataset.phone);
-  
+
   // Obtener filtro de estados si existe
   const statusFilter = Array.from(document.getElementById('campaign-status-filter').selectedOptions).map(opt => opt.value);
 
@@ -695,7 +695,7 @@ async function createCampaign() {
   }
 
   const isBatch = document.getElementById('is-batch-campaign').checked;
-  
+
   const data = {
     name: formData.get('name'),
     message: formData.get('message'),
@@ -718,7 +718,7 @@ async function createCampaign() {
     });
 
     if (!response.ok) throw new Error('Failed to create campaign');
-    
+
     const result = await response.json();
     
     let message = '✅ Campaña creada exitosamente\n\n';
@@ -738,6 +738,260 @@ async function createCampaign() {
     alert('Error al crear campaña: ' + error.message);
   }
 }
+
+// --- Automation Tab Management ---
+
+window.showAutomationTab = function(tabName) {
+  // Hide all panels
+  document.querySelectorAll('.automation-panel').forEach(panel => panel.classList.add('hidden'));
+  // Remove active state from all tabs
+  document.querySelectorAll('.automation-tab').forEach(tab => {
+    tab.classList.remove('text-black', 'border-black', 'font-semibold');
+    tab.classList.add('text-gray-500', 'hover:text-gray-700', 'font-medium');
+    tab.style.borderColor = 'transparent';
+  });
+  
+  // Show selected panel
+  const panel = document.getElementById(`automation-${tabName}`);
+  if (panel) panel.classList.remove('hidden');
+  
+  // Activate selected tab
+  const tab = document.getElementById(`auto-tab-${tabName.replace('custom-', '').replace('-list', '')}`);
+  if (tab) {
+    tab.classList.add('text-black', 'border-black', 'font-semibold');
+    tab.classList.remove('text-gray-500', 'hover:text-gray-700', 'font-medium');
+    tab.style.borderBottomWidth = '2px';
+    tab.style.borderColor = '#000';
+  }
+  
+  // Load data when opening tabs
+  if (tabName === 'custom-states') loadCustomStatuses();
+  if (tabName === 'automations-list') loadAutomations();
+};
+
+// --- Custom States Functions ---
+
+async function loadCustomStatuses() {
+  try {
+    const response = await fetch('/crm/custom-statuses', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to load custom statuses');
+    const data = await response.json();
+    renderCustomStatuses(data.statuses);
+  } catch (error) {
+    console.error('Error loading custom statuses:', error);
+    const tbody = document.getElementById('custom-statuses-table-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-red-500 text-center">Error al cargar estados</td></tr>';
+  }
+}
+
+function renderCustomStatuses(statuses) {
+  const tbody = document.getElementById('custom-statuses-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  if (!statuses || statuses.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-gray-500 text-center">No hay estados personalizados</td></tr>';
+    return;
+  }
+  
+  statuses.forEach(status => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${status.name}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${status.value}</td>
+      <td class="px-6 py-4 whitespace-nowrap">
+        <span class="inline-block w-8 h-8 rounded-full border-2 border-gray-200" style="background-color: ${status.color}"></span>
+      </td>
+      <td class="px-6 py-4 text-sm text-gray-500">${status.description || '-'}</td>
+      <td class="px-6 py-4 whitespace-nowrap">
+        <span class="px-2 py-1 text-xs font-semibold rounded-full ${status.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+          ${status.isActive ? 'Activo' : 'Inactivo'}
+        </span>
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+        <button onclick="editCustomStatus('${status.id}')" class="text-blue-600 hover:text-blue-900" title="Editar">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button onclick="deleteCustomStatus('${status.id}')" class="text-red-600 hover:text-red-900" title="Eliminar">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.openCreateStatusModal = function() {
+  const modal = prompt('Crear nuevo estado personalizado\n\nFormato: nombre|valor|color|descripción\nEjemplo: VIP|vip|#FFD700|Clientes VIP');
+  if (!modal) return;
+  
+  const parts = modal.split('|');
+  if (parts.length < 2) {
+    alert('Formato inválido. Usa: nombre|valor|color|descripción');
+    return;
+  }
+  
+  createCustomStatus({
+    name: parts[0].trim(),
+    value: parts[1].trim(),
+    color: parts[2]?.trim() || '#3B82F6',
+    description: parts[3]?.trim() || ''
+  });
+};
+
+async function createCustomStatus(data) {
+  try {
+    const response = await fetch('/crm/custom-statuses', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) throw new Error('Failed to create custom status');
+    
+    alert('Estado personalizado creado exitosamente');
+    loadCustomStatuses();
+  } catch (error) {
+    console.error('Error creating custom status:', error);
+    alert('Error al crear estado personalizado: ' + error.message);
+  }
+}
+
+window.deleteCustomStatus = async function(id) {
+  if (!confirm('¿Estás seguro de eliminar este estado personalizado?')) return;
+  
+  try {
+    const response = await fetch(`/crm/custom-statuses/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete custom status');
+    
+    alert('Estado eliminado correctamente');
+    loadCustomStatuses();
+  } catch (error) {
+    console.error('Error deleting custom status:', error);
+    alert('Error al eliminar estado: ' + error.message);
+  }
+};
+
+// --- Automations Functions ---
+
+async function loadAutomations() {
+  try {
+    const response = await fetch('/crm/automations', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to load automations');
+    const data = await response.json();
+    renderAutomations(data.automations);
+  } catch (error) {
+    console.error('Error loading automations:', error);
+    const container = document.getElementById('automations-container');
+    if (container) container.innerHTML = '<div class="text-red-500 text-center py-8">Error al cargar automatizaciones</div>';
+  }
+}
+
+function renderAutomations(automations) {
+  const container = document.getElementById('automations-container');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (!automations || automations.length === 0) {
+    container.innerHTML = '<div class="text-gray-500 text-center py-8">No hay automatizaciones configuradas</div>';
+    return;
+  }
+  
+  automations.forEach(auto => {
+    const div = document.createElement('div');
+    div.className = 'content-card p-6';
+    
+    const triggerName = {
+      'STATUS_CHANGE': 'Cambio de Estado',
+      'MESSAGE_RECEIVED': 'Mensaje Recibido',
+      'TIME_BASED': 'Basado en Tiempo',
+      'TAG_ADDED': 'Etiqueta Añadida'
+    }[auto.triggerType] || auto.triggerType;
+    
+    div.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="text-lg font-bold text-gray-800">${auto.name}</h3>
+          <p class="text-sm text-gray-600 mt-1">${auto.description || 'Sin descripción'}</p>
+          <div class="flex items-center gap-4 mt-3">
+            <span class="px-3 py-1 text-xs font-semibold rounded-full ${auto.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+              ${auto.isActive ? 'Activa' : 'Inactiva'}
+            </span>
+            <span class="text-sm text-gray-500">
+              <i class="fas fa-bolt mr-1"></i>Disparador: ${triggerName}
+            </span>
+            <span class="text-sm text-gray-500">
+              <i class="fas fa-fire mr-1"></i>Ejecutada ${auto.triggerCount || 0} veces
+            </span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="toggleAutomation('${auto.id}', ${!auto.isActive})" class="text-${auto.isActive ? 'yellow' : 'green'}-600 hover:text-${auto.isActive ? 'yellow' : 'green'}-900" title="${auto.isActive ? 'Desactivar' : 'Activar'}">
+            <i class="fas fa-${auto.isActive ? 'pause' : 'play'}-circle text-2xl"></i>
+          </button>
+          <button onclick="deleteAutomation('${auto.id}')" class="text-red-600 hover:text-red-900" title="Eliminar">
+            <i class="fas fa-trash-alt text-xl"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+window.openCreateAutomationModal = function() {
+  alert('📝 Crear Automatización\n\nPor razones de simplicidad, esta funcionalidad está disponible solo via API.\n\nEjemplo:\nPOST /crm/automations\n{\n  "name": "Bienvenida a VIP",\n  "triggerType": "STATUS_CHANGE",\n  "triggerConditions": {"toStatus": "VIP"},\n  "actions": [{"type": "SEND_MESSAGE", "value": "¡Bienvenido al club VIP!"}]\n}');
+};
+
+window.toggleAutomation = async function(id, isActive) {
+  try {
+    const response = await fetch(`/crm/automations/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ isActive })
+    });
+    
+    if (!response.ok) throw new Error('Failed to toggle automation');
+    
+    loadAutomations();
+  } catch (error) {
+    console.error('Error toggling automation:', error);
+    alert('Error al cambiar estado de automatización');
+  }
+};
+
+window.deleteAutomation = async function(id) {
+  if (!confirm('¿Estás seguro de eliminar esta automatización?')) return;
+  
+  try {
+    const response = await fetch(`/crm/automations/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to delete automation');
+    
+    alert('Automatización eliminada correctamente');
+    loadAutomations();
+  } catch (error) {
+    console.error('Error deleting automation:', error);
+    alert('Error al eliminar automatización: ' + error.message);
+  }
+};
 
 // --- Contact Import/Export Functions ---
 
