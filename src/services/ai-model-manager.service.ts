@@ -75,6 +75,19 @@ export class AIModelManager {
     // Máximo número de reintentos
     private readonly MAX_RETRIES = 3;
 
+    /**
+     * Algunos modelos aparecen en la consola de Google AI Studio pero NO están disponibles
+     * para `generateContent` en la API/v1beta usada por el SDK.
+     * En esos casos debemos "saltar" el modelo y continuar con el siguiente.
+     */
+    private isUnsupportedModelError(error: any): boolean {
+        const msg = (error?.message || String(error || '')).toLowerCase();
+        return (
+            msg.includes('404') &&
+            (msg.includes('not found') || msg.includes('not supported') || msg.includes('supported methods'))
+        );
+    }
+
     private constructor() {
         this.models = new Map();
         this.initializeModels();
@@ -101,13 +114,13 @@ export class AIModelManager {
 
         // Modelos preferidos (orden de fallback). Ajustable sin romper si Google agrega nuevos.
         const preferredModels: AIModelType[] = [
-            // Nuevos (los que estás viendo en consola)
+            // Preferidos actuales para generateContent (v1beta)
             "gemini-2.5-flash",
-            "gemini-3-flash",
             "gemini-2.5-flash-lite",
             // Fallbacks clásicos
             "gemini-1.5-flash",
             "gemini-1.5-pro"
+            // Nota: modelos como "gemini-3-flash" pueden aparecer en consola pero dar 404/unsupported en v1beta.
         ];
 
         let priority = 1;
@@ -327,7 +340,15 @@ export class AIModelManager {
                     this.markModelAsExhausted(modelConfig.id, error.message);
                     // Continuar con siguiente modelo
                     continue;
-                } else {
+                }
+
+                // Modelo no soportado/no encontrado: marcar como error y continuar con fallback
+                if (this.isUnsupportedModelError(error)) {
+                    this.markModelAsError(modelConfig.id, error.message);
+                    continue;
+                }
+
+                else {
                     // Error no retriable (ej: contenido bloqueado)
                     this.markModelAsError(modelConfig.id, error.message);
                     throw error;
