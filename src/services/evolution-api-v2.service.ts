@@ -22,13 +22,27 @@ export class EvolutionAPIv2Service {
     private axiosInstance: AxiosInstance;
 
     constructor() {
-        this.apiUrl = EnvConfig.EVOLUTION_URL;
-        this.apiKey = EnvConfig.EVOLUTION_APIKEY;
-        this.instanceName = EnvConfig.EVOLUTION_INSTANCE_NAME;
+        // --- INICIO BLOQUE BLINDADO ---
+        // Valores por defecto para evitar crashes si las env vars fallan
+        this.apiUrl = EnvConfig.EVOLUTION_URL || process.env.EVOLUTION_URL || 'http://localhost:8080';
+        this.apiKey = EnvConfig.EVOLUTION_APIKEY || process.env.EVOLUTION_APIKEY || '';
+        this.instanceName = EnvConfig.EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME || 'mullbot-principal';
+
+        // Validación adicional para instanceName
+        if (!this.instanceName || this.instanceName === 'undefined' || this.instanceName === 'null') {
+            logger.warn('⚠️ Advertencia: Instance Name indefinido. Usando valor por defecto.');
+            this.instanceName = 'mullbot-principal';
+        }
 
         if (!this.apiKey) {
             logger.warn('⚠️ EVOLUTION_APIKEY no configurada. Algunas funciones pueden fallar.');
         }
+
+        if (!this.apiUrl || this.apiUrl === 'undefined') {
+            logger.warn('⚠️ EVOLUTION_URL no configurada. Usando localhost por defecto.');
+            this.apiUrl = 'http://localhost:8080';
+        }
+        // --- FIN BLOQUE BLINDADO ---
 
         this.axiosInstance = axios.create({
             baseURL: this.apiUrl,
