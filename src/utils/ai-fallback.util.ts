@@ -22,18 +22,9 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
         if (EnvConfig.GEMINI_API_KEY) {
             logger.info(`🤖 Intentando Gemini con AIModelManager para query: "${cleanQuery.substring(0, 50)}..."`);
             
-            // Prompt optimizado para ahorrar tokens
-            const systemPrompt = `Eres el Asistente Virtual de Müllblue. Responde en español. Especialista en compostaje fermentativo y productos ecológicos.
-
-IMPORTANTE:
-- Tono amigable y experto en sustentabilidad
-- Responde concisamente para optimizar ancho de banda
-- Enfócate en beneficios del compostaje sin olores ni plagas
-- NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
-
-CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
-
-ÁREAS: Cursos de software y química. Para detalles específicos de cursos, remite al soporte.`;
+            // Prompt completo de Müllblue (usando el mismo de gemini.util.ts)
+            const { getFullMullbluePrompt } = await import('./mullblue-prompt.util');
+            const systemPrompt = getFullMullbluePrompt();
 
             const aiManager = AIModelManager.getInstance();
             const result = await aiManager.generateContent(cleanQuery, systemPrompt);
