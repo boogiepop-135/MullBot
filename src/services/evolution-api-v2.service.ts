@@ -177,10 +177,21 @@ export class EvolutionAPIv2Service {
                 return { code: null, error };
             }
 
+            // Asegurarse de que la instancia existe antes de solicitar pairing code
+            const safeName = this.getSafeInstanceName();
+            logger.info(`🔍 Verificando instancia '${safeName}' antes de generar pairing code...`);
+            
+            try {
+                await this.initInstance();
+            } catch (initError: any) {
+                logger.warn('⚠️ Error al verificar/crear instancia:', initError.message);
+                // Continuar de todas formas, ya que el error puede ser que la instancia ya existe
+            }
+
             // Llamar a Evolution API para obtener pairing code
             // El endpoint exacto puede variar según la versión de Evolution API
             // Documentación: https://doc.evolution-api.com/v2/pt/get-started/authentication
-            const safeName = this.getSafeInstanceName();
+            logger.info(`🔗 Solicitando pairing code a Evolution API para instancia: ${safeName}`);
             const response = await this.axiosInstance.post(
                 `/instance/connect/${safeName}`,
                 {
@@ -202,9 +213,29 @@ export class EvolutionAPIv2Service {
             };
 
         } catch (error: any) {
+            const statusCode = error.response?.status;
             const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
-            logger.error(`❌ Error obteniendo pairing code: ${errorMessage}`);
-            logger.error('Error details:', error.response?.data || error);
+            
+            logger.error(`❌ Error obteniendo pairing code (HTTP ${statusCode}): ${errorMessage}`);
+            logger.error('📄 Error details:', JSON.stringify(error.response?.data || error.message));
+
+            // Mensajes de error específicos según el código HTTP
+            if (statusCode === 403) {
+                return {
+                    code: null,
+                    error: 'API Key inválida o sin permisos. Por favor verifica tu EVOLUTION_APIKEY en las variables de entorno.'
+                };
+            } else if (statusCode === 404) {
+                return {
+                    code: null,
+                    error: 'Instancia no encontrada. Intenta reiniciar la conexión de WhatsApp.'
+                };
+            } else if (statusCode === 409) {
+                return {
+                    code: null,
+                    error: 'La instancia ya está conectada. Desvincula primero antes de generar un nuevo código.'
+                };
+            }
 
             return {
                 code: null,
