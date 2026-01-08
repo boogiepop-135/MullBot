@@ -102,8 +102,8 @@ export class EvolutionAPIv2Service {
      * Crear instancia de WhatsApp en Evolution API
      */
     private async createInstance(): Promise<EvolutionCreateInstanceResponse> {
+        const safeName = this.getSafeInstanceName(); // Declarar fuera del try para scope del catch
         try {
-            const safeName = this.getSafeInstanceName();
             const response = await this.axiosInstance.post<EvolutionCreateInstanceResponse>(
                 '/instance/create',
                 {
