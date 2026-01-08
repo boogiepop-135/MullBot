@@ -322,14 +322,17 @@ export class EvolutionAPIv2Service {
             if (response.data && response.data.length > 0) {
                 response.data.forEach((inst: any, index: number) => {
                     // Mostrar TODAS las propiedades del objeto
-                    logger.info(`   [${index}] Propiedades del objeto:`, Object.keys(inst).join(', '));
-                    logger.info(`   [${index}] JSON completo:`, JSON.stringify(inst));
+                    const keys = Object.keys(inst);
+                    logger.info(`   [${index}] Propiedades (${keys.length}): ${keys.join(', ')}`);
                     
                     // La estructura real parece ser: { name: "...", ... }
                     const instanceName = inst?.name || inst?.instanceName || inst?.instance?.instanceName;
                     const connectionStatus = inst?.connectionStatus || inst?.status || inst?.state || inst?.instance?.status;
                     
                     logger.info(`   [${index}] → Nombre: "${instanceName}", Estado: "${connectionStatus}"`);
+                    
+                    // Log de propiedades útiles para debug
+                    logger.info(`   [${index}] Detalles: owner="${inst?.owner}", createdAt="${inst?.createdAt}", profileName="${inst?.profileName}"`);
                 });
             } else {
                 logger.warn('⚠️ No se encontraron instancias en el servidor');
