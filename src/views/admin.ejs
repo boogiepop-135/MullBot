@@ -1235,6 +1235,70 @@
                     <i class="fas fa-qrcode text-6xl text-gray-400 mb-4"></i>
                     <p class="text-gray-600">El código QR aparecerá aquí cuando esté listo</p>
                   </div>
+
+                  <!-- Método alternativo: Evolution API Manager -->
+                  <div class="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-300">
+                    <div class="flex items-start mb-4">
+                      <i class="fas fa-info-circle text-2xl text-blue-600 mr-3 mt-1"></i>
+                      <div>
+                        <h4 class="text-lg font-bold text-gray-800 mb-2">
+                          ¿El código QR no aparece? Usa el Manager de Evolution API
+                        </h4>
+                        <p class="text-sm text-gray-700 mb-4">
+                          Si el código QR no se muestra correctamente, puedes vincularte directamente desde el panel de gestión de Evolution API:
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border-2 border-blue-200 mb-4">
+                      <p class="text-sm font-bold text-gray-800 mb-3">
+                        <i class="fas fa-clipboard-list mr-2"></i>Pasos para vincular:
+                      </p>
+                      <ol class="text-sm text-gray-700 space-y-3">
+                        <li class="flex items-start">
+                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">1</span>
+                          <span>Abre el <strong>Evolution API Manager</strong> en una nueva pestaña</span>
+                        </li>
+                        <li class="flex items-start">
+                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">2</span>
+                          <span>Busca tu instancia llamada <strong class="bg-yellow-100 px-2 py-1 rounded font-mono text-xs">mullbot-principal</strong></span>
+                        </li>
+                        <li class="flex items-start">
+                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">3</span>
+                          <span>Haz clic en el nombre de la instancia para ver el código QR</span>
+                        </li>
+                        <li class="flex items-start">
+                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">4</span>
+                          <span><strong>Si el QR no aparece:</strong> Recarga la página del manager (<kbd class="bg-gray-200 px-2 py-1 rounded text-xs">F5</kbd> o <kbd class="bg-gray-200 px-2 py-1 rounded text-xs">Ctrl+R</kbd>)</span>
+                        </li>
+                        <li class="flex items-start">
+                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">5</span>
+                          <span>Escanea el QR con WhatsApp → <strong>Ajustes > Dispositivos vinculados > Vincular un dispositivo</strong></span>
+                        </li>
+                      </ol>
+                    </div>
+
+                    <a href="http://api.soporteches.online/manager" target="_blank" rel="noopener noreferrer"
+                      class="flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl group">
+                      <i class="fas fa-external-link-alt mr-3 group-hover:scale-110 transition-transform"></i>
+                      Abrir Evolution API Manager
+                      <i class="fas fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+
+                    <div class="mt-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+                      <div class="flex items-start">
+                        <i class="fas fa-lightbulb text-yellow-600 mr-3 mt-1"></i>
+                        <div class="text-xs text-gray-700">
+                          <p class="font-bold mb-1">💡 Consejos:</p>
+                          <ul class="list-disc list-inside space-y-1 ml-2">
+                            <li>Si el manager pide contraseña, contacta al administrador del servidor</li>
+                            <li>El código QR se actualiza cada 20 segundos</li>
+                            <li>Una vez vinculado, regresa a este panel para gestionar tu bot</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Método Pairing Code -->
