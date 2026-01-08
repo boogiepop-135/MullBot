@@ -281,6 +281,33 @@ export class BotManager {
     }
 
     /**
+     * Obtener historial de conversación reciente para contexto
+     */
+    private async getConversationHistory(phoneNumber: string, limit: number = 6): Promise<Array<{role: 'user' | 'assistant', content: string}>> {
+        try {
+            const messages = await prisma.message.findMany({
+                where: { phoneNumber },
+                orderBy: { timestamp: 'desc' },
+                take: limit * 2, // Tomar el doble porque incluye mensajes enviados y recibidos
+            });
+
+            // Convertir a formato de historial
+            const history = messages
+                .reverse() // Más antiguo primero
+                .map(msg => ({
+                    role: msg.fromMe ? 'assistant' as const : 'user' as const,
+                    content: msg.body
+                }))
+                .filter(msg => msg.content && msg.content.trim().length > 0);
+
+            return history;
+        } catch (error) {
+            logger.error(`Error obteniendo historial: ${error}`);
+            return [];
+        }
+    }
+
+    /**
      * Procesar contenido del mensaje (comandos, URLs, etc.)
      */
     private async processMessageContentEvolution(
