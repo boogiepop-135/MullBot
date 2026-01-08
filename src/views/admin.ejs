@@ -1384,6 +1384,91 @@
                 </div>
               </div>
 
+              <!-- 🔧 GESTIÓN DE INSTANCIAS WHATSAPP - Emergency Dashboard -->
+              <div class="p-6 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-purple-400/40">
+                <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+                  <i class="fas fa-tools mr-2"></i>
+                  Gestión de Instancias WhatsApp (Emergency Dashboard)
+                </h3>
+                <p class="text-sm text-gray-600 mb-6">
+                  Panel de emergencia para diagnosticar y solucionar problemas de vinculación
+                </p>
+
+                <!-- Estado Actual -->
+                <div class="bg-white p-6 rounded-xl border-2 border-gray-200 mb-6">
+                  <h4 class="font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-traffic-light mr-2"></i>
+                    Estado Actual de la Instancia
+                  </h4>
+                  <div id="instance-status-container" class="space-y-4">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <div id="instance-status-indicator" class="w-4 h-4 rounded-full bg-gray-400"></div>
+                        <div>
+                          <p class="font-medium text-gray-800" id="instance-status-text">Verificando...</p>
+                          <p class="text-xs text-gray-500" id="instance-status-details"></p>
+                        </div>
+                      </div>
+                      <button onclick="loadInstanceStatus()" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all">
+                        <i class="fas fa-sync-alt mr-2"></i>Actualizar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Lista de Instancias -->
+                <div class="bg-white p-6 rounded-xl border-2 border-gray-200 mb-6">
+                  <h4 class="font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-list mr-2"></i>
+                    Instancias Detectadas en el Servidor
+                  </h4>
+                  <div id="instances-list-container">
+                    <p class="text-sm text-gray-500">Cargando...</p>
+                  </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <!-- Botón 1: Forzar Eliminación -->
+                  <button onclick="deleteInstanceEmergency()" 
+                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>Forzar Eliminación</span>
+                  </button>
+
+                  <!-- Botón 2: Re-Crear Instancia -->
+                  <button onclick="createInstanceEmergency()" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Re-Crear Instancia</span>
+                  </button>
+
+                  <!-- Botón 3: Autocuración -->
+                  <button onclick="healInstanceEmergency()" 
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <i class="fas fa-magic"></i>
+                    <span>Autocuración</span>
+                  </button>
+                </div>
+
+                <!-- Nota de advertencia -->
+                <div class="mt-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+                  <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 mr-3 mt-1"></i>
+                    <div class="text-xs text-gray-700">
+                      <p class="font-bold mb-1">⚠️ Advertencia:</p>
+                      <ul class="list-disc list-inside space-y-1 ml-2">
+                        <li><strong>Forzar Eliminación:</strong> Borra la instancia manualmente si está trabada</li>
+                        <li><strong>Re-Crear Instancia:</strong> Elimina y crea una nueva instancia desde cero (fuerza recreación)</li>
+                        <li><strong>Autocuración:</strong> Detecta y limpia automáticamente instancias con estado "connecting" o "close"</li>
+                        <li><strong>Error 403:</strong> Si recibes este error, verifica que tu API Key sea Maestra (Global) en Easypanel</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Gestión de Contactos Pausados -->
               <div class="p-6 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl border-2 border-yellow-400/40">
                 <div class="flex items-center justify-between">

@@ -99,9 +99,166 @@ export class EvolutionAPIv2Service {
     }
 
     /**
+     * 🔧 MÉTODO DE AUTOCURACIÓN DE INSTANCIAS
+     * Asegura que la instancia existe y está en buen estado
+     * Implementa lógica de limpieza y recreación automática
+     * 
+     * @param force - Si es true, fuerza la eliminación y recreación de la instancia
+     * @returns Estado de la instancia después del proceso
+     */
+    async ensureInstance(force: boolean = false): Promise<{ 
+        success: boolean; 
+        action: 'exists' | 'created' | 'recreated' | 'cleaned'; 
+        message: string;
+        instance?: EvolutionInstanceStatus;
+    }> {
+        const safeName = this.getSafeInstanceName();
+        
+        try {
+            // PASO 1: CHECK - Verificar si la instancia existe
+            logger.info(`🔍 [ensureInstance] Paso 1: Verificando existencia de instancia '${safeName}'...`);
+            const existingInstance = await this.fetchInstance();
+
+            if (!existingInstance && !force) {
+                // No existe, crear nueva
+                logger.info(`📦 [ensureInstance] Instancia no existe, creando nueva...`);
+                await this.createInstance();
+                const newInstance = await this.fetchInstance();
+                
+                return {
+                    success: true,
+                    action: 'created',
+                    message: `Instancia '${safeName}' creada exitosamente`,
+                    instance: newInstance || undefined
+                };
+            }
+
+            if (existingInstance) {
+                // PASO 2: VALIDATE - Verificar si está "bugeada"
+                const status = existingInstance.instance?.status;
+                const isBugged = status === 'connecting' || status === 'close';
+                
+                logger.info(`🔎 [ensureInstance] Paso 2: Estado actual: ${status}, Bugeada: ${isBugged}, Force: ${force}`);
+
+                if (!isBugged && !force) {
+                    // Está OK, no hacer nada
+                    logger.info(`✅ [ensureInstance] Instancia OK, no requiere acción`);
+                    return {
+                        success: true,
+                        action: 'exists',
+                        message: `Instancia '${safeName}' existe y está en buen estado (${status})`,
+                        instance: existingInstance
+                    };
+                }
+
+                // PASO 3: CLEAN - La instancia está bugeada o force=true, eliminarla
+                logger.warn(`🧹 [ensureInstance] Paso 3: Limpiando instancia (bugeada: ${isBugged}, force: ${force})`);
+                try {
+                    await this.deleteInstance();
+                    logger.info(`🗑️ [ensureInstance] Instancia eliminada exitosamente`);
+                    
+                    // Esperar un momento para que Evolution API procese la eliminación
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                } catch (deleteError: any) {
+                    // Si ya no existe (404), continuar
+                    if (deleteError.response?.status !== 404) {
+                        logger.error(`❌ [ensureInstance] Error eliminando instancia:`, deleteError.response?.data || deleteError.message);
+                        throw deleteError;
+                    }
+                    logger.info(`ℹ️ [ensureInstance] Instancia ya no existía (404)`);
+                }
+            }
+
+            // PASO 4: CREATE - Crear instancia nueva
+            logger.info(`📦 [ensureInstance] Paso 4: Creando instancia nueva...`);
+            await this.createInstance();
+            
+            // Esperar y verificar
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const recreatedInstance = await this.fetchInstance();
+            
+            logger.info(`✅ [ensureInstance] Instancia recreada exitosamente`);
+            
+            return {
+                success: true,
+                action: force ? 'recreated' : 'cleaned',
+                message: `Instancia '${safeName}' ${force ? 'recreada' : 'limpiada y recreada'} exitosamente`,
+                instance: recreatedInstance || undefined
+            };
+
+        } catch (error: any) {
+            // MANEJO DE ERRORES 403
+            if (error.response?.status === 403) {
+                const errorMsg = '⛔ Error de Permisos: La API Key configurada no es Maestra. Verifica EVOLUTION_APIKEY en Easypanel.';
+                logger.error(errorMsg);
+                throw new Error(errorMsg);
+            }
+
+            // MANEJO DE ERRORES 404
+            if (error.response?.status === 404) {
+                logger.warn(`⚠️ [ensureInstance] Endpoint no encontrado (404), intentando crear instancia desde cero...`);
+                try {
+                    await this.createInstance();
+                    const newInstance = await this.fetchInstance();
+                    return {
+                        success: true,
+                        action: 'created',
+                        message: `Instancia '${safeName}' creada exitosamente después de 404`,
+                        instance: newInstance || undefined
+                    };
+                } catch (retryError: any) {
+                    logger.error(`❌ [ensureInstance] Error en reintento después de 404:`, retryError.message);
+                    throw retryError;
+                }
+            }
+
+            // Otros errores
+            logger.error(`❌ [ensureInstance] Error general:`, error.response?.data || error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Obtener información de la instancia actual
+     * @returns Información de la instancia o null si no existe
+     */
+    async fetchInstance(): Promise<EvolutionInstanceStatus | null> {
+        try {
+            const safeName = this.getSafeInstanceName();
+            const instances = await this.fetchInstances();
+            const instance = instances.find(
+                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
+            );
+            return instance || null;
+        } catch (error: any) {
+            logger.error('Error fetching instance:', error.response?.data || error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Eliminar instancia actual
+     */
+    async deleteInstance(): Promise<void> {
+        try {
+            const safeName = this.getSafeInstanceName();
+            logger.info(`🗑️ Eliminando instancia: ${safeName}`);
+            await this.axiosInstance.delete(`/instance/delete/${safeName}`);
+            logger.info(`✅ Instancia '${safeName}' eliminada`);
+        } catch (error: any) {
+            if (error.response?.status === 404) {
+                logger.info(`ℹ️ Instancia no encontrada (puede estar ya eliminada)`);
+                return; // No es un error crítico
+            }
+            logger.error('Error deleting instance:', error.response?.data || error.message);
+            throw error;
+        }
+    }
+
+    /**
      * Crear instancia de WhatsApp en Evolution API
      */
-    private async createInstance(): Promise<EvolutionCreateInstanceResponse> {
+    async createInstance(): Promise<EvolutionCreateInstanceResponse> {
         const safeName = this.getSafeInstanceName(); // Declarar fuera del try para scope del catch
         try {
             const response = await this.axiosInstance.post<EvolutionCreateInstanceResponse>(

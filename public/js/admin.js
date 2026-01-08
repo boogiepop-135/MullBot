@@ -3188,3 +3188,308 @@ window.requestPairingCode = async function() {
     }
   }
 };
+
+// ==========================================
+// 🔧 GESTIÓN DE INSTANCIAS WHATSAPP
+// Emergency Dashboard Functions
+// ==========================================
+
+/**
+ * Cargar estado de la instancia actual
+ */
+window.loadInstanceStatus = async function() {
+  const statusIndicator = document.getElementById('instance-status-indicator');
+  const statusText = document.getElementById('instance-status-text');
+  const statusDetails = document.getElementById('instance-status-details');
+  const instancesList = document.getElementById('instances-list-container');
+
+  try {
+    // Mostrar loading
+    if (statusText) statusText.textContent = 'Verificando...';
+    if (statusIndicator) statusIndicator.className = 'w-4 h-4 rounded-full bg-gray-400 animate-pulse';
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch('/crm/whatsapp/instances', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al obtener estado');
+    }
+
+    const data = await response.json();
+    console.log('Estado de instancias:', data);
+
+    // Actualizar indicador de estado
+    if (data.current.exists) {
+      const status = data.current.status;
+      let statusColor = 'bg-gray-400';
+      let statusEmoji = '⚪';
+      let statusLabel = 'Desconocido';
+
+      if (status === 'open') {
+        statusColor = 'bg-green-500';
+        statusEmoji = '🟢';
+        statusLabel = 'Conectado';
+      } else if (status === 'connecting') {
+        statusColor = 'bg-yellow-500 animate-pulse';
+        statusEmoji = '🟡';
+        statusLabel = 'Conectando... (puede estar bugeado)';
+      } else if (status === 'close') {
+        statusColor = 'bg-red-500';
+        statusEmoji = '🔴';
+        statusLabel = 'Desconectado';
+      }
+
+      if (statusIndicator) statusIndicator.className = `w-4 h-4 rounded-full ${statusColor}`;
+      if (statusText) statusText.textContent = `${statusEmoji} ${statusLabel}`;
+      if (statusDetails) statusDetails.textContent = `Instancia: ${data.current.instanceName || 'N/A'}`;
+    } else {
+      if (statusIndicator) statusIndicator.className = 'w-4 h-4 rounded-full bg-gray-400';
+      if (statusText) statusText.textContent = '⚪ No existe instancia';
+      if (statusDetails) statusDetails.textContent = 'La instancia no ha sido creada';
+    }
+
+    // Actualizar lista de instancias
+    if (instancesList) {
+      if (data.allInstances && data.allInstances.length > 0) {
+        instancesList.innerHTML = `
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left font-semibold">Nombre</th>
+                <th class="px-4 py-2 text-left font-semibold">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.allInstances.map(inst => {
+                let statusBadge = 'bg-gray-200 text-gray-700';
+                if (inst.status === 'open') statusBadge = 'bg-green-100 text-green-700';
+                else if (inst.status === 'connecting') statusBadge = 'bg-yellow-100 text-yellow-700';
+                else if (inst.status === 'close') statusBadge = 'bg-red-100 text-red-700';
+
+                return `
+                  <tr class="border-t border-gray-200">
+                    <td class="px-4 py-2 font-mono text-xs">${inst.instanceName || 'N/A'}</td>
+                    <td class="px-4 py-2">
+                      <span class="px-2 py-1 rounded text-xs font-semibold ${statusBadge}">
+                        ${inst.status || 'unknown'}
+                      </span>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        instancesList.innerHTML = '<p class="text-sm text-gray-500">No se encontraron instancias en el servidor</p>';
+      }
+    }
+
+  } catch (error) {
+    console.error('Error cargando estado de instancias:', error);
+    
+    if (statusIndicator) statusIndicator.className = 'w-4 h-4 rounded-full bg-red-500';
+    if (statusText) statusText.textContent = '❌ Error al verificar';
+    if (statusDetails) statusDetails.textContent = error.message || 'Error desconocido';
+    
+    if (instancesList) {
+      instancesList.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p class="text-sm text-red-700">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            ${error.message || 'Error al cargar instancias'}
+          </p>
+        </div>
+      `;
+    }
+  }
+};
+
+/**
+ * 🔴 Forzar eliminación de instancia
+ */
+window.deleteInstanceEmergency = async function() {
+  if (!confirm('⚠️ ¿Estás seguro de que deseas ELIMINAR la instancia?\n\nEsto borrará la instancia actual de WhatsApp. Deberás crear una nueva después.')) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    // Mostrar loading
+    const statusText = document.getElementById('instance-status-text');
+    if (statusText) statusText.textContent = '🗑️ Eliminando instancia...';
+
+    const response = await fetch('/crm/whatsapp/delete-instance', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || result.details || 'Error al eliminar instancia');
+    }
+
+    alert(`✅ ${result.message}`);
+    
+    // Recargar estado
+    await loadInstanceStatus();
+
+  } catch (error) {
+    console.error('Error eliminando instancia:', error);
+    alert(`❌ Error: ${error.message || 'No se pudo eliminar la instancia'}`);
+    
+    // Recargar estado de todas formas
+    await loadInstanceStatus();
+  }
+};
+
+/**
+ * 🟢 Re-crear instancia (force=true)
+ */
+window.createInstanceEmergency = async function() {
+  if (!confirm('⚠️ ¿Estás seguro de que deseas RE-CREAR la instancia?\n\nEsto eliminará la instancia actual (si existe) y creará una nueva desde cero.')) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    // Mostrar loading
+    const statusText = document.getElementById('instance-status-text');
+    if (statusText) statusText.textContent = '🔄 Recreando instancia...';
+
+    const response = await fetch('/crm/whatsapp/create-instance', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      // Error 403 específico
+      if (response.status === 403) {
+        throw new Error('⛔ Error 403: Tu API Key no tiene permisos suficientes.\n\nVerifica en Easypanel que estés usando una API Key MAESTRA (Global), no una API Key de instancia específica.');
+      }
+      throw new Error(result.error || result.details || 'Error al crear instancia');
+    }
+
+    alert(`✅ ${result.message}\n\nAcción: ${result.action}\nEstado: ${result.instance?.status || 'N/A'}`);
+    
+    // Recargar estado y QR
+    await loadInstanceStatus();
+    
+    // Si estamos en la pestaña de WhatsApp, recargar QR
+    if (currentPage === 'settings') {
+      setTimeout(() => {
+        loadQRCode();
+      }, 2000);
+    }
+
+  } catch (error) {
+    console.error('Error creando instancia:', error);
+    alert(`❌ Error: ${error.message || 'No se pudo crear la instancia'}`);
+    
+    // Recargar estado de todas formas
+    await loadInstanceStatus();
+  }
+};
+
+/**
+ * 🔄 Autocuración de instancia (limpia estados bugeados)
+ */
+window.healInstanceEmergency = async function() {
+  if (!confirm('🔄 ¿Ejecutar autocuración de instancia?\n\nEsto detectará automáticamente si la instancia está en un estado "bugeado" (connecting infinito o desconectada) y la limpiará/recreará si es necesario.')) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    // Mostrar loading
+    const statusText = document.getElementById('instance-status-text');
+    if (statusText) statusText.textContent = '🔄 Ejecutando autocuración...';
+
+    const response = await fetch('/crm/whatsapp/heal-instance', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || result.details || 'Error en autocuración');
+    }
+
+    let message = `✅ ${result.message}\n\nAcción realizada: ${result.action}`;
+    
+    if (result.action === 'exists') {
+      message += '\n\n✨ La instancia está OK, no se requirió ninguna acción.';
+    } else if (result.action === 'created') {
+      message += '\n\n✨ Se creó una nueva instancia desde cero.';
+    } else if (result.action === 'cleaned') {
+      message += '\n\n✨ Se detectó un estado bugeado y se limpió exitosamente.';
+    }
+    
+    if (result.instance?.status) {
+      message += `\n\nEstado actual: ${result.instance.status}`;
+    }
+
+    alert(message);
+    
+    // Recargar estado y QR
+    await loadInstanceStatus();
+    
+    // Si estamos en la pestaña de WhatsApp, recargar QR
+    if (currentPage === 'settings') {
+      setTimeout(() => {
+        loadQRCode();
+      }, 2000);
+    }
+
+  } catch (error) {
+    console.error('Error en autocuración:', error);
+    alert(`❌ Error: ${error.message || 'No se pudo ejecutar la autocuración'}`);
+    
+    // Recargar estado de todas formas
+    await loadInstanceStatus();
+  }
+};
+
+// Cargar estado de instancias cuando se abre la pestaña de WhatsApp
+const originalShowSettingsTab = window.showSettingsTab;
+window.showSettingsTab = function(tabName) {
+  if (originalShowSettingsTab) {
+    originalShowSettingsTab(tabName);
+  }
+  
+  // Si se abre la pestaña de WhatsApp, cargar estado de instancias
+  if (tabName === 'whatsapp') {
+    setTimeout(() => {
+      loadInstanceStatus();
+    }, 500);
+  }
+};

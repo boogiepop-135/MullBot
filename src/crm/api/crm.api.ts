@@ -1961,5 +1961,182 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         }
     });
 
+    // ==========================================
+    // 🔧 GESTIÓN DE INSTANCIAS WHATSAPP
+    // Emergency Dashboard para solucionar problemas de vinculación
+    // ==========================================
+
+    /**
+     * Obtener estado de la instancia actual y lista de todas las instancias
+     */
+    router.get('/whatsapp/instances', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const evolutionAPI = botManager.getEvolutionAPI();
+
+            // Obtener todas las instancias del servidor Evolution
+            const allInstances = await evolutionAPI.fetchInstances();
+
+            // Obtener información de la instancia actual
+            const currentInstance = await evolutionAPI.fetchInstance();
+
+            // Verificar si está conectada
+            const isConnected = await evolutionAPI.isConnected();
+
+            res.json({
+                success: true,
+                current: {
+                    exists: !!currentInstance,
+                    status: currentInstance?.instance?.status || 'not_found',
+                    instanceName: currentInstance?.instance?.instanceName || null,
+                    connected: isConnected,
+                    data: currentInstance
+                },
+                allInstances: allInstances.map((inst: any) => ({
+                    instanceName: inst?.instance?.instanceName,
+                    status: inst?.instance?.status,
+                    owner: inst?.instance?.owner
+                }))
+            });
+        } catch (error: any) {
+            logger.error('Failed to fetch instances:', error);
+            
+            // Detectar errores específicos
+            const statusCode = error.response?.status;
+            if (statusCode === 403) {
+                return res.status(403).json({ 
+                    success: false,
+                    error: '⛔ Error 403: Revisa tu API Key en Easypanel. Debe ser una API Key Maestra (Global).',
+                    errorType: 'permission_denied'
+                });
+            }
+
+            res.status(500).json({ 
+                success: false,
+                error: 'Error al obtener instancias',
+                details: error.message || 'Error desconocido'
+            });
+        }
+    });
+
+    /**
+     * 🔴 Forzar eliminación de instancia
+     * Botón de emergencia para borrar manualmente la instancia si se traba
+     */
+    router.delete('/whatsapp/delete-instance', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            logger.info('🔴 [Emergency] Forzar eliminación de instancia solicitada...');
+            const evolutionAPI = botManager.getEvolutionAPI();
+
+            // Intentar eliminar la instancia
+            try {
+                await evolutionAPI.deleteInstance();
+                logger.info('✅ Instancia eliminada exitosamente');
+                
+                res.json({
+                    success: true,
+                    message: 'Instancia eliminada exitosamente. Puedes crear una nueva ahora.',
+                    action: 'deleted'
+                });
+            } catch (deleteError: any) {
+                // Si ya no existe (404), es OK
+                if (deleteError.response?.status === 404) {
+                    logger.info('ℹ️ Instancia no encontrada (puede estar ya eliminada)');
+                    return res.json({
+                        success: true,
+                        message: 'La instancia no existe o ya fue eliminada.',
+                        action: 'not_found'
+                    });
+                }
+
+                // Error 403 - permisos
+                if (deleteError.response?.status === 403) {
+                    throw new Error('⛔ Error 403: La API Key no tiene permisos para eliminar instancias. Verifica que sea una API Key Maestra.');
+                }
+
+                throw deleteError;
+            }
+        } catch (error: any) {
+            logger.error('❌ Error al eliminar instancia:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Error al eliminar instancia',
+                details: error.message || 'Error desconocido'
+            });
+        }
+    });
+
+    /**
+     * 🟢 Re-crear instancia
+     * Fuerza la creación de una instancia nueva (usa ensureInstance con force=true)
+     */
+    router.post('/whatsapp/create-instance', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            logger.info('🟢 [Emergency] Recreación de instancia solicitada...');
+            const evolutionAPI = botManager.getEvolutionAPI();
+
+            // Usar el método de autocuración con force=true
+            const result = await evolutionAPI.ensureInstance(true);
+
+            res.json({
+                success: result.success,
+                message: result.message,
+                action: result.action,
+                instance: result.instance ? {
+                    name: result.instance.instance?.instanceName,
+                    status: result.instance.instance?.status
+                } : null
+            });
+        } catch (error: any) {
+            logger.error('❌ Error al crear instancia:', error);
+            
+            // Detectar errores específicos
+            if (error.message?.includes('Error de Permisos') || error.message?.includes('403')) {
+                return res.status(403).json({
+                    success: false,
+                    error: '⛔ Error 403: Revisa tu API Key en Easypanel. Debe ser una API Key Maestra (Global).',
+                    errorType: 'permission_denied',
+                    details: error.message
+                });
+            }
+
+            res.status(500).json({
+                success: false,
+                error: 'Error al crear instancia',
+                details: error.message || 'Error desconocido'
+            });
+        }
+    });
+
+    /**
+     * 🔄 Verificar y curar instancia automáticamente
+     * Ejecuta el método ensureInstance() para limpiar estados bugeados
+     */
+    router.post('/whatsapp/heal-instance', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            logger.info('🔄 [Emergency] Autocuración de instancia solicitada...');
+            const evolutionAPI = botManager.getEvolutionAPI();
+
+            // Usar el método de autocuración (sin force, solo limpia si está bugeada)
+            const result = await evolutionAPI.ensureInstance(false);
+
+            res.json({
+                success: result.success,
+                message: result.message,
+                action: result.action,
+                instance: result.instance ? {
+                    name: result.instance.instance?.instanceName,
+                    status: result.instance.instance?.status
+                } : null
+            });
+        } catch (error: any) {
+            logger.error('❌ Error en autocuración:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Error en autocuración',
+                details: error.message || 'Error desconocido'
+            });
+        }
+    });
+
     return router;
 }
