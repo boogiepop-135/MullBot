@@ -7,8 +7,15 @@ config();
 
 class EnvConfig {
 
+    // AI API Keys - Primary
     static GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     static ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+    
+    // AI API Keys - Fallback (para futuras expansiones con múltiples claves)
+    // Puedes agregar GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc. para rotación de claves
+    // El AIModelManager las detectará automáticamente si las agregas aquí
+    static GEMINI_API_KEY_2 = process.env.GEMINI_API_KEY_2;
+    static GEMINI_API_KEY_3 = process.env.GEMINI_API_KEY_3;
     static PUPPETEER_EXECUTABLE_PATH: string | undefined = undefined;
     static OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
     static SPEECHIFY_API_KEY = process.env.SPEECHIFY_API_KEY;

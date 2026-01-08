@@ -1,9 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
 import prisma from "../database/prisma";
+import { AIModelManager } from "../services/ai-model-manager.service";
 
-export type GeminiModel = "gemini-2.0-flash-exp";
+export type GeminiModel = "gemini-2.0-flash-exp" | "gemini-1.5-flash" | "gemini-1.5-pro";
 const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
+const aiManager = AIModelManager.getInstance();
 
 // Mapeo de personalidades a descripciones
 const personalityMap: { [key: string]: string } = {
@@ -52,8 +54,6 @@ POLÍTICA DE DESCUENTOS:
 - Si el cliente pide descuento, explica que los precios ya incluyen el mejor valor posible con envío gratis y acompañamiento personalizado
 - Destaca el valor del producto en lugar de negociar precio`;
         }
-
-        const model = genAI.getGenerativeModel({ model: modelName });
         
         // Sistema completo de Asistente Técnico Experto para SoporteChes
         const systemPrompt = `Eres un Asistente Técnico Experto para SoporteChes, especializado en consultas sobre cursos de software y química.
@@ -103,9 +103,15 @@ MANEJO DE INFORMACIÓN DESCONOCIDA:
 OBJETIVO:
 Tu objetivo es ayudar técnicamente a los usuarios con consultas sobre cursos, infraestructura y servicios, proporcionando información precisa y detallada, mientras remites al soporte humano cuando sea necesario para información específica de cursos que no conoces.`;
 
-        const fullQuery = `${systemPrompt}\n\nUsuario: ${query}`;
-        const result = await model.generateContent([fullQuery]);
-        return result;
+        // Usar AIModelManager para generar con fallback automático
+        const result = await aiManager.generateContent(query, systemPrompt);
+        
+        // Retornar en el formato esperado por el código existente
+        return {
+            response: {
+                text: () => result.text
+            }
+        };
     } catch (error) {
         console.error("Error en Gemini API:", error);
         throw new Error(`Error de comunicación con Gemini: ${error.message}`);

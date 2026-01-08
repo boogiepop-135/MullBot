@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
 import logger from "../configs/logger.config";
+import { AIModelManager } from "../services/ai-model-manager.service";
 
 export type AIProvider = "gemini" | "claude";
 
@@ -15,16 +16,32 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
     if (!cleanQuery || cleanQuery.length === 0) {
         throw new Error("Query vacío");
     }
-    //HOLA SOY ALDAIR woooh
-    // Intentar primero con Gemini
+
+    // Intentar primero con Gemini usando AIModelManager (con fallback automático entre modelos)
     try {
         if (EnvConfig.GEMINI_API_KEY) {
-            logger.info(`🤖 Intentando Gemini para query: "${cleanQuery.substring(0, 50)}..."`);
-            const geminiResponse = await tryGemini(cleanQuery);
-            if (geminiResponse && geminiResponse.trim().length > 0) {
-                logger.info(`✅ Gemini respondió exitosamente (${geminiResponse.length} caracteres)`);
+            logger.info(`🤖 Intentando Gemini con AIModelManager para query: "${cleanQuery.substring(0, 50)}..."`);
+            
+            // Prompt optimizado para ahorrar tokens
+            const systemPrompt = `Eres Asistente Técnico Experto para SoporteChes. Responde en español. Consultas sobre cursos de software y química.
+
+IMPORTANTE:
+- Tono técnico pero accesible (explicaciones detalladas)
+- Responde concisamente para optimizar ancho de banda
+- Si preguntan por estado de servicios, valida que la API esté ON
+- NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
+
+CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
+
+ÁREAS: Cursos de software y química. Para detalles específicos de cursos, remite al soporte.`;
+
+            const aiManager = AIModelManager.getInstance();
+            const result = await aiManager.generateContent(cleanQuery, systemPrompt);
+            
+            if (result.text && result.text.trim().length > 0) {
+                logger.info(`✅ Gemini respondió exitosamente con ${result.modelUsed} (${result.text.length} caracteres, fallback: ${result.fallbackOccurred})`);
                 return {
-                    text: geminiResponse,
+                    text: result.text,
                     provider: "gemini"
                 };
             }
@@ -32,12 +49,12 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
             logger.warn("GEMINI_API_KEY no configurada, saltando a Claude");
         }
     } catch (error) {
-        logger.error(`❌ Gemini falló: ${error.message}`);
-        logger.info(`🔄 Intentando Claude como fallback...`);
-        // Continuar con Claude si Gemini falla
+        logger.error(`❌ Todos los modelos de Gemini fallaron: ${error.message}`);
+        logger.info(`🔄 Intentando Claude como fallback final...`);
+        // Continuar con Claude si todos los modelos de Gemini fallan
     }
 
-    // Si Gemini falla o no está configurada, intentar con Claude
+    // Si Gemini falla completamente o no está configurada, intentar con Claude
     try {
         if (EnvConfig.ANTHROPIC_API_KEY) {
             logger.info(`🤖 Intentando Claude (Haiku) para query: "${cleanQuery.substring(0, 50)}..."`);

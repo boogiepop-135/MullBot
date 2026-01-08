@@ -244,6 +244,218 @@ export default function (botManager: BotManager) {
         }
     });
 
+    // Endpoint para obtener Pairing Code
+    router.post("/pairing-code", async (req, res) => {
+        try {
+            const { phoneNumber } = req.body;
+
+            if (!phoneNumber) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Se requiere el número de teléfono"
+                });
+            }
+
+            logger.info(`POST /pairing-code - Requesting pairing code for: ${phoneNumber}`);
+
+            const evolutionAPI = botManager.getEvolutionAPI();
+            const result = await evolutionAPI.connectWithPairingCode(phoneNumber);
+
+            if (result.success && result.code) {
+                return res.status(200).json({
+                    success: true,
+                    code: result.code,
+                    message: "Código de vinculación generado exitosamente"
+                });
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    error: result.error || "No se pudo generar el código"
+                });
+            }
+        } catch (error) {
+            logger.error("Failed to get pairing code:", error);
+            return res.status(500).json({
+                success: false,
+                error: "Error al generar código de vinculación",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para estado del sistema de IA
+    router.get("/ai-status", (_req, res) => {
+        try {
+            const { AIModelManager } = require("../services/ai-model-manager.service");
+            const aiManager = AIModelManager.getInstance();
+            const status = aiManager.getSystemStatus();
+            
+            logger.info("GET /ai-status - Returning AI system status");
+            res.status(200).json(status);
+        } catch (error) {
+            logger.error("Failed to get AI status:", error);
+            res.status(500).json({ 
+                error: "Failed to retrieve AI system status",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para resetear todas las estadísticas de IA
+    router.post("/ai-reset", (_req, res) => {
+        try {
+            const { AIModelManager } = require("../services/ai-model-manager.service");
+            const aiManager = AIModelManager.getInstance();
+            aiManager.resetAllStats();
+            
+            logger.info("POST /ai-reset - All AI stats reset");
+            res.status(200).json({ 
+                success: true,
+                message: "Todas las estadísticas han sido reseteadas" 
+            });
+        } catch (error) {
+            logger.error("Failed to reset AI stats:", error);
+            res.status(500).json({ 
+                success: false,
+                error: "Failed to reset AI statistics",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para resetear estadísticas de un modelo específico
+    router.post("/ai-reset-model", (req, res) => {
+        try {
+            const { modelName } = req.body;
+            
+            if (!modelName) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Se requiere el nombre del modelo"
+                });
+            }
+
+            const { AIModelManager } = require("../services/ai-model-manager.service");
+            const aiManager = AIModelManager.getInstance();
+            const result = aiManager.resetModelStats(modelName);
+            
+            if (result) {
+                logger.info(`POST /ai-reset-model - Model ${modelName} stats reset`);
+                res.status(200).json({ 
+                    success: true,
+                    message: `Estadísticas de ${modelName} reseteadas` 
+                });
+            } else {
+                res.status(404).json({
+                    success: false,
+                    error: `Modelo ${modelName} no encontrado`
+                });
+            }
+        } catch (error) {
+            logger.error("Failed to reset model stats:", error);
+            res.status(500).json({ 
+                success: false,
+                error: "Failed to reset model statistics",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para obtener estadísticas del caché
+    router.get("/ai-cache-stats", async (_req, res) => {
+        try {
+            const { AICacheService } = require("../services/ai-cache.service");
+            const cache = AICacheService.getInstance();
+            const stats = await cache.getStats();
+            
+            logger.info("GET /ai-cache-stats - Returning cache statistics");
+            res.status(200).json(stats);
+        } catch (error) {
+            logger.error("Failed to get cache stats:", error);
+            res.status(500).json({ 
+                error: "Failed to retrieve cache statistics",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para limpiar caché
+    router.post("/ai-cache-clear", async (_req, res) => {
+        try {
+            const { AICacheService } = require("../services/ai-cache.service");
+            const cache = AICacheService.getInstance();
+            await cache.clearAll();
+            
+            logger.info("POST /ai-cache-clear - Cache cleared");
+            res.status(200).json({ 
+                success: true,
+                message: "Caché limpiado exitosamente" 
+            });
+        } catch (error) {
+            logger.error("Failed to clear cache:", error);
+            res.status(500).json({ 
+                success: false,
+                error: "Failed to clear cache",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para obtener top queries del caché
+    router.get("/ai-cache-top", async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit as string) || 10;
+            const { AICacheService } = require("../services/ai-cache.service");
+            const cache = AICacheService.getInstance();
+            const topQueries = await cache.getTopQueries(limit);
+            
+            logger.info(`GET /ai-cache-top - Returning top ${limit} queries`);
+            res.status(200).json(topQueries);
+        } catch (error) {
+            logger.error("Failed to get top queries:", error);
+            res.status(500).json({ 
+                error: "Failed to retrieve top queries",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
+    // Endpoint para probar conexión con IA
+    router.post("/ai-test", async (req, res) => {
+        try {
+            const { query } = req.body;
+            const testQuery = query || "Hola, esto es una prueba del sistema de IA";
+
+            logger.info("POST /ai-test - Testing AI connection");
+
+            const { AIModelManager } = require("../services/ai-model-manager.service");
+            const aiManager = AIModelManager.getInstance();
+
+            const startTime = Date.now();
+            const result = await aiManager.generateContent(testQuery, "Responde brevemente a esta prueba del sistema.");
+            const duration = Date.now() - startTime;
+
+            logger.info(`AI test completed in ${duration}ms with model ${result.modelUsed}`);
+
+            res.status(200).json({
+                success: true,
+                modelUsed: result.modelUsed,
+                fallbackOccurred: result.fallbackOccurred,
+                attemptedModels: result.attemptedModels,
+                duration,
+                response: result.text.substring(0, 100) + (result.text.length > 100 ? '...' : '')
+            });
+
+        } catch (error) {
+            logger.error("AI test failed:", error);
+            res.status(500).json({
+                success: false,
+                error: "AI test failed",
+                message: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
+    });
+
     router.use("/crm", crmRouter(botManager));
     
     // Webhook handler para Evolution API v2

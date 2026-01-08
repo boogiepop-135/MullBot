@@ -98,6 +98,9 @@ window.showSection = function (sectionId) {
     case 'contacts':
       loadContacts();
       break;
+    case 'ai-monitor':
+      loadAIMonitor();
+      break;
     case 'campaigns':
       loadCampaigns();
       break;
@@ -2379,3 +2382,809 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+// ========================================
+// PAIRING CODE FUNCTIONS
+// ========================================
+
+/**
+ * Mostrar método de conexión (QR o Pairing Code)
+ */
+window.showConnectionMethod = function(method) {
+  console.log('Cambiando método de conexión a:', method);
+  
+  // Actualizar botones
+  const btnQR = document.getElementById('btn-method-qr');
+  const btnPairing = document.getElementById('btn-method-pairing');
+  
+  if (btnQR && btnPairing) {
+    // Resetear estilos
+    btnQR.classList.remove('border-green-500', 'bg-green-50', 'text-green-700');
+    btnQR.classList.add('border-gray-300', 'text-gray-700');
+    btnPairing.classList.remove('border-green-500', 'bg-green-50', 'text-green-700');
+    btnPairing.classList.add('border-gray-300', 'text-gray-700');
+    
+    // Aplicar estilo al botón activo
+    if (method === 'qr') {
+      btnQR.classList.remove('border-gray-300', 'text-gray-700');
+      btnQR.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+    } else {
+      btnPairing.classList.remove('border-gray-300', 'text-gray-700');
+      btnPairing.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+    }
+  }
+  
+  // Mostrar/ocultar paneles
+  const panelQR = document.getElementById('connection-method-qr');
+  const panelPairing = document.getElementById('connection-method-pairing');
+  
+  if (panelQR && panelPairing) {
+    if (method === 'qr') {
+      panelQR.classList.remove('hidden');
+      panelPairing.classList.add('hidden');
+      // Cargar QR si no está cargado
+      setTimeout(loadQRCode, 500);
+    } else {
+      panelQR.classList.add('hidden');
+      panelPairing.classList.remove('hidden');
+      // Resetear displays de pairing code
+      resetPairingCodeDisplay();
+    }
+  }
+};
+
+/**
+ * Resetear displays de pairing code
+ */
+function resetPairingCodeDisplay() {
+  const codeDisplay = document.getElementById('pairing-code-display');
+  const errorDisplay = document.getElementById('pairing-error-display');
+  const loadingDisplay = document.getElementById('pairing-loading');
+  
+  if (codeDisplay) codeDisplay.classList.add('hidden');
+  if (errorDisplay) errorDisplay.classList.add('hidden');
+  if (loadingDisplay) loadingDisplay.classList.add('hidden');
+}
+
+// ========================================
+// AI MONITOR FUNCTIONS
+// ========================================
+
+/**
+ * Cargar dashboard de monitoreo de IA
+ */
+window.loadAIMonitor = async function() {
+  console.log('Cargando Monitor de IA...');
+  await Promise.all([
+    loadAIStatus(),
+    loadCacheStats()
+  ]);
+  
+  // Auto-refresh cada 30 segundos
+  if (window.aiMonitorInterval) {
+    clearInterval(window.aiMonitorInterval);
+  }
+  window.aiMonitorInterval = setInterval(async () => {
+    await Promise.all([
+      loadAIStatus(),
+      loadCacheStats()
+    ]);
+  }, 30000);
+};
+
+/**
+ * Cargar estadísticas del caché
+ */
+async function loadCacheStats() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const response = await fetch('/api/ai-cache-stats', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      console.error('Error loading cache stats:', response.status);
+      return;
+    }
+
+    const stats = await response.json();
+    console.log('Cache stats:', stats);
+
+    // Actualizar UI
+    const hitRateEl = document.getElementById('cache-hit-rate');
+    if (hitRateEl) {
+      hitRateEl.textContent = `${stats.hitRate}%`;
+      hitRateEl.className = stats.hitRate >= 50 ? 'text-3xl font-bold text-green-600' : 
+                             stats.hitRate >= 30 ? 'text-3xl font-bold text-yellow-600' : 
+                             'text-3xl font-bold text-gray-600';
+    }
+
+    const entriesEl = document.getElementById('cache-entries');
+    if (entriesEl) {
+      entriesEl.textContent = `${stats.memoryEntries}/${stats.dbEntries}`;
+    }
+
+    const savedCallsEl = document.getElementById('cache-saved-calls');
+    if (savedCallsEl) {
+      savedCallsEl.textContent = stats.savedAPICalls.toLocaleString();
+    }
+
+    const savingsEl = document.getElementById('cache-savings');
+    if (savingsEl) {
+      savingsEl.textContent = stats.estimatedSavings;
+    }
+
+  } catch (error) {
+    console.error('Error loading cache stats:', error);
+  }
+}
+
+/**
+ * Cargar estado de los modelos de IA
+ */
+window.loadAIStatus = async function() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
+
+    const response = await fetch('/api/ai-status', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Estado de IA:', data);
+
+    // Actualizar estadísticas generales
+    updateAIGeneralStats(data);
+
+    // Actualizar tabla de modelos
+    updateAIModelsTable(data);
+
+    // Actualizar alertas
+    updateAIAlerts(data);
+
+    // Actualizar distribución
+    updateAIDistribution(data);
+
+  } catch (error) {
+    console.error('Error cargando estado de IA:', error);
+    showAIError('No se pudo cargar el estado de los modelos de IA');
+  }
+};
+
+/**
+ * Actualizar estadísticas generales
+ */
+function updateAIGeneralStats(data) {
+  // Modelo activo
+  const activeModelEl = document.getElementById('ai-active-model');
+  if (activeModelEl) {
+    const modelName = data.activeModel || 'Ninguno';
+    const shortName = modelName.replace('gemini-', '').replace('-exp', '');
+    activeModelEl.textContent = shortName;
+    activeModelEl.className = data.activeModel ? 'text-xl font-bold text-green-600' : 'text-xl font-bold text-red-600';
+  }
+
+  // Total requests
+  const totalRequestsEl = document.getElementById('ai-total-requests');
+  if (totalRequestsEl) {
+    totalRequestsEl.textContent = data.totalRequests.toLocaleString();
+  }
+
+  // Total errores
+  const totalErrorsEl = document.getElementById('ai-total-errors');
+  if (totalErrorsEl) {
+    totalErrorsEl.textContent = data.totalErrors.toLocaleString();
+  }
+
+  // Tasa de éxito
+  const successRateEl = document.getElementById('ai-success-rate');
+  if (successRateEl) {
+    const successRate = data.totalRequests > 0 
+      ? ((data.totalRequests - data.totalErrors) / data.totalRequests * 100).toFixed(1)
+      : 100;
+    successRateEl.textContent = `${successRate}%`;
+    successRateEl.className = successRate >= 95 ? 'text-3xl font-bold text-green-600' : 
+                               successRate >= 80 ? 'text-3xl font-bold text-yellow-600' : 
+                               'text-3xl font-bold text-red-600';
+  }
+}
+
+/**
+ * Actualizar tabla de modelos
+ */
+function updateAIModelsTable(data) {
+  const tableBody = document.getElementById('ai-models-table');
+  if (!tableBody) return;
+
+  if (!data.models || data.models.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+          No hay modelos configurados
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tableBody.innerHTML = data.models.map(model => {
+    const successRate = model.requestCount > 0 
+      ? ((model.requestCount - model.errorCount) / model.requestCount * 100).toFixed(1)
+      : 100;
+
+    const statusBadge = getModelStatusBadge(model.status);
+    const isActive = model.name === data.activeModel;
+    const avgTime = model.averageResponseTime || 0;
+
+    return `
+      <tr class="${isActive ? 'bg-green-50' : ''}">
+        <td class="px-6 py-4">
+          <div class="flex items-center">
+            ${isActive ? '<i class="fas fa-star text-yellow-500 mr-2"></i>' : ''}
+            <span class="font-medium text-gray-800">${model.name}</span>
+          </div>
+        </td>
+        <td class="px-6 py-4">${statusBadge}</td>
+        <td class="px-6 py-4">
+          <span class="text-sm font-medium text-gray-600">#${model.priority}</span>
+        </td>
+        <td class="px-6 py-4">
+          <span class="text-sm text-gray-800 font-medium">${model.requestCount.toLocaleString()}</span>
+        </td>
+        <td class="px-6 py-4">
+          <span class="text-sm ${model.errorCount > 0 ? 'text-red-600 font-bold' : 'text-gray-600'}">${model.errorCount.toLocaleString()}</span>
+        </td>
+        <td class="px-6 py-4">
+          <span class="text-sm font-medium ${successRate >= 95 ? 'text-green-600' : successRate >= 80 ? 'text-yellow-600' : 'text-red-600'}">
+            ${successRate}%
+          </span>
+        </td>
+        <td class="px-6 py-4">
+          <span class="text-sm font-medium ${avgTime < 2000 ? 'text-green-600' : avgTime < 4000 ? 'text-yellow-600' : 'text-orange-600'}">
+            ${avgTime > 0 ? `${(avgTime / 1000).toFixed(2)}s` : '-'}
+          </span>
+        </td>
+        <td class="px-6 py-4">
+          ${model.lastError ? `
+            <div class="text-xs text-red-600 max-w-xs truncate" title="${model.lastError}">
+              ${model.lastError}
+            </div>
+            ${model.lastErrorTime ? `<div class="text-xs text-gray-400 mt-1">${formatRelativeTime(model.lastErrorTime)}</div>` : ''}
+          ` : '<span class="text-xs text-gray-400">Sin errores</span>'}
+        </td>
+        <td class="px-6 py-4">
+          <button onclick="resetModelStats('${model.name}')" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+            <i class="fas fa-redo-alt mr-1"></i>Resetear
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/**
+ * Obtener badge de estado del modelo
+ */
+function getModelStatusBadge(status) {
+  const badges = {
+    'available': '<span class="badge bg-green-100 text-green-800 border-green-300"><i class="fas fa-check-circle mr-1"></i>Disponible</span>',
+    'exhausted': '<span class="badge bg-yellow-100 text-yellow-800 border-yellow-300"><i class="fas fa-exclamation-triangle mr-1"></i>Agotado</span>',
+    'error': '<span class="badge bg-red-100 text-red-800 border-red-300"><i class="fas fa-times-circle mr-1"></i>Error</span>'
+  };
+  return badges[status] || '<span class="badge bg-gray-100 text-gray-800">Desconocido</span>';
+}
+
+/**
+ * Formatear tiempo relativo
+ */
+function formatRelativeTime(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'Hace un momento';
+  if (diffMins < 60) return `Hace ${diffMins} min`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Hace ${diffHours}h`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `Hace ${diffDays}d`;
+}
+
+/**
+ * Actualizar alertas del sistema
+ */
+function updateAIAlerts(data) {
+  const alertsContainer = document.getElementById('ai-alerts-container');
+  if (!alertsContainer) return;
+
+  const alerts = [];
+
+  // Alerta: No hay modelo activo
+  if (!data.activeModel) {
+    alerts.push({
+      type: 'error',
+      icon: 'fas fa-exclamation-circle',
+      title: '¡Crítico! Sin modelos disponibles',
+      message: 'Todos los modelos de IA están agotados o con error. El bot no puede responder.',
+      action: 'resetAllAIStats()',
+      actionText: 'Resetear Todos'
+    });
+  }
+
+  // Alerta: Todos los modelos exhaustos excepto uno
+  const availableModels = data.models.filter(m => m.status === 'available').length;
+  const totalModels = data.models.length;
+  
+  if (availableModels === 1 && totalModels > 1) {
+    alerts.push({
+      type: 'warning',
+      icon: 'fas fa-exclamation-triangle',
+      title: 'Advertencia: Capacidad reducida',
+      message: `Solo ${availableModels} de ${totalModels} modelos disponibles. Considera agregar más claves de API.`,
+      action: null
+    });
+  }
+
+  // Alerta: Tasa de error alta
+  const errorRate = data.totalRequests > 0 ? (data.totalErrors / data.totalRequests * 100) : 0;
+  if (errorRate > 20 && data.totalRequests > 10) {
+    alerts.push({
+      type: 'warning',
+      icon: 'fas fa-chart-line',
+      title: 'Tasa de error elevada',
+      message: `${errorRate.toFixed(1)}% de las peticiones han fallado. Revisa la configuración de las API keys.`,
+      action: null
+    });
+  }
+
+  // Renderizar alertas
+  if (alerts.length === 0) {
+    alertsContainer.innerHTML = '';
+    return;
+  }
+
+  alertsContainer.innerHTML = alerts.map(alert => {
+    const colorClasses = {
+      'error': 'bg-red-50 border-red-400 text-red-800',
+      'warning': 'bg-yellow-50 border-yellow-400 text-yellow-800',
+      'info': 'bg-blue-50 border-blue-400 text-blue-800'
+    };
+
+    return `
+      <div class="p-4 rounded-xl border-2 ${colorClasses[alert.type]} mb-4">
+        <div class="flex items-start justify-between">
+          <div class="flex items-start">
+            <i class="${alert.icon} text-2xl mr-4 mt-1"></i>
+            <div>
+              <p class="font-bold text-lg mb-1">${alert.title}</p>
+              <p class="text-sm">${alert.message}</p>
+            </div>
+          </div>
+          ${alert.action ? `
+            <button onclick="${alert.action}" class="btn-secondary ml-4 whitespace-nowrap">
+              ${alert.actionText}
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Actualizar distribución de uso
+ */
+function updateAIDistribution(data) {
+  const distributionList = document.getElementById('distribution-list');
+  if (!distributionList) return;
+
+  if (!data.models || data.models.length === 0) {
+    distributionList.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
+    return;
+  }
+
+  const totalRequests = data.totalRequests || 1;
+
+  distributionList.innerHTML = data.models.map(model => {
+    const percentage = (model.requestCount / totalRequests * 100).toFixed(1);
+    return `
+      <div class="text-left">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-medium text-gray-700">${model.name}</span>
+          <span class="text-xs font-bold text-gray-800">${percentage}%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-green-500 h-2 rounded-full transition-all" style="width: ${percentage}%"></div>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">${model.requestCount.toLocaleString()} requests</p>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Mostrar error en el monitor de IA
+ */
+function showAIError(message) {
+  const alertsContainer = document.getElementById('ai-alerts-container');
+  if (!alertsContainer) return;
+
+  alertsContainer.innerHTML = `
+    <div class="p-4 rounded-xl border-2 bg-red-50 border-red-400 text-red-800">
+      <div class="flex items-center">
+        <i class="fas fa-exclamation-circle text-2xl mr-4"></i>
+        <div>
+          <p class="font-bold">Error</p>
+          <p class="text-sm">${message}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Refrescar estado de IA manualmente
+ */
+window.refreshAIStatus = async function() {
+  const btn = event?.target?.closest('button');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Actualizando...';
+  }
+
+  await loadAIStatus();
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Actualizar';
+  }
+};
+
+/**
+ * Resetear estadísticas de todos los modelos
+ */
+window.resetAllAIStats = async function() {
+  if (!confirm('¿Estás seguro de que deseas resetear todas las estadísticas de IA?\n\nEsto reiniciará los contadores de requests y errores, y marcará todos los modelos como disponibles.')) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/ai-reset', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al resetear estadísticas');
+    }
+
+    alert('✅ Estadísticas reseteadas correctamente');
+    await loadAIStatus();
+
+  } catch (error) {
+    console.error('Error reseteando estadísticas:', error);
+    alert('❌ Error al resetear estadísticas: ' + error.message);
+  }
+};
+
+/**
+ * Resetear estadísticas de un modelo específico
+ */
+window.resetModelStats = async function(modelName) {
+  if (!confirm(`¿Resetear estadísticas de ${modelName}?`)) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/ai-reset-model', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ modelName })
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al resetear modelo');
+    }
+
+    alert(`✅ Estadísticas de ${modelName} reseteadas`);
+    await loadAIStatus();
+
+  } catch (error) {
+    console.error('Error reseteando modelo:', error);
+    alert('❌ Error: ' + error.message);
+  }
+};
+
+/**
+ * Probar conexión con IA
+ */
+window.testAIConnection = async function() {
+  const btn = event?.target?.closest('button');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Probando...';
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/ai-test', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query: 'Hola, esto es una prueba del sistema' })
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      alert(`✅ Prueba exitosa!\n\nModelo usado: ${result.modelUsed}\nFallback: ${result.fallbackOccurred ? 'Sí' : 'No'}\nTiempo: ${result.duration}ms`);
+    } else {
+      alert(`❌ Error en la prueba: ${result.error || 'Desconocido'}`);
+    }
+
+    await loadAIStatus();
+
+  } catch (error) {
+    console.error('Error probando IA:', error);
+    alert('❌ Error al probar conexión: ' + error.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-vial mr-2"></i>Probar Conexión';
+    }
+  }
+};
+
+/**
+ * Limpiar caché de IA
+ */
+window.clearCache = async function() {
+  if (!confirm('¿Estás seguro de que deseas limpiar el caché de IA?\n\nEsto eliminará todas las respuestas almacenadas y las próximas consultas necesitarán llamar a la API nuevamente.')) {
+    return;
+  }
+
+  const btn = event?.target?.closest('button');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Limpiando...';
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/ai-cache-clear', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      alert('✅ Caché limpiado correctamente');
+      await loadCacheStats();
+    } else {
+      alert(`❌ Error: ${result.error || 'Desconocido'}`);
+    }
+
+  } catch (error) {
+    console.error('Error limpiando caché:', error);
+    alert('❌ Error al limpiar caché: ' + error.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-broom mr-2"></i>Limpiar Caché';
+    }
+  }
+};
+
+/**
+ * Exportar estadísticas de IA
+ */
+window.exportAIStats = async function() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/ai-status', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al obtener estadísticas');
+    }
+
+    const data = await response.json();
+    
+    // Crear archivo CSV
+    const csv = generateAIStatsCSV(data);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ai-stats-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    alert('✅ Estadísticas exportadas correctamente');
+
+  } catch (error) {
+    console.error('Error exportando estadísticas:', error);
+    alert('❌ Error al exportar: ' + error.message);
+  }
+};
+
+/**
+ * Generar CSV de estadísticas
+ */
+function generateAIStatsCSV(data) {
+  let csv = 'Modelo,Estado,Prioridad,Requests,Errores,Tasa Éxito,Último Error,Fecha Último Error\n';
+  
+  data.models.forEach(model => {
+    const successRate = model.requestCount > 0 
+      ? ((model.requestCount - model.errorCount) / model.requestCount * 100).toFixed(1)
+      : 100;
+    
+    csv += `"${model.name}","${model.status}",${model.priority},${model.requestCount},${model.errorCount},${successRate}%,"${model.lastError || ''}","${model.lastErrorTime || ''}"\n`;
+  });
+
+  csv += `\nResumen General\n`;
+  csv += `Total Requests,${data.totalRequests}\n`;
+  csv += `Total Errores,${data.totalErrors}\n`;
+  csv += `Modelo Activo,"${data.activeModel || 'Ninguno'}"\n`;
+
+  return csv;
+}
+
+// Limpiar intervalo cuando se cambia de sección
+const originalShowSection = window.showSection;
+window.showSection = function(sectionId) {
+  if (window.aiMonitorInterval && sectionId !== 'ai-monitor') {
+    clearInterval(window.aiMonitorInterval);
+    window.aiMonitorInterval = null;
+  }
+  originalShowSection(sectionId);
+};
+
+/**
+ * Solicitar código de vinculación (Pairing Code)
+ */
+window.requestPairingCode = async function() {
+  console.log('=== SOLICITANDO PAIRING CODE ===');
+  
+  const phoneInput = document.getElementById('pairing-phone-input');
+  const codeDisplay = document.getElementById('pairing-code-display');
+  const errorDisplay = document.getElementById('pairing-error-display');
+  const loadingDisplay = document.getElementById('pairing-loading');
+  const codeValue = document.getElementById('pairing-code-value');
+  const errorMessage = document.getElementById('pairing-error-message');
+  const btn = document.getElementById('btn-get-pairing-code');
+  
+  if (!phoneInput) {
+    console.error('pairing-phone-input not found');
+    return;
+  }
+  
+  const phoneNumber = phoneInput.value.trim();
+  
+  // Validar número
+  if (!phoneNumber) {
+    alert('Por favor ingresa tu número de teléfono');
+    phoneInput.focus();
+    return;
+  }
+  
+  // Validar formato (solo dígitos, entre 10 y 15 caracteres)
+  const cleanPhone = phoneNumber.replace(/[\s\-\(\)\+]/g, '');
+  if (!/^\d{10,15}$/.test(cleanPhone)) {
+    alert('Número inválido. Debe contener entre 10 y 15 dígitos.\nEjemplo: 521234567890');
+    phoneInput.focus();
+    return;
+  }
+  
+  // Resetear displays
+  resetPairingCodeDisplay();
+  
+  // Mostrar loading
+  if (loadingDisplay) loadingDisplay.classList.remove('hidden');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generando...';
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+    
+    console.log('Solicitando pairing code para:', cleanPhone);
+    
+    const response = await fetch('/api/pairing-code', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ phoneNumber: cleanPhone })
+    });
+    
+    const result = await response.json();
+    console.log('Respuesta del servidor:', result);
+    
+    // Ocultar loading
+    if (loadingDisplay) loadingDisplay.classList.add('hidden');
+    
+    if (!response.ok || !result.success) {
+      // Mostrar error
+      throw new Error(result.error || 'Error al generar código');
+    }
+    
+    // Mostrar código exitoso
+    if (result.code && codeValue && codeDisplay) {
+      // Formatear código (agregar guión en medio para mejor legibilidad)
+      // Ej: "ABCD1234" -> "ABCD-1234"
+      const formattedCode = result.code.length === 8 
+        ? `${result.code.substring(0, 4)}-${result.code.substring(4)}`
+        : result.code;
+      
+      codeValue.textContent = formattedCode;
+      codeDisplay.classList.remove('hidden');
+      
+      console.log('✅ Pairing code generado exitosamente:', result.code);
+      
+      // Opcional: Copiar al portapapeles automáticamente
+      try {
+        await navigator.clipboard.writeText(result.code);
+        console.log('Código copiado al portapapeles');
+      } catch (e) {
+        console.log('No se pudo copiar al portapapeles:', e);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error solicitando pairing code:', error);
+    
+    // Ocultar loading
+    if (loadingDisplay) loadingDisplay.classList.add('hidden');
+    
+    // Mostrar error
+    if (errorDisplay && errorMessage) {
+      errorMessage.textContent = error.message || 'Error desconocido al generar código';
+      errorDisplay.classList.remove('hidden');
+    } else {
+      alert(`Error: ${error.message || 'No se pudo generar el código de vinculación'}`);
+    }
+    
+  } finally {
+    // Rehabilitar botón
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-key mr-2"></i>Obtener Código';
+    }
+  }
+};

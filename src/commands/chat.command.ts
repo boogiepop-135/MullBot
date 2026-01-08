@@ -121,7 +121,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             },
         );
 
-        // Si es solicitud de agente, enviar mensaje adicional
+        // Si es solicitud de agente, enviar mensaje adicional y notificar al agente
         if (isAgentRequest) {
             const agentMessage = `✅ *Solicitud Recibida*
 
@@ -144,6 +144,17 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     caption: AppConfig.instance.printMessage(agentMessage)
                 },
             );
+
+            // Notificar al agente humano
+            try {
+                const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
+                const contactName = message.from === message._data.notifyName ? message._data.notifyName : null;
+                await notifyAgentAboutContact(message.from, contactName);
+                logger.info(`Agent notified about contact request from ${message.from}`);
+            } catch (notifyError) {
+                logger.error('Error notifying agent about contact request:', notifyError);
+                // No fallar si la notificación falla
+            }
         }
 
         return; // IMPORTANTE: salir aquí para no llamar a IA

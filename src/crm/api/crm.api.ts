@@ -159,16 +159,23 @@ export default function (botManager: BotManager) {
                 try {
                     const formattedNumber = phoneNumber.replace(/@[cg]\.us$/, '');
 
-                    const pauseMessage = `✅ *Solicitud Recibida*
+                    // Obtener configuración del bot para el mensaje de pausa
+                    const botConfig = await prisma.botConfig.findFirst();
+                    const businessHours = botConfig?.businessHours || 'Lunes a Viernes 9am - 7pm';
+                    
+                    let pauseMessage = botConfig?.pauseMessage || `✅ *Solicitud Recibida*
 
 Tu solicitud ha sido registrada correctamente.
 
 👤 *Estado:* En cola para atención humana
-⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
+⏰ *Horario de atención:* {businessHours}
 
 📝 Enseguida vendrá un asesor a atenderte. El bot ha sido pausado temporalmente para evitar respuestas automáticas.
 
 ¡Gracias por tu paciencia! 🌱`;
+
+                    // Reemplazar variable {businessHours}
+                    pauseMessage = pauseMessage.replace(/{businessHours}/g, businessHours);
 
                     await botManager.sendMessage(formattedNumber, pauseMessage);
 
@@ -176,6 +183,17 @@ Tu solicitud ha sido registrada correctamente.
                     await botManager.saveSentMessage(phoneNumber, pauseMessage, null);
 
                     logger.info(`Pause confirmation message sent to ${phoneNumber}`);
+
+                    // Notificar al agente si está habilitado
+                    try {
+                        const { notifyAgentAboutContact } = await import('../../utils/agent-notification.util');
+                        await notifyAgentAboutContact(phoneNumber, contact.pushName || contact.name);
+                        logger.info(`Agent notified about paused contact: ${phoneNumber}`);
+                    } catch (notifyError) {
+                        logger.error('Error notifying agent:', notifyError);
+                        // No fallar la operación si la notificación falla
+                    }
+
                 } catch (messageError) {
                     logger.error(`Error sending pause confirmation message to ${phoneNumber}:`, messageError);
                     // No fallar la operación de pausa si el mensaje falla

@@ -133,6 +133,92 @@ export class EvolutionAPIv2Service {
     }
 
     /**
+     * Obtener código de vinculación (Pairing Code) para WhatsApp
+     * Este método permite vincular WhatsApp sin escanear QR usando el número de teléfono
+     * @param phoneNumber Número de teléfono en formato internacional sin + (ej: 521234567890)
+     */
+    async getPairingCode(phoneNumber: string): Promise<{ code: string | null; error?: string }> {
+        try {
+            logger.info(`📱 Solicitando pairing code para número: ${phoneNumber}`);
+
+            // Normalizar número de teléfono (remover espacios, guiones, etc.)
+            const cleanPhoneNumber = phoneNumber.replace(/[\s\-\(\)\+]/g, '');
+
+            // Validar formato del número
+            if (!/^\d{10,15}$/.test(cleanPhoneNumber)) {
+                const error = 'Número de teléfono inválido. Debe contener entre 10 y 15 dígitos.';
+                logger.error(error);
+                return { code: null, error };
+            }
+
+            // Llamar a Evolution API para obtener pairing code
+            // El endpoint exacto puede variar según la versión de Evolution API
+            // Documentación: https://doc.evolution-api.com/v2/pt/get-started/authentication
+            const response = await this.axiosInstance.post(
+                `/instance/connect/${this.instanceName}`,
+                {
+                    number: cleanPhoneNumber,
+                    method: 'pairing_code' // Método de autenticación por código
+                }
+            );
+
+            if (response.data?.code || response.data?.pairingCode) {
+                const code = response.data.code || response.data.pairingCode;
+                logger.info(`✅ Pairing code generado exitosamente: ${code}`);
+                return { code };
+            }
+
+            logger.warn('⚠️ Evolution API no devolvió un pairing code');
+            return { 
+                code: null, 
+                error: 'No se pudo generar el código de vinculación. Intenta de nuevo.' 
+            };
+
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+            logger.error(`❌ Error obteniendo pairing code: ${errorMessage}`);
+            logger.error('Error details:', error.response?.data || error);
+
+            return {
+                code: null,
+                error: `Error al generar código: ${errorMessage}`
+            };
+        }
+    }
+
+    /**
+     * Conectar instancia usando pairing code (método alternativo)
+     * @param phoneNumber Número de teléfono
+     */
+    async connectWithPairingCode(phoneNumber: string): Promise<{ success: boolean; code?: string; error?: string }> {
+        try {
+            logger.info(`🔗 Iniciando conexión con pairing code para: ${phoneNumber}`);
+
+            // Obtener pairing code
+            const result = await this.getPairingCode(phoneNumber);
+
+            if (!result.code) {
+                return {
+                    success: false,
+                    error: result.error || 'No se pudo generar el código'
+                };
+            }
+
+            return {
+                success: true,
+                code: result.code
+            };
+
+        } catch (error: any) {
+            logger.error(`❌ Error conectando con pairing code: ${error.message}`);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Verificar si la instancia está conectada
      */
     async isConnected(): Promise<boolean> {
