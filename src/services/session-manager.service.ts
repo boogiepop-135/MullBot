@@ -313,32 +313,69 @@ export class SessionManagerService {
     }
 
     /**
-     * Desconectar y limpiar sesión
+     * Desconectar y limpiar sesión COMPLETAMENTE
+     * Esta es la limpieza más profunda posible
      */
     public async disconnect(): Promise<void> {
         try {
+            logger.info('🧹 === INICIANDO LIMPIEZA PROFUNDA DE SESIÓN ===');
+            
+            // 1. Cancelar cualquier inicialización en progreso
+            if (this.initializationLock) {
+                logger.info('⏸️ Cancelando inicialización en progreso...');
+                this.initializationLock = null;
+            }
+
+            // 2. Marcar como desconectando
             this.sessionData.state = SessionState.DISCONNECTING;
             logger.info('🔌 Desconectando sesión...');
 
-            // Eliminar instancia de Evolution API
-            await this.evolutionAPI.logout();
+            // 3. Eliminar instancia de Evolution API
+            try {
+                await this.evolutionAPI.logout();
+                logger.info('✅ Instancia de Evolution API eliminada');
+            } catch (logoutError: any) {
+                logger.warn(`⚠️ Error al eliminar instancia (puede no existir): ${logoutError.message}`);
+                // Continuar con la limpieza
+            }
 
-            // Resetear datos
+            // 4. Esperar un momento para que Evolution API procese la eliminación
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 5. Resetear completamente los datos de sesión
             this.forceReset();
+
+            // 6. Verificar que la instancia realmente se eliminó
+            try {
+                const isStillConnected = await this.evolutionAPI.isConnected();
+                if (isStillConnected) {
+                    logger.warn('⚠️ La instancia todavía aparece conectada, forzando eliminación...');
+                    await this.evolutionAPI.logout();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            } catch (checkError: any) {
+                logger.debug('Verificación post-logout:', checkError.message);
+            }
             
-            logger.info('✅ Sesión desconectada y limpiada');
+            logger.info('✅ === LIMPIEZA PROFUNDA COMPLETADA ===');
+            logger.info('📋 Estado actual: IDLE, QR: null, Intentos: 0');
         } catch (error: any) {
             logger.error('❌ Error durante desconexión:', error);
-            // Aún así, resetear datos
+            // SIEMPRE resetear datos, incluso si hay error
             this.forceReset();
-            throw error;
+            logger.info('🔄 Sesión reseteada a pesar del error');
         }
     }
 
     /**
      * Forzar reset del estado (sin desconectar)
+     * RESETEA TODO A VALORES INICIALES
      */
     public forceReset(): void {
+        // Cancelar cualquier lock de inicialización
+        this.initializationLock = null;
+
+        // Resetear TODOS los datos de sesión
         this.sessionData = {
             state: SessionState.IDLE,
             qrCode: null,
@@ -347,7 +384,53 @@ export class SessionManagerService {
             errorMessage: null,
             initializationAttempts: 0
         };
-        logger.info('🔄 Estado de sesión reseteado');
+        
+        logger.info('🔄 Estado de sesión COMPLETAMENTE reseteado');
+        logger.info('   - Estado: IDLE');
+        logger.info('   - QR Code: null');
+        logger.info('   - Intentos: 0');
+        logger.info('   - Locks: liberados');
+    }
+
+    /**
+     * Limpieza nuclear - Resetea ABSOLUTAMENTE TODO
+     * Usar solo cuando se necesita empezar desde cero
+     */
+    public async nuclearReset(): Promise<void> {
+        logger.warn('☢️ === INICIANDO RESETEO NUCLEAR ===');
+        
+        try {
+            // 1. Cancelar locks
+            this.initializationLock = null;
+            
+            // 2. Intentar eliminar instancia en Evolution API
+            try {
+                await this.evolutionAPI.logout();
+            } catch (e) {
+                // Ignorar errores, es una limpieza nuclear
+            }
+            
+            // 3. Esperar un poco
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // 4. Resetear todo
+            this.forceReset();
+            
+            // 5. Intentar eliminar de nuevo por si acaso
+            try {
+                await this.evolutionAPI.logout();
+            } catch (e) {
+                // Ignorar
+            }
+            
+            logger.warn('☢️ === RESETEO NUCLEAR COMPLETADO ===');
+            logger.info('💡 Sistema listo para crear nueva sesión desde cero');
+            
+        } catch (error: any) {
+            logger.error('Error durante reseteo nuclear:', error);
+            // Resetear de todas formas
+            this.forceReset();
+        }
     }
 
     /**

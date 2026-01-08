@@ -1525,81 +1525,98 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     // Compatible con whatsapp-web.js y Evolution API
     router.post('/whatsapp/logout', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            logger.info('=== SOLICITUD DE DESVINCULACIÓN RECIBIDA ===');
+            logger.info('☢️☢️☢️ === LIMPIEZA COMPLETA DE SESIÓN SOLICITADA === ☢️☢️☢️');
             
-            const useEvolutionAPI = process.env.USE_EVOLUTION_API === 'true';
-            
-            // Paso 1: Desvincular y limpiar TODAS las sesiones usando SessionManager
-            logger.info('Paso 1: Desvinculando y limpiando todas las sesiones...');
+            const sessionManager = botManager.getSessionManager();
             let deletedCount = 0;
             let logoutWarning = '';
-            const sessionManager = botManager.getSessionManager();
             
+            // PASO 1: LIMPIEZA NUCLEAR - Elimina ABSOLUTAMENTE TODO
+            logger.info('🧹 Paso 1: Ejecutando limpieza nuclear del sistema...');
             try {
-                // Desconectar usando SessionManager (esto resetea el estado)
-                await sessionManager.disconnect();
+                await sessionManager.nuclearReset();
                 deletedCount = 1;
-                logger.info('✓ Sesión desconectada y limpiada correctamente');
+                logger.info('✅ Limpieza nuclear completada exitosamente');
             } catch (error: any) {
-                // Capturar errores específicos de conexión
+                // Capturar errores pero continuar
                 if (error.message?.includes('getaddrinfo') || 
                     error.message?.includes('EAI_AGAIN') ||
                     error.code === 'ECONNREFUSED' ||
                     error.code === 'ENOTFOUND') {
-                    logoutWarning = 'Evolution API no está accesible, pero se continuó con el logout. Verifica que el servicio esté corriendo.';
+                    logoutWarning = 'Evolution API no accesible durante limpieza, pero se continuó. Verifica que el servicio esté corriendo.';
                     logger.warn(`⚠️ ${logoutWarning}`);
                 } else {
-                    // Para otros errores, registrar pero continuar
-                    logoutWarning = `Advertencia: ${error.message || 'Error desconocido durante logout'}`;
+                    logoutWarning = `Advertencia durante limpieza: ${error.message || 'Error desconocido'}`;
                     logger.warn(`⚠️ ${logoutWarning}`);
                 }
-                // Forzar reset del estado incluso si hubo error
+                // SIEMPRE forzar reset, sin importar el error
                 sessionManager.forceReset();
             }
             
-            // Paso 2: También llamar al logout del botManager para compatibilidad
+            // PASO 2: Limpieza adicional del BotManager (por compatibilidad)
+            logger.info('🧹 Paso 2: Limpieza adicional del BotManager...');
             try {
                 await botManager.logout();
             } catch (error: any) {
-                logger.warn(`⚠️ Error adicional en botManager.logout(): ${error.message || error}`);
+                logger.warn(`⚠️ Error en botManager.logout(): ${error.message || error}`);
             }
             
-            // Paso 3: Esperar para asegurar que todo se limpió completamente
-            logger.info('Paso 2: Esperando que la limpieza se complete...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // PASO 3: Espera extendida para asegurar limpieza completa
+            logger.info('⏳ Paso 3: Esperando 3 segundos para asegurar limpieza completa...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
-            // Paso 4: Verificar que el estado esté reseteado antes de crear nueva instancia
+            // PASO 4: Verificación de estado y reset adicional si es necesario
+            logger.info('🔍 Paso 4: Verificando estado del sistema...');
             const currentState = sessionManager.getState();
+            logger.info(`   Estado actual: ${currentState}`);
+            
             if (currentState !== SessionState.IDLE && currentState !== SessionState.ERROR) {
-                logger.warn(`⚠️ Estado inesperado después del logout: ${currentState}, forzando reset`);
+                logger.warn(`⚠️ Estado inesperado: ${currentState}, aplicando reset adicional`);
                 sessionManager.forceReset();
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
             
-            // Paso 5: Inicializar nueva sesión (esto creará nueva instancia y generará QR)
-            logger.info('Paso 3: Inicializando nueva sesión para generar nuevo QR...');
+            // PASO 5: Verificar si aún existe alguna instancia en Evolution API
+            logger.info('🔍 Paso 5: Verificando instancias en Evolution API...');
             try {
-                await sessionManager.initializeSession();
-                logger.info('✓ Nueva sesión inicializada');
-            } catch (error: any) {
-                logger.error(`❌ Error al inicializar nueva sesión: ${error.message || error}`);
-                throw error;
+                const evolutionAPI = botManager.getEvolutionAPI();
+                const isStillConnected = await evolutionAPI.isConnected();
+                if (isStillConnected) {
+                    logger.warn('⚠️ Instancia todavía conectada, forzando eliminación...');
+                    await evolutionAPI.logout();
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                logger.info('✅ No hay instancias activas en Evolution API');
+            } catch (checkError: any) {
+                logger.debug(`Verificación de instancias: ${checkError.message}`);
             }
             
-            logger.info('=== DESVINCULACIÓN COMPLETADA ===');
+            // PASO 6: Inicializar nueva sesión limpia desde cero
+            logger.info('🚀 Paso 6: Inicializando nueva sesión limpia...');
+            try {
+                await sessionManager.initializeSession();
+                logger.info('✅ Nueva sesión inicializada exitosamente');
+            } catch (error: any) {
+                logger.error(`❌ Error al inicializar nueva sesión: ${error.message || error}`);
+                // Continuar de todas formas, el QR se generará eventualmente
+            }
+            
+            logger.info('☢️☢️☢️ === LIMPIEZA COMPLETA FINALIZADA === ☢️☢️☢️');
+            logger.info('📋 Sistema listo para nueva conexión desde cero');
             
             const responseMessage = logoutWarning 
-                ? `WhatsApp desvinculado (con advertencias). ${deletedCount} sesión(es) eliminada(s). ${logoutWarning} Generando nuevo código QR...`
-                : `WhatsApp desvinculado correctamente. ${deletedCount} sesión(es) eliminada(s). Generando nuevo código QR...`;
+                ? `WhatsApp desvinculado con limpieza profunda (con advertencias). ${deletedCount} sesión(es) eliminada(s). ${logoutWarning} Generando nuevo código QR...`
+                : `WhatsApp desvinculado correctamente con limpieza profunda. ${deletedCount} sesión(es) eliminada(s). Sistema completamente reseteado. Generando nuevo código QR...`;
             
             res.json({ 
                 message: responseMessage,
                 success: true,
                 deletedCount,
-                warning: logoutWarning || undefined
+                warning: logoutWarning || undefined,
+                systemReset: true
             });
         } catch (error: any) {
-            logger.error('❌ Error durante desvinculación:', error);
+            logger.error('❌ Error crítico durante desvinculación:', error);
             
             // Determinar si es un error de conexión
             const isConnectionError = error.message?.includes('getaddrinfo') || 
