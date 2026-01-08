@@ -1205,180 +1205,64 @@
                 </div>
               </div>
 
-              <!-- Métodos de Vinculación -->
-              <div class="p-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl border-2 border-green-400/40">
-                <h3 class="font-bold text-gray-800 mb-4 flex items-center">
-                  <i class="fas fa-link mr-2"></i>
-                  Métodos de Vinculación
-                </h3>
-                
-                <!-- Tabs para métodos -->
-                <div class="flex gap-3 mb-6">
-                  <button onclick="showConnectionMethod('qr')" id="btn-method-qr" 
-                    class="connection-method-btn flex-1 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg border-2 border-green-500">
-                    <i class="fas fa-qrcode mr-2"></i>Código QR
-                  </button>
-                  <button onclick="showConnectionMethod('pairing')" id="btn-method-pairing"
-                    class="connection-method-btn flex-1 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg border-2 border-gray-300">
-                    <i class="fas fa-mobile-alt mr-2"></i>Código de Vinculación
-                  </button>
+              <!-- Vinculación Simplificada -->
+              <div class="p-6 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl border-2 border-blue-400/40">
+                <div class="text-center mb-6">
+                  <i class="fas fa-qrcode text-6xl text-blue-600 mb-4"></i>
+                  <h3 class="text-2xl font-bold text-gray-800 mb-2">
+                    Vincular WhatsApp
+                  </h3>
+                  <p class="text-gray-600">
+                    Para vincular tu WhatsApp con el bot, usa el Evolution API Manager
+                  </p>
                 </div>
 
-                <!-- Método QR -->
-                <div id="connection-method-qr" class="connection-method-panel">
-                  <div id="qr-display" class="hidden p-8 bg-white rounded-2xl border-2 border-gray-300 flex flex-col items-center">
-                    <p class="text-sm font-bold text-gray-800 mb-6">Escanea el código QR con WhatsApp para vincular:</p>
-                    <div id="qr-code-container" class="bg-gray-100 p-6 rounded-2xl shadow-xl"></div>
-                    <p class="text-xs text-gray-600 mt-6">El código se actualiza automáticamente cada 20 segundos</p>
-                  </div>
-                  <div id="qr-instructions" class="text-center py-8">
-                    <i class="fas fa-qrcode text-6xl text-gray-400 mb-4"></i>
-                    <p class="text-gray-600">El código QR aparecerá aquí cuando esté listo</p>
-                  </div>
-
-                  <!-- Método alternativo: Evolution API Manager -->
-                  <div class="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-300">
-                    <div class="flex items-start mb-4">
-                      <i class="fas fa-info-circle text-2xl text-blue-600 mr-3 mt-1"></i>
-                      <div>
-                        <h4 class="text-lg font-bold text-gray-800 mb-2">
-                          ¿El código QR no aparece? Usa el Manager de Evolution API
-                        </h4>
-                        <p class="text-sm text-gray-700 mb-4">
-                          Si el código QR no se muestra correctamente, puedes vincularte directamente desde el panel de gestión de Evolution API:
-                        </p>
-                      </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl border-2 border-blue-200 mb-4">
-                      <p class="text-sm font-bold text-gray-800 mb-3">
-                        <i class="fas fa-clipboard-list mr-2"></i>Pasos para vincular:
-                      </p>
-                      <ol class="text-sm text-gray-700 space-y-3">
-                        <li class="flex items-start">
-                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">1</span>
-                          <span>Abre el <strong>Evolution API Manager</strong> en una nueva pestaña</span>
-                        </li>
-                        <li class="flex items-start">
-                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">2</span>
-                          <span>Busca tu instancia llamada <strong class="bg-yellow-100 px-2 py-1 rounded font-mono text-xs">mullbot-principal</strong></span>
-                        </li>
-                        <li class="flex items-start">
-                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">3</span>
-                          <span>Haz clic en el nombre de la instancia para ver el código QR</span>
-                        </li>
-                        <li class="flex items-start">
-                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">4</span>
-                          <span><strong>Si el QR no aparece:</strong> Recarga la página del manager (<kbd class="bg-gray-200 px-2 py-1 rounded text-xs">F5</kbd> o <kbd class="bg-gray-200 px-2 py-1 rounded text-xs">Ctrl+R</kbd>)</span>
-                        </li>
-                        <li class="flex items-start">
-                          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5 flex-shrink-0">5</span>
-                          <span>Escanea el QR con WhatsApp → <strong>Ajustes > Dispositivos vinculados > Vincular un dispositivo</strong></span>
-                        </li>
-                      </ol>
-                    </div>
-
-                    <a href="http://api.soporteches.online/manager" target="_blank" rel="noopener noreferrer"
-                      class="flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl group">
-                      <i class="fas fa-external-link-alt mr-3 group-hover:scale-110 transition-transform"></i>
-                      Abrir Evolution API Manager
-                      <i class="fas fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
-                    </a>
-
-                    <div class="mt-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
-                      <div class="flex items-start">
-                        <i class="fas fa-lightbulb text-yellow-600 mr-3 mt-1"></i>
-                        <div class="text-xs text-gray-700">
-                          <p class="font-bold mb-1">💡 Consejos:</p>
-                          <ul class="list-disc list-inside space-y-1 ml-2">
-                            <li>Si el manager pide contraseña, contacta al administrador del servidor</li>
-                            <li>El código QR se actualiza cada 20 segundos</li>
-                            <li>Una vez vinculado, regresa a este panel para gestionar tu bot</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div class="bg-white p-6 rounded-xl border-2 border-blue-200 mb-6">
+                  <p class="text-sm font-bold text-gray-800 mb-4">
+                    <i class="fas fa-clipboard-list mr-2"></i>Pasos para vincular:
+                  </p>
+                  <ol class="text-sm text-gray-700 space-y-3">
+                    <li class="flex items-start">
+                      <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 flex-shrink-0">1</span>
+                      <span>Haz clic en el botón <strong>"Abrir Evolution API Manager"</strong> abajo</span>
+                    </li>
+                    <li class="flex items-start">
+                      <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 flex-shrink-0">2</span>
+                      <span>Busca la instancia llamada <strong class="bg-yellow-100 px-2 py-1 rounded font-mono text-xs">mullbot-principal</strong></span>
+                    </li>
+                    <li class="flex items-start">
+                      <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 flex-shrink-0">3</span>
+                      <span>Haz clic en el nombre de la instancia para ver el código QR</span>
+                    </li>
+                    <li class="flex items-start">
+                      <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 flex-shrink-0">4</span>
+                      <span>Abre WhatsApp en tu teléfono → <strong>Ajustes > Dispositivos vinculados > Vincular un dispositivo</strong></span>
+                    </li>
+                    <li class="flex items-start">
+                      <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 mt-0.5 flex-shrink-0">5</span>
+                      <span>Escanea el código QR que aparece en el manager</span>
+                    </li>
+                  </ol>
                 </div>
 
-                <!-- Método Pairing Code -->
-                <div id="connection-method-pairing" class="connection-method-panel hidden">
-                  <div class="bg-white p-8 rounded-2xl border-2 border-gray-300">
-                    <div class="space-y-6">
-                      <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">
-                          <i class="fas fa-phone mr-2"></i>Número de Teléfono
-                        </label>
-                        <div class="flex gap-3">
-                          <input type="tel" id="pairing-phone-input" 
-                            placeholder="Ej: 521234567890 (con código de país)"
-                            class="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-green-500 outline-none transition-all text-lg">
-                          <button onclick="requestPairingCode()" id="btn-get-pairing-code"
-                            class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg whitespace-nowrap">
-                            <i class="fas fa-key mr-2"></i>Obtener Código
-                          </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2">
-                          <i class="fas fa-info-circle mr-1"></i>
-                          Ingresa tu número con código de país sin el símbolo +. Ejemplo: 521234567890
-                        </p>
-                      </div>
+                <a href="http://api.soporteches.online/manager" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-5 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl group mb-4">
+                  <i class="fas fa-external-link-alt mr-3 text-2xl group-hover:scale-110 transition-transform"></i>
+                  Abrir Evolution API Manager
+                  <i class="fas fa-arrow-right ml-3 text-2xl group-hover:translate-x-1 transition-transform"></i>
+                </a>
 
-                      <!-- Código de vinculación display -->
-                      <div id="pairing-code-display" class="hidden">
-                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-2xl border-2 border-green-300 text-center">
-                          <p class="text-sm font-medium text-gray-700 mb-4">Tu código de vinculación es:</p>
-                          <div class="text-6xl font-bold tracking-wider text-green-600 mb-6 font-mono" id="pairing-code-value">
-                            <!-- Código aparecerá aquí -->
-                          </div>
-                          <div class="bg-white p-6 rounded-xl border border-green-200 mb-6">
-                            <p class="text-sm font-bold text-gray-800 mb-3">
-                              <i class="fas fa-clipboard-list mr-2"></i>Instrucciones:
-                            </p>
-                            <ol class="text-left text-sm text-gray-700 space-y-2">
-                              <li class="flex items-start">
-                                <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">1</span>
-                                <span>Abre WhatsApp en tu teléfono</span>
-                              </li>
-                              <li class="flex items-start">
-                                <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">2</span>
-                                <span>Ve a <strong>Ajustes > Dispositivos vinculados</strong></span>
-                              </li>
-                              <li class="flex items-start">
-                                <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">3</span>
-                                <span>Toca <strong>"Vincular un dispositivo"</strong></span>
-                              </li>
-                              <li class="flex items-start">
-                                <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">4</span>
-                                <span>Selecciona <strong>"Vincular con número de teléfono"</strong></span>
-                              </li>
-                              <li class="flex items-start">
-                                <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">5</span>
-                                <span>Ingresa el código de 8 dígitos mostrado arriba</span>
-                              </li>
-                            </ol>
-                          </div>
-                          <p class="text-xs text-gray-500">
-                            <i class="fas fa-clock mr-1"></i>
-                            El código expira en unos minutos. Si no funciona, genera uno nuevo.
-                          </p>
-                        </div>
-                      </div>
-
-                      <!-- Error display -->
-                      <div id="pairing-error-display" class="hidden">
-                        <div class="bg-red-50 p-6 rounded-xl border-2 border-red-300 text-center">
-                          <i class="fas fa-exclamation-circle text-4xl text-red-500 mb-3"></i>
-                          <p class="text-sm font-bold text-red-800 mb-2">Error al generar código</p>
-                          <p class="text-sm text-red-600" id="pairing-error-message"></p>
-                        </div>
-                      </div>
-
-                      <!-- Loading state -->
-                      <div id="pairing-loading" class="hidden text-center py-8">
-                        <i class="fas fa-spinner fa-spin text-4xl text-green-500 mb-4"></i>
-                        <p class="text-gray-600 font-medium">Generando código de vinculación...</p>
-                      </div>
+                <div class="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+                  <div class="flex items-start">
+                    <i class="fas fa-lightbulb text-yellow-600 mr-3 mt-1 text-xl"></i>
+                    <div class="text-sm text-gray-700">
+                      <p class="font-bold mb-2">💡 Importante:</p>
+                      <ul class="list-disc list-inside space-y-1 ml-2">
+                        <li>El código QR se actualiza automáticamente cada 20-30 segundos</li>
+                        <li>Si el QR no aparece, recarga la página del manager (F5)</li>
+                        <li>Una vez vinculado, el estado cambiará a <span class="text-green-600 font-semibold">🟢 Conectado</span> aquí arriba</li>
+                        <li>Si tienes problemas, usa el panel de <strong>Gestión de Instancias</strong> abajo para limpiar la conexión</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
