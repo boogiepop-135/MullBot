@@ -311,10 +311,25 @@ export class EvolutionAPIv2Service {
             const response = await this.axiosInstance.get<EvolutionInstanceStatus[]>('/instance/fetchInstances');
             logger.info(`✅ Instancias obtenidas: ${response.data?.length || 0} encontradas`);
             
-            // Log detallado de las instancias
+            // Log RAW para debug - ver estructura real
+            logger.info('📄 Estructura RAW de respuesta:', JSON.stringify(response.data, null, 2));
+            
+            // Log detallado de las instancias con múltiples intentos de acceso
             if (response.data && response.data.length > 0) {
-                response.data.forEach((inst: any) => {
-                    logger.info(`   - ${inst?.instance?.instanceName}: ${inst?.instance?.status}`);
+                response.data.forEach((inst: any, index: number) => {
+                    logger.info(`   [${index}] Estructura completa:`, JSON.stringify(inst, null, 2));
+                    
+                    // Intentar diferentes formas de acceder a los datos
+                    const name1 = inst?.instance?.instanceName;
+                    const name2 = inst?.instanceName;
+                    const name3 = inst?.name;
+                    
+                    const status1 = inst?.instance?.status;
+                    const status2 = inst?.status;
+                    const status3 = inst?.state;
+                    
+                    logger.info(`   [${index}] Posibles nombres: inst.instance.instanceName="${name1}", inst.instanceName="${name2}", inst.name="${name3}"`);
+                    logger.info(`   [${index}] Posibles estados: inst.instance.status="${status1}", inst.status="${status2}", inst.state="${status3}"`);
                 });
             } else {
                 logger.warn('⚠️ No se encontraron instancias en el servidor');
