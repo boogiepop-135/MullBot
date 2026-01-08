@@ -148,7 +148,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             // Notificar al agente humano
             try {
                 const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
-                const contactName = message.from === message._data.notifyName ? message._data.notifyName : null;
+                const contactName = message.from === (message as any)._data.notifyName ? (message as any)._data.notifyName : null;
                 await notifyAgentAboutContact(message.from, contactName);
                 logger.info(`Agent notified about contact request from ${message.from}`);
             } catch (notifyError) {
