@@ -22,9 +22,9 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
         if (EnvConfig.GEMINI_API_KEY) {
             logger.info(`🤖 Intentando Gemini con AIModelManager para query: "${cleanQuery.substring(0, 50)}..."`);
             
-            // Prompt completo de Müllblue (usando el mismo de gemini.util.ts)
-            const { getFullMullbluePrompt } = await import('./mullblue-prompt.util');
-            const systemPrompt = getFullMullbluePrompt();
+            // Importar prompt completo de Müllblue
+            const mullbluePromptModule = await import('./mullblue-prompt.util');
+            const systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
 
             const aiManager = AIModelManager.getInstance();
             const result = await aiManager.generateContent(cleanQuery, systemPrompt);
