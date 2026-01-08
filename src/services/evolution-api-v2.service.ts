@@ -531,6 +531,9 @@ export class EvolutionAPIv2Service {
             const safeName = this.getSafeInstanceName();
 
             logger.info(`📤 Intentando enviar mensaje a ${normalizedPhone} (original: ${phoneNumber})`);
+            logger.info(`   Instancia: ${safeName}`);
+            logger.info(`   Endpoint: /message/sendText/${safeName}`);
+            logger.info(`   Payload: ${JSON.stringify({ number: normalizedPhone, text: message.substring(0, 50) + '...' })}`);
 
             const response = await this.axiosInstance.post<EvolutionSendMessageResponse>(
                 `/message/sendText/${safeName}`,
@@ -540,28 +543,53 @@ export class EvolutionAPIv2Service {
                 }
             );
 
-            logger.info(`📥 Respuesta de Evolution API:`, JSON.stringify(response.data));
+            logger.info(`📥 Respuesta HTTP Status: ${response.status}`);
+            logger.info(`📥 Respuesta completa: ${JSON.stringify(response.data, null, 2)}`);
+            logger.info(`📥 response.data.success: ${response.data?.success}`);
 
             if (!response.data?.success) {
-                throw new Error(response.data?.message || 'Failed to send message');
+                const errorMsg = response.data?.message || 'Failed to send message';
+                logger.error(`❌ Evolution API respondió con success=false: ${errorMsg}`);
+                throw new Error(errorMsg);
             }
 
             logger.info(`✅ Mensaje enviado exitosamente a ${normalizedPhone}`);
             return response.data;
         } catch (error: any) {
-            // Logging mejorado de errores
+            // Logging ultra-detallado de errores
             logger.error(`❌ Error enviando mensaje a ${phoneNumber}`);
             logger.error(`   Número normalizado: ${this.normalizePhoneNumber(phoneNumber)}`);
-            logger.error(`   HTTP Status: ${error.response?.status || 'N/A'}`);
-            logger.error(`   Error Message: ${error.message || 'Unknown'}`);
-            logger.error(`   Response Data:`, JSON.stringify(error.response?.data || 'No response data'));
-            logger.error(`   Full Error:`, JSON.stringify({
-                message: error.message,
-                code: error.code,
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                data: error.response?.data
-            }));
+            
+            // Intentar obtener detalles del error de diferentes formas
+            try {
+                if (error.response) {
+                    logger.error(`   HTTP Status: ${error.response.status}`);
+                    logger.error(`   HTTP Status Text: ${error.response.statusText}`);
+                    logger.error(`   Response Headers: ${JSON.stringify(error.response.headers)}`);
+                    logger.error(`   Response Data: ${JSON.stringify(error.response.data, null, 2)}`);
+                } else {
+                    logger.error(`   No HTTP Response - Error Type: ${error.constructor.name}`);
+                    logger.error(`   Error Code: ${error.code}`);
+                }
+                
+                // Intentar serializar el error de múltiples formas
+                logger.error(`   Error.message type: ${typeof error.message}`);
+                logger.error(`   Error.message: ${String(error.message)}`);
+                logger.error(`   Error.toString(): ${error.toString()}`);
+                
+                // Si error.message es un objeto, intentar expandirlo
+                if (typeof error.message === 'object') {
+                    logger.error(`   Error.message object keys: ${Object.keys(error.message).join(', ')}`);
+                    logger.error(`   Error.message stringified: ${JSON.stringify(error.message, null, 2)}`);
+                }
+                
+                // Intentar util.inspect para objetos complejos
+                const util = require('util');
+                logger.error(`   Full Error (util.inspect): ${util.inspect(error, { depth: 3, colors: false })}`);
+            } catch (logError) {
+                logger.error(`   Error al procesar error details: ${logError}`);
+            }
+            
             throw error;
         }
     }
