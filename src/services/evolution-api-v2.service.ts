@@ -59,28 +59,38 @@ export class EvolutionAPIv2Service {
     }
 
     /**
+     * Helper privado para obtener siempre un instanceName válido
+     * Protege contra undefined/null en cualquier momento
+     */
+    private getSafeInstanceName(): string {
+        return this.instanceName || 'mullbot-principal';
+    }
+
+    /**
      * Inicializar instancia de Evolution API
      * Verifica si existe, si no la crea automáticamente
      */
     async initInstance(): Promise<void> {
         try {
-            logger.info(`🔍 Verificando instancia: ${this.instanceName}`);
+            // Protección adicional para instanceName
+            const safeName = this.instanceName || 'mullbot-principal';
+            logger.info(`🔍 Verificando instancia: ${safeName}`);
 
             // Verificar si la instancia existe
             const instances = await this.fetchInstances();
             const instanceExists = instances.some(
-                (inst: EvolutionInstanceStatus) => inst.instance.instanceName === this.instanceName
+                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
             );
 
             if (instanceExists) {
-                logger.info(`✅ Instancia '${this.instanceName}' ya existe`);
+                logger.info(`✅ Instancia '${safeName}' ya existe`);
                 return;
             }
 
             // Crear instancia si no existe
-            logger.info(`📦 Creando nueva instancia: ${this.instanceName}`);
+            logger.info(`📦 Creando nueva instancia: ${safeName}`);
             await this.createInstance();
-            logger.info(`✅ Instancia '${this.instanceName}' creada exitosamente`);
+            logger.info(`✅ Instancia '${safeName}' creada exitosamente`);
 
         } catch (error: any) {
             logger.error(`❌ Error inicializando instancia:`, error.response?.data || error.message);
@@ -93,10 +103,11 @@ export class EvolutionAPIv2Service {
      */
     private async createInstance(): Promise<EvolutionCreateInstanceResponse> {
         try {
+            const safeName = this.getSafeInstanceName();
             const response = await this.axiosInstance.post<EvolutionCreateInstanceResponse>(
                 '/instance/create',
                 {
-                    instanceName: this.instanceName,
+                    instanceName: safeName,
                     token: this.apiKey,
                     qrcode: true,
                     integration: 'WHATSAPP-BAILEYS'
@@ -106,7 +117,7 @@ export class EvolutionAPIv2Service {
             return response.data;
         } catch (error: any) {
             if (error.response?.status === 409) {
-                logger.info(`ℹ️ Instancia '${this.instanceName}' ya existe`);
+                logger.info(`ℹ️ Instancia '${safeName}' ya existe`);
                 throw new Error('Instance already exists');
             }
             throw error;
@@ -131,8 +142,9 @@ export class EvolutionAPIv2Service {
      */
     async getQR(): Promise<string | null> {
         try {
+            const safeName = this.getSafeInstanceName();
             const response = await this.axiosInstance.get<EvolutionQRData>(
-                `/instance/connect/${this.instanceName}`
+                `/instance/connect/${safeName}`
             );
 
             if (response.data?.qrcode?.base64) {
@@ -168,8 +180,9 @@ export class EvolutionAPIv2Service {
             // Llamar a Evolution API para obtener pairing code
             // El endpoint exacto puede variar según la versión de Evolution API
             // Documentación: https://doc.evolution-api.com/v2/pt/get-started/authentication
+            const safeName = this.getSafeInstanceName();
             const response = await this.axiosInstance.post(
-                `/instance/connect/${this.instanceName}`,
+                `/instance/connect/${safeName}`,
                 {
                     number: cleanPhoneNumber,
                     method: 'pairing_code' // Método de autenticación por código
@@ -237,9 +250,12 @@ export class EvolutionAPIv2Service {
      */
     async isConnected(): Promise<boolean> {
         try {
+            // Protección adicional para instanceName
+            const safeName = this.instanceName || 'mullbot-principal';
+            
             const instances = await this.fetchInstances();
             const instance = instances.find(
-                (inst: EvolutionInstanceStatus) => inst.instance.instanceName === this.instanceName
+                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
             );
 
             return instance?.instance?.status === 'open';
@@ -258,9 +274,10 @@ export class EvolutionAPIv2Service {
         try {
             // Normalizar número de teléfono
             const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+            const safeName = this.getSafeInstanceName();
 
             const response = await this.axiosInstance.post<EvolutionSendMessageResponse>(
-                `/message/sendText/${this.instanceName}`,
+                `/message/sendText/${safeName}`,
                 {
                     number: normalizedPhone,
                     text: message
@@ -284,13 +301,15 @@ export class EvolutionAPIv2Service {
      */
     async logout(): Promise<void> {
         try {
-            logger.info(`🔌 Desvinculando instancia: ${this.instanceName}`);
-            await this.axiosInstance.delete(`/instance/delete/${this.instanceName}`);
-            logger.info(`✅ Instancia '${this.instanceName}' eliminada`);
+            const safeName = this.getSafeInstanceName();
+            logger.info(`🔌 Desvinculando instancia: ${safeName}`);
+            await this.axiosInstance.delete(`/instance/delete/${safeName}`);
+            logger.info(`✅ Instancia '${safeName}' eliminada`);
         } catch (error: any) {
+            const safeName = this.getSafeInstanceName();
             // Error 404: Instancia no encontrada (ya eliminada)
             if (error.response?.status === 404) {
-                logger.info(`ℹ️ Instancia '${this.instanceName}' no encontrada (puede estar ya eliminada)`);
+                logger.info(`ℹ️ Instancia '${safeName}' no encontrada (puede estar ya eliminada)`);
                 return; // No es un error crítico
             }
             
@@ -318,9 +337,12 @@ export class EvolutionAPIv2Service {
      */
     async getStatus(): Promise<EvolutionInstanceStatus | null> {
         try {
+            // Protección adicional para instanceName
+            const safeName = this.instanceName || 'mullbot-principal';
+            
             const instances = await this.fetchInstances();
             const instance = instances.find(
-                (inst: EvolutionInstanceStatus) => inst.instance.instanceName === this.instanceName
+                (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
             );
 
             return instance || null;
@@ -373,15 +395,16 @@ export class EvolutionAPIv2Service {
             }
 
             // Determinar el endpoint según el tipo de media
-            let endpoint = `/message/sendMedia/${this.instanceName}`;
+            const safeName = this.getSafeInstanceName();
+            let endpoint = `/message/sendMedia/${safeName}`;
             if (mediaType === 'image') {
-                endpoint = `/message/sendMedia/${this.instanceName}`;
+                endpoint = `/message/sendMedia/${safeName}`;
             } else if (mediaType === 'video') {
-                endpoint = `/message/sendMedia/${this.instanceName}`;
+                endpoint = `/message/sendMedia/${safeName}`;
             } else if (mediaType === 'audio') {
-                endpoint = `/message/sendMedia/${this.instanceName}`;
+                endpoint = `/message/sendMedia/${safeName}`;
             } else if (mediaType === 'document') {
-                endpoint = `/message/sendMedia/${this.instanceName}`;
+                endpoint = `/message/sendMedia/${safeName}`;
             }
 
             // Enviar con Content-Type multipart/form-data
