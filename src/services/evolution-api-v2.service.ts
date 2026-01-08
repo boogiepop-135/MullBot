@@ -688,47 +688,36 @@ export class EvolutionAPIv2Service {
                 throw new Error(`File not found: ${filePath}`);
             }
 
-            // Leer el archivo
-            const fileBuffer = fs.readFileSync(filePath);
-            const fileName = require('path').basename(filePath);
-            const mimeType = this.getMimeType(filePath, mediaType);
+            const path = require('path');
+            const fileName = path.basename(filePath);
+            const safeName = this.getSafeInstanceName();
+            
+            logger.info(`📤 Enviando ${mediaType} ${fileName} a ${normalizedPhone}`);
 
-            // Crear FormData
-            const formData = new FormData();
-            formData.append('number', normalizedPhone);
-            formData.append('media', fileBuffer, {
-                filename: fileName,
-                contentType: mimeType
-            });
+            // Convertir a base64
+            const fileBuffer = fs.readFileSync(filePath);
+            const base64Data = fileBuffer.toString('base64');
+            const mimeType = this.getMimeType(filePath, mediaType);
+            
+            // Evolution API v2 acepta base64 en el campo "media"
+            const payload: any = {
+                number: normalizedPhone,
+                mediatype: mediaType,
+                media: `data:${mimeType};base64,${base64Data}`,
+                fileName: fileName
+            };
             
             if (caption) {
-                formData.append('caption', caption);
+                payload.caption = caption;
             }
 
-            // Determinar el endpoint según el tipo de media
-            const safeName = this.getSafeInstanceName();
-            let endpoint = `/message/sendMedia/${safeName}`;
-            if (mediaType === 'image') {
-                endpoint = `/message/sendMedia/${safeName}`;
-            } else if (mediaType === 'video') {
-                endpoint = `/message/sendMedia/${safeName}`;
-            } else if (mediaType === 'audio') {
-                endpoint = `/message/sendMedia/${safeName}`;
-            } else if (mediaType === 'document') {
-                endpoint = `/message/sendMedia/${safeName}`;
-            }
+            logger.debug(`📦 Payload preparado: ${fileName} (${Math.round(base64Data.length / 1024)}KB base64)`);
 
-            // Enviar con Content-Type multipart/form-data
-            const response = await axios.post<EvolutionSendMessageResponse>(
-                `${this.apiUrl}${endpoint}`,
-                formData,
-                {
-                    headers: {
-                        ...formData.getHeaders(),
-                        'apikey': this.apiKey
-                    },
-                    timeout: 60000 // 60 segundos para archivos grandes
-                }
+            // Enviar usando el endpoint correcto con axiosInstance configurado
+            const response = await this.axiosInstance.post<EvolutionSendMessageResponse>(
+                `/message/sendMedia/${safeName}`,
+                payload,
+                { timeout: 60000 } // 60 segundos para archivos grandes
             );
 
             // Igual que sendText: algunas respuestas no traen `success`
@@ -741,13 +730,17 @@ export class EvolutionAPIv2Service {
             if (!isOk) {
                 const msg = (response.data as any)?.message;
                 const errorMsg = typeof msg === 'string' ? msg : JSON.stringify(msg ?? response.data ?? 'Unknown error');
+                logger.error(`❌ Evolution API rechazó el media: ${errorMsg}`);
                 throw new Error(errorMsg);
             }
 
-            logger.info(`✅ Media enviado a ${normalizedPhone}: ${fileName}`);
+            logger.info(`✅ Media enviado exitosamente a ${normalizedPhone}: ${fileName}`);
             return response.data;
         } catch (error: any) {
-            logger.error(`❌ Error enviando media a ${phoneNumber}:`, error.response?.data || error.message);
+            logger.error(`❌ Error enviando media a ${phoneNumber}:`);
+            logger.error(`   Status: ${error.response?.status}`);
+            logger.error(`   Data: ${JSON.stringify(error.response?.data)}`);
+            logger.error(`   Message: ${error.message}`);
             throw error;
         }
     }
