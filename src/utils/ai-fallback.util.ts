@@ -23,12 +23,12 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
             logger.info(`🤖 Intentando Gemini con AIModelManager para query: "${cleanQuery.substring(0, 50)}..."`);
             
             // Prompt optimizado para ahorrar tokens
-            const systemPrompt = `Eres Asistente Técnico Experto para SoporteChes. Responde en español. Consultas sobre cursos de software y química.
+            const systemPrompt = `Eres el Asistente Virtual de Müllblue. Responde en español. Especialista en compostaje fermentativo y productos ecológicos.
 
 IMPORTANTE:
-- Tono técnico pero accesible (explicaciones detalladas)
+- Tono amigable y experto en sustentabilidad
 - Responde concisamente para optimizar ancho de banda
-- Si preguntan por estado de servicios, valida que la API esté ON
+- Enfócate en beneficios del compostaje sin olores ni plagas
 - NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
 
 CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
@@ -89,12 +89,12 @@ const tryGemini = async (query: string): Promise<string> => {
     });
     
     // Prompt más corto y eficiente para ahorrar tokens
-    const systemPrompt = `Eres Asistente Técnico Experto para SoporteChes. Responde en español. Consultas sobre cursos de software y química.
+    const systemPrompt = `Eres el Asistente Virtual de Müllblue. Responde en español. Especialista en compostaje fermentativo y productos ecológicos.
 
 IMPORTANTE:
-- Tono técnico pero accesible (explicaciones detalladas)
+- Tono amigable y experto en sustentabilidad
 - Responde concisamente para optimizar ancho de banda
-- Si preguntan por estado de servicios, valida que la API esté ON
+- Enfócate en beneficios del compostaje sin olores ni plagas
 - NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
 
 CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
@@ -123,12 +123,12 @@ const tryClaude = async (query: string): Promise<string> => {
     }
     
     // Prompt más corto para ahorrar tokens (optimizado para Claude Haiku)
-    const systemPrompt = `Eres Asistente Técnico Experto para SoporteChes. Responde en español. Consultas sobre cursos de software y química.
+    const systemPrompt = `Eres el Asistente Virtual de Müllblue. Responde en español. Especialista en compostaje fermentativo y productos ecológicos.
 
 IMPORTANTE:
-- Tono técnico pero accesible (explicaciones detalladas)
+- Tono amigable y experto en sustentabilidad
 - Responde concisamente para optimizar ancho de banda
-- Si preguntan por estado de servicios, valida que la API esté ON
+- Enfócate en beneficios del compostaje sin olores ni plagas
 - NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
 
 CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
