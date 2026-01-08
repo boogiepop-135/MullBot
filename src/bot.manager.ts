@@ -340,8 +340,22 @@ export class BotManager {
             try {
                 const { aiCompletion } = await import('./utils/ai-fallback.util');
                 const result = await aiCompletion(content);
-                await this.evolutionAPI.sendMessage(phoneNumber, result.text);
-                await this.saveSentMessage(phoneNumber, result.text);
+                
+                // Procesar respuesta para detectar y enviar imágenes
+                const { processResponseWithImages } = await import('./utils/image-sender.util');
+                const cleanText = await processResponseWithImages(
+                    result.text,
+                    async (imagePath: string) => {
+                        // Enviar imagen usando Evolution API
+                        await this.evolutionAPI.sendMedia(phoneNumber, imagePath, '');
+                    }
+                );
+                
+                // Enviar texto (si hay, después de las imágenes)
+                if (cleanText && cleanText.length > 0) {
+                    await this.evolutionAPI.sendMessage(phoneNumber, cleanText);
+                    await this.saveSentMessage(phoneNumber, cleanText);
+                }
             } catch (error) {
                 logger.error(`Error usando IA para responder: ${error}`);
                 const errorMessage = 'Lo siento, no pude procesar tu consulta en este momento. Por favor, intenta de nuevo o contacta al soporte.';
