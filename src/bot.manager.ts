@@ -191,8 +191,15 @@ export class BotManager {
     public async sendMessage(phoneNumber: string, message: string): Promise<void> {
         try {
             await this.evolutionAPI.sendMessage(phoneNumber, message);
-        } catch (error) {
-            logger.error(`Error enviando mensaje a ${phoneNumber}:`, error);
+        } catch (error: any) {
+            // Mejorar logging de error
+            logger.error(`Error sending message to ${phoneNumber}: ${error?.message || error?.toString() || 'Unknown error'}`);
+            if (error?.response?.data) {
+                logger.error(`  API Response:`, JSON.stringify(error.response.data, null, 2));
+            }
+            if (error?.stack) {
+                logger.error(`  Stack trace: ${error.stack}`);
+            }
             throw error;
         }
     }
