@@ -10,7 +10,12 @@ export interface AIResponse {
     provider: AIProvider;
 }
 
-export const aiCompletion = async (query: string): Promise<AIResponse> => {
+export interface ConversationMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+export const aiCompletion = async (query: string, conversationHistory: ConversationMessage[] = []): Promise<AIResponse> => {
     // Limpiar y normalizar el query para evitar problemas
     const cleanQuery = query.trim();
     if (!cleanQuery || cleanQuery.length === 0) {
@@ -26,8 +31,24 @@ export const aiCompletion = async (query: string): Promise<AIResponse> => {
             const mullbluePromptModule = await import('./mullblue-prompt.util');
             const systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
 
+            // Construir prompt con historial de conversación
+            let fullQuery = cleanQuery;
+            if (conversationHistory.length > 0) {
+                const historyText = conversationHistory
+                    .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Asistente'}: ${msg.content}`)
+                    .join('\n');
+                fullQuery = `HISTORIAL DE CONVERSACIÓN:
+${historyText}
+
+MENSAJE ACTUAL DEL CLIENTE:
+${cleanQuery}
+
+IMPORTANTE: Responde considerando todo el contexto de la conversación anterior. Si el cliente escribió un número, refiere a la opción que le ofreciste en tu último mensaje.`;
+                logger.debug(`📜 Contexto construido con ${conversationHistory.length} mensajes`);
+            }
+
             const aiManager = AIModelManager.getInstance();
-            const result = await aiManager.generateContent(cleanQuery, systemPrompt);
+            const result = await aiManager.generateContent(fullQuery, systemPrompt);
             
             if (result.text && result.text.trim().length > 0) {
                 logger.info(`✅ Gemini respondió exitosamente con ${result.modelUsed} (${result.text.length} caracteres, fallback: ${result.fallbackOccurred})`);

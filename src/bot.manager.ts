@@ -339,7 +339,12 @@ export class BotManager {
             // Si no pregunta por estado, usar IA para responder
             try {
                 const { aiCompletion } = await import('./utils/ai-fallback.util');
-                const result = await aiCompletion(content);
+                
+                // Obtener historial de conversación (últimos 6 mensajes)
+                const conversationHistory = await this.getConversationHistory(phoneNumber, 6);
+                logger.info(`📜 Cargando historial: ${conversationHistory.length} mensajes previos`);
+                
+                const result = await aiCompletion(content, conversationHistory);
                 
                 logger.info(`📝 Respuesta de IA recibida (${result.text.length} chars): ${result.text.substring(0, 100)}...`);
                 
