@@ -3300,12 +3300,34 @@ window.loadInstanceStatus = async function() {
     if (statusDetails) statusDetails.textContent = error.message || 'Error desconocido';
     
     if (instancesList) {
+      // Detectar si es error 403
+      const is403Error = error.message?.includes('403') || error.message?.includes('permisos');
+      
       instancesList.innerHTML = `
-        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p class="text-sm text-red-700">
-            <i class="fas fa-exclamation-circle mr-2"></i>
-            ${error.message || 'Error al cargar instancias'}
-          </p>
+        <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+          <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-red-600 text-xl mr-3 mt-1"></i>
+            <div class="flex-1">
+              <p class="text-sm font-bold text-red-800 mb-2">
+                ${is403Error ? '⛔ Error 403: API Key sin permisos' : 'Error al cargar instancias'}
+              </p>
+              <p class="text-xs text-red-700 mb-3">
+                ${error.message || 'Error desconocido'}
+              </p>
+              ${is403Error ? `
+                <div class="bg-yellow-50 border border-yellow-300 rounded p-3 mb-3">
+                  <p class="text-xs font-bold text-gray-800 mb-2">🔧 Solución:</p>
+                  <ol class="text-xs text-gray-700 space-y-1 ml-4 list-decimal">
+                    <li>Ve a <strong>Easypanel > Evolution API</strong></li>
+                    <li>Busca la sección <strong>"Global API Key"</strong> o <strong>"API Keys"</strong></li>
+                    <li>Copia la <strong>API Key Maestra</strong> (Global)</li>
+                    <li>Actualiza la variable <code class="bg-gray-200 px-1 rounded">EVOLUTION_APIKEY</code> en tu proyecto</li>
+                    <li>Reinicia el servicio</li>
+                  </ol>
+                </div>
+              ` : ''}
+            </div>
+          </div>
         </div>
       `;
     }
@@ -3391,16 +3413,42 @@ window.createInstanceEmergency = async function() {
       throw new Error(result.error || result.details || 'Error al crear instancia');
     }
 
-    alert(`✅ ${result.message}\n\nAcción: ${result.action}\nEstado: ${result.instance?.status || 'N/A'}`);
+    let message = `✅ ${result.message}\n\nAcción: ${result.action}\nEstado: ${result.instance?.status || 'N/A'}`;
     
-    // Recargar estado y QR
-    await loadInstanceStatus();
-    
-    // Si estamos en la pestaña de WhatsApp, recargar QR
-    if (currentPage === 'settings') {
-      setTimeout(() => {
-        loadQRCode();
-      }, 2000);
+    // Si la instancia no aparece inmediatamente, agregar nota
+    if (!result.instance) {
+      message += '\n\n⏳ La instancia puede tardar unos segundos en aparecer en la lista.\n\n¿Deseas esperar 5 segundos y recargar el estado?';
+      
+      if (confirm(message)) {
+        // Mostrar loading
+        const statusText = document.getElementById('instance-status-text');
+        if (statusText) statusText.textContent = '⏳ Esperando a que la instancia aparezca...';
+        
+        // Esperar 5 segundos
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Recargar estado
+        await loadInstanceStatus();
+        
+        // Recargar QR
+        if (currentPage === 'settings') {
+          setTimeout(() => {
+            loadQRCode();
+          }, 1000);
+        }
+      }
+    } else {
+      alert(message);
+      
+      // Recargar estado y QR
+      await loadInstanceStatus();
+      
+      // Si estamos en la pestaña de WhatsApp, recargar QR
+      if (currentPage === 'settings') {
+        setTimeout(() => {
+          loadQRCode();
+        }, 2000);
+      }
     }
 
   } catch (error) {

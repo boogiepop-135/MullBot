@@ -1974,13 +1974,41 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             const evolutionAPI = botManager.getEvolutionAPI();
 
             // Obtener todas las instancias del servidor Evolution
-            const allInstances = await evolutionAPI.fetchInstances();
+            let allInstances: any[] = [];
+            let fetchError = null;
+            
+            try {
+                allInstances = await evolutionAPI.fetchInstances();
+            } catch (fetchErr: any) {
+                fetchError = fetchErr;
+                logger.error('Error al obtener lista de instancias:', fetchErr.message);
+                
+                // Si es error 403, devolver error específico
+                if (fetchErr.message?.includes('403') || fetchErr.message?.includes('permisos')) {
+                    return res.status(403).json({ 
+                        success: false,
+                        error: '⛔ Error 403: Tu API Key no tiene permisos para listar instancias.\n\nVerifica en Easypanel que estés usando una API Key MAESTRA (Global), no una API Key de instancia específica.\n\nPasos:\n1. Ve a Evolution API en Easypanel\n2. Busca la sección "API Keys" o "Global API Key"\n3. Copia la API Key Global/Maestra\n4. Actualiza la variable EVOLUTION_APIKEY en tu proyecto',
+                        errorType: 'permission_denied',
+                        hint: 'La API Key actual no es Maestra'
+                    });
+                }
+            }
 
             // Obtener información de la instancia actual
-            const currentInstance = await evolutionAPI.fetchInstance();
+            let currentInstance = null;
+            try {
+                currentInstance = await evolutionAPI.fetchInstance();
+            } catch (err: any) {
+                logger.warn('No se pudo obtener instancia actual:', err.message);
+            }
 
             // Verificar si está conectada
-            const isConnected = await evolutionAPI.isConnected();
+            let isConnected = false;
+            try {
+                isConnected = await evolutionAPI.isConnected();
+            } catch (err: any) {
+                logger.warn('No se pudo verificar conexión:', err.message);
+            }
 
             res.json({
                 success: true,
@@ -1995,21 +2023,12 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                     instanceName: inst?.instance?.instanceName,
                     status: inst?.instance?.status,
                     owner: inst?.instance?.owner
-                }))
+                })),
+                warning: fetchError ? 'Hubo problemas al obtener la lista completa de instancias' : null
             });
         } catch (error: any) {
             logger.error('Failed to fetch instances:', error);
             
-            // Detectar errores específicos
-            const statusCode = error.response?.status;
-            if (statusCode === 403) {
-                return res.status(403).json({ 
-                    success: false,
-                    error: '⛔ Error 403: Revisa tu API Key en Easypanel. Debe ser una API Key Maestra (Global).',
-                    errorType: 'permission_denied'
-                });
-            }
-
             res.status(500).json({ 
                 success: false,
                 error: 'Error al obtener instancias',

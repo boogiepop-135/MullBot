@@ -173,16 +173,24 @@ export class EvolutionAPIv2Service {
             logger.info(`📦 [ensureInstance] Paso 4: Creando instancia nueva...`);
             await this.createInstance();
             
-            // Esperar y verificar
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Esperar más tiempo para que Evolution API procese la creación
+            logger.info(`⏳ Esperando 3 segundos para que la instancia se inicialice...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Verificar que se creó correctamente
+            logger.info(`🔍 Verificando que la instancia se creó correctamente...`);
             const recreatedInstance = await this.fetchInstance();
             
-            logger.info(`✅ [ensureInstance] Instancia recreada exitosamente`);
+            if (!recreatedInstance) {
+                logger.warn(`⚠️ La instancia no aparece en la lista después de crearla. Puede tardar unos segundos más.`);
+            } else {
+                logger.info(`✅ [ensureInstance] Instancia recreada exitosamente con estado: ${recreatedInstance.instance?.status}`);
+            }
             
             return {
                 success: true,
                 action: force ? 'recreated' : 'cleaned',
-                message: `Instancia '${safeName}' ${force ? 'recreada' : 'limpiada y recreada'} exitosamente`,
+                message: `Instancia '${safeName}' ${force ? 'recreada' : 'limpiada y recreada'} exitosamente. ${!recreatedInstance ? 'Nota: Puede tardar unos segundos en aparecer en la lista.' : ''}`,
                 instance: recreatedInstance || undefined
             };
 
@@ -225,13 +233,26 @@ export class EvolutionAPIv2Service {
     async fetchInstance(): Promise<EvolutionInstanceStatus | null> {
         try {
             const safeName = this.getSafeInstanceName();
+            logger.info(`🔎 Buscando instancia '${safeName}' en la lista...`);
+            
             const instances = await this.fetchInstances();
             const instance = instances.find(
                 (inst: EvolutionInstanceStatus) => inst?.instance?.instanceName === safeName
             );
+            
+            if (instance) {
+                logger.info(`✅ Instancia '${safeName}' encontrada con estado: ${instance.instance?.status}`);
+            } else {
+                logger.warn(`⚠️ Instancia '${safeName}' NO encontrada en la lista de ${instances.length} instancias`);
+            }
+            
             return instance || null;
         } catch (error: any) {
-            logger.error('Error fetching instance:', error.response?.data || error.message);
+            logger.error('❌ Error fetching instance:', error.message);
+            // Si es error de permisos, propagar
+            if (error.message?.includes('403') || error.message?.includes('permisos')) {
+                throw error;
+            }
             return null;
         }
     }
@@ -286,10 +307,29 @@ export class EvolutionAPIv2Service {
      */
     async fetchInstances(): Promise<EvolutionInstanceStatus[]> {
         try {
+            logger.info('🔍 Solicitando lista de instancias a Evolution API...');
             const response = await this.axiosInstance.get<EvolutionInstanceStatus[]>('/instance/fetchInstances');
+            logger.info(`✅ Instancias obtenidas: ${response.data?.length || 0} encontradas`);
+            
+            // Log detallado de las instancias
+            if (response.data && response.data.length > 0) {
+                response.data.forEach((inst: any) => {
+                    logger.info(`   - ${inst?.instance?.instanceName}: ${inst?.instance?.status}`);
+                });
+            } else {
+                logger.warn('⚠️ No se encontraron instancias en el servidor');
+            }
+            
             return response.data || [];
         } catch (error: any) {
-            logger.error('Error fetching instances:', error.response?.data || error.message);
+            const statusCode = error.response?.status;
+            logger.error(`❌ Error fetching instances (HTTP ${statusCode}):`, error.response?.data || error.message);
+            
+            // Si es error 403, lanzar excepción para que se propague
+            if (statusCode === 403) {
+                throw new Error('Error 403: La API Key no tiene permisos para listar instancias. Verifica que sea una API Key Maestra (Global).');
+            }
+            
             return [];
         }
     }
