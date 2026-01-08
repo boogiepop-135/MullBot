@@ -2,7 +2,6 @@
 import "./polyfills";
 
 import express from "express";
-import bodyParser from 'body-parser';
 import logger from "./configs/logger.config";
 import EnvConfig from "./configs/env.config";
 import apiRoutes from "./api/index.api";
@@ -68,8 +67,8 @@ app.use("/public", express.static("public", {
     }
   }
 }));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/admin', (req, res) => {
     res.render('admin');
