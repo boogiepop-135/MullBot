@@ -295,7 +295,7 @@ export class BotManager {
             const history = messages
                 .reverse() // Más antiguo primero
                 .map(msg => ({
-                    role: msg.fromMe ? 'assistant' as const : 'user' as const,
+                    role: msg.isFromBot ? 'assistant' as const : 'user' as const,
                     content: msg.body
                 }))
                 .filter(msg => msg.content && msg.content.trim().length > 0);
