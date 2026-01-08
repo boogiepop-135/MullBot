@@ -1,0 +1,31 @@
+[variables]
+# Evita que Puppeteer descargue chrome-headless-shell durante `npm install`
+PUPPETEER_SKIP_DOWNLOAD = "true"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+
+# Reduce ruido/espacio por features de npm
+NPM_CONFIG_FUND = "false"
+NPM_CONFIG_AUDIT = "false"
+
+[phases.setup]
+# Importante: NO instalar chromium aquí. Nixpacks lo estaba metiendo y consumía ~500MB.
+# Mantener solo lo mínimo para build/run (TypeScript + Prisma).
+nixPkgs = [
+  "nodejs_20",
+  "npm-9_x",
+  "openssl"
+]
+
+[phases.install]
+cmds = [
+  "npm install --no-audit --no-fund"
+]
+
+[phases.build]
+cmds = [
+  "npm run build"
+]
+
+[start]
+cmd = "npm start"
+
