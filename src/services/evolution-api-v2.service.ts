@@ -530,6 +530,8 @@ export class EvolutionAPIv2Service {
             const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
             const safeName = this.getSafeInstanceName();
 
+            logger.info(`📤 Intentando enviar mensaje a ${normalizedPhone} (original: ${phoneNumber})`);
+
             const response = await this.axiosInstance.post<EvolutionSendMessageResponse>(
                 `/message/sendText/${safeName}`,
                 {
@@ -538,14 +540,28 @@ export class EvolutionAPIv2Service {
                 }
             );
 
+            logger.info(`📥 Respuesta de Evolution API:`, JSON.stringify(response.data));
+
             if (!response.data?.success) {
                 throw new Error(response.data?.message || 'Failed to send message');
             }
 
-            logger.info(`✅ Mensaje enviado a ${normalizedPhone}`);
+            logger.info(`✅ Mensaje enviado exitosamente a ${normalizedPhone}`);
             return response.data;
         } catch (error: any) {
-            logger.error(`❌ Error enviando mensaje a ${phoneNumber}:`, error.response?.data || error.message);
+            // Logging mejorado de errores
+            logger.error(`❌ Error enviando mensaje a ${phoneNumber}`);
+            logger.error(`   Número normalizado: ${this.normalizePhoneNumber(phoneNumber)}`);
+            logger.error(`   HTTP Status: ${error.response?.status || 'N/A'}`);
+            logger.error(`   Error Message: ${error.message || 'Unknown'}`);
+            logger.error(`   Response Data:`, JSON.stringify(error.response?.data || 'No response data'));
+            logger.error(`   Full Error:`, JSON.stringify({
+                message: error.message,
+                code: error.code,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data
+            }));
             throw error;
         }
     }
