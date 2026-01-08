@@ -545,11 +545,22 @@ export class EvolutionAPIv2Service {
 
             logger.info(`📥 Respuesta HTTP Status: ${response.status}`);
             logger.info(`📥 Respuesta completa: ${JSON.stringify(response.data, null, 2)}`);
-            logger.info(`📥 response.data.success: ${response.data?.success}`);
+            logger.info(`📥 response.data.success: ${String((response.data as any)?.success)}`);
 
-            if (!response.data?.success) {
-                const errorMsg = response.data?.message || 'Failed to send message';
-                logger.error(`❌ Evolution API respondió con success=false: ${errorMsg}`);
+            // ✅ EVOLUTION API v2 (según instalación) puede NO devolver `success`.
+            // Consideramos éxito si:
+            // - HTTP 2xx, y
+            // - `success !== false` (si existe), o existe un `key.id` (respuesta típica de sendText)
+            const hasExplicitSuccess = typeof (response.data as any)?.success === 'boolean';
+            const explicitSuccess = (response.data as any)?.success;
+            const hasKeyId = !!(response.data as any)?.key?.id;
+            const is2xx = response.status >= 200 && response.status < 300;
+            const isOk = is2xx && (!hasExplicitSuccess || explicitSuccess === true || hasKeyId);
+
+            if (!isOk) {
+                const msg = (response.data as any)?.message;
+                const errorMsg = typeof msg === 'string' ? msg : JSON.stringify(msg ?? response.data ?? 'Unknown error');
+                logger.error(`❌ Evolution API respondió sin éxito (isOk=false): ${errorMsg}`);
                 throw new Error(errorMsg);
             }
 
@@ -720,8 +731,17 @@ export class EvolutionAPIv2Service {
                 }
             );
 
-            if (!response.data?.success) {
-                throw new Error(response.data?.message || 'Failed to send media');
+            // Igual que sendText: algunas respuestas no traen `success`
+            const hasExplicitSuccess = typeof (response.data as any)?.success === 'boolean';
+            const explicitSuccess = (response.data as any)?.success;
+            const hasKeyId = !!(response.data as any)?.key?.id;
+            const is2xx = response.status >= 200 && response.status < 300;
+            const isOk = is2xx && (!hasExplicitSuccess || explicitSuccess === true || hasKeyId);
+
+            if (!isOk) {
+                const msg = (response.data as any)?.message;
+                const errorMsg = typeof msg === 'string' ? msg : JSON.stringify(msg ?? response.data ?? 'Unknown error');
+                throw new Error(errorMsg);
             }
 
             logger.info(`✅ Media enviado a ${normalizedPhone}: ${fileName}`);

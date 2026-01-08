@@ -72,13 +72,26 @@ export interface EvolutionInstanceStatus {
 }
 
 export interface EvolutionSendMessageResponse {
-    success: boolean;
-    message?: string;
+    /**
+     * Algunas instalaciones de Evolution API v2 NO devuelven `success`.
+     * En esos casos, el éxito se infiere por HTTP 2xx y/o la presencia de `key.id`.
+     */
+    success?: boolean;
+    /**
+     * Puede ser string o incluso objeto dependiendo del endpoint/configuración.
+     */
+    message?: any;
     key?: {
         remoteJid: string;
         fromMe: boolean;
         id: string;
     };
+    status?: string;
+    pushName?: string;
+    messageType?: string;
+    messageTimestamp?: number;
+    instanceId?: string;
+    source?: string;
 }
 
 export interface EvolutionCreateInstanceResponse {
