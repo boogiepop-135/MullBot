@@ -341,15 +341,23 @@ export class BotManager {
                 const { aiCompletion } = await import('./utils/ai-fallback.util');
                 const result = await aiCompletion(content);
                 
+                logger.info(`📝 Respuesta de IA recibida (${result.text.length} chars): ${result.text.substring(0, 100)}...`);
+                
                 // Procesar respuesta para detectar y enviar imágenes
                 const { processResponseWithImages } = await import('./utils/image-sender.util');
+                logger.info(`🔍 Procesando respuesta para detectar imágenes...`);
+                
                 const cleanText = await processResponseWithImages(
                     result.text,
                     async (imagePath: string) => {
                         // Enviar imagen usando Evolution API
+                        logger.info(`📤 Enviando imagen desde: ${imagePath}`);
                         await this.evolutionAPI.sendMedia(phoneNumber, imagePath, '');
+                        logger.info(`✅ Imagen enviada correctamente`);
                     }
                 );
+                
+                logger.info(`📝 Texto limpio después de procesar imágenes (${cleanText.length} chars): ${cleanText.substring(0, 100)}...`);
                 
                 // Enviar texto (si hay, después de las imágenes)
                 if (cleanText && cleanText.length > 0) {
