@@ -2330,5 +2330,170 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         }
     });
 
+    // Importar conversaciones antiguas desde Evolution API
+    router.post('/contacts/import-conversations', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            logger.info('🔄 Iniciando importación de conversaciones antiguas desde Evolution API...');
+
+            const evolutionAPI = botManager.getEvolutionAPI();
+            if (!evolutionAPI) {
+                return res.status(500).json({ 
+                    error: 'Evolution API no disponible',
+                    details: 'No se pudo obtener el servicio de Evolution API'
+                });
+            }
+
+            // Obtener chats desde Evolution API
+            const axios = require('axios');
+            const evolutionUrl = EnvConfig.EVOLUTION_URL;
+            const apiKey = EnvConfig.EVOLUTION_APIKEY;
+            const instanceName = EnvConfig.EVOLUTION_INSTANCE_NAME;
+
+            if (!evolutionUrl || !apiKey || !instanceName) {
+                return res.status(400).json({
+                    error: 'Variables de entorno faltantes',
+                    details: 'EVOLUTION_URL, EVOLUTION_APIKEY o EVOLUTION_INSTANCE_NAME no configuradas'
+                });
+            }
+
+            let importedContacts = 0;
+            let importedMessages = 0;
+            let errors: any[] = [];
+
+            try {
+                // Obtener lista de chats
+                const chatsResponse = await axios.get(
+                    `${evolutionUrl}/chat/fetchChats/${instanceName}`,
+                    { headers: { apikey: apiKey } }
+                );
+
+                const chats = chatsResponse.data || [];
+
+                logger.info(`📋 Encontrados ${chats.length} chats para importar`);
+
+                // Procesar cada chat
+                for (const chat of chats) {
+                    try {
+                        const phoneNumber = chat.id?.split('@')[0] || chat.remoteJid?.split('@')[0];
+                        if (!phoneNumber || phoneNumber.includes('g.us') || phoneNumber === 'status') {
+                            continue; // Saltar grupos y estados
+                        }
+
+                        const contactId = `${phoneNumber}@s.whatsapp.net`;
+                        const contactName = chat.name || chat.pushName || phoneNumber;
+
+                        // Crear o actualizar contacto
+                        const contact = await prisma.contact.upsert({
+                            where: { phoneNumber: contactId },
+                            create: {
+                                phoneNumber: contactId,
+                                name: contactName,
+                                pushName: contactName,
+                                lastInteraction: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : new Date(),
+                                totalMessages: 0
+                            },
+                            update: {
+                                name: contactName || undefined,
+                                pushName: contactName || undefined,
+                                lastInteraction: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : undefined
+                            }
+                        });
+
+                        importedContacts++;
+
+                        // Intentar obtener mensajes del chat
+                        try {
+                            const messagesResponse = await axios.get(
+                                `${evolutionUrl}/message/fetchMessages/${instanceName}`,
+                                {
+                                    params: {
+                                        remoteJid: contactId,
+                                        limit: 100
+                                    },
+                                    headers: { apikey: apiKey }
+                                }
+                            );
+
+                            const messages = messagesResponse.data?.messages || [];
+                            
+                            // Guardar mensajes en la base de datos
+                            for (const msg of messages.slice(0, 50)) { // Limitar a 50 mensajes por chat
+                                try {
+                                    const messageText = msg.message?.conversation || 
+                                                       msg.message?.extendedTextMessage?.text ||
+                                                       msg.message?.imageMessage?.caption ||
+                                                       '';
+                                    
+                                    if (!messageText && !msg.message?.imageMessage && !msg.message?.videoMessage) {
+                                        continue; // Saltar mensajes sin contenido de texto
+                                    }
+
+                                    const messageKey = msg.key?.id || `${msg.timestamp}-${Math.random()}`;
+                                    
+                                    await prisma.message.upsert({
+                                        where: {
+                                            phoneNumber_key: {
+                                                phoneNumber: contactId,
+                                                key: messageKey
+                                            }
+                                        },
+                                        create: {
+                                            phoneNumber: contactId,
+                                            key: messageKey,
+                                            messageText: messageText || '[Media]',
+                                            isFromBot: msg.key?.fromMe === true || msg.fromMe === true,
+                                            timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : new Date(),
+                                            rawData: msg as any
+                                        },
+                                        update: {
+                                            messageText: messageText || '[Media]',
+                                            timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : undefined
+                                        }
+                                    });
+
+                                    importedMessages++;
+                                } catch (msgError: any) {
+                                    errors.push({ type: 'message', error: msgError.message, chat: contactId });
+                                }
+                            }
+                        } catch (msgFetchError: any) {
+                            logger.warn(`⚠️ No se pudieron obtener mensajes para ${contactId}: ${msgFetchError.message}`);
+                            errors.push({ type: 'fetch_messages', error: msgFetchError.message, chat: contactId });
+                        }
+
+                    } catch (contactError: any) {
+                        logger.error(`❌ Error procesando chat: ${contactError.message}`);
+                        errors.push({ type: 'contact', error: contactError.message, chat: chat.id || 'unknown' });
+                    }
+                }
+
+                logger.info(`✅ Importación completada: ${importedContacts} contactos, ${importedMessages} mensajes`);
+
+                res.json({
+                    success: true,
+                    importedContacts,
+                    importedMessages,
+                    errors: errors.length > 0 ? errors.slice(0, 10) : [], // Solo primeros 10 errores
+                    errorCount: errors.length
+                });
+
+            } catch (apiError: any) {
+                logger.error('❌ Error obteniendo chats desde Evolution API:', apiError);
+                res.status(500).json({
+                    error: 'Error al obtener chats desde Evolution API',
+                    details: apiError.response?.data || apiError.message,
+                    statusCode: apiError.response?.status
+                });
+            }
+
+        } catch (error: any) {
+            logger.error('❌ Error en importación de conversaciones:', error);
+            res.status(500).json({
+                error: 'Error al importar conversaciones',
+                details: error.message
+            });
+        }
+    });
+
     return router;
 }

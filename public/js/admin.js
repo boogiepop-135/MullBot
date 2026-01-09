@@ -1032,6 +1032,60 @@ window.exportContacts = async function() {
   }
 };
 
+window.importOldConversations = async function() {
+  if (!confirm('¿Importar conversaciones antiguas desde Evolution API? Esto puede tardar varios minutos.')) {
+    return;
+  }
+
+  const button = event.target.closest('button');
+  const originalText = button.innerHTML;
+  button.disabled = true;
+  button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importando...';
+
+  try {
+    const response = await fetch('/crm/contacts/import-conversations', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al importar conversaciones');
+    }
+
+    // Mostrar resultado detallado
+    let message = `✅ Importación completada:\n`;
+    message += `• Contactos importados: ${result.importedContacts}\n`;
+    message += `• Mensajes importados: ${result.importedMessages}\n`;
+    
+    if (result.errorCount > 0) {
+      message += `• Errores: ${result.errorCount}\n`;
+      if (result.errors && result.errors.length > 0) {
+        message += `\nPrimeros errores:\n`;
+        result.errors.slice(0, 3).forEach((err, idx) => {
+          message += `${idx + 1}. ${err.type}: ${err.error}\n`;
+        });
+      }
+    }
+
+    alert(message);
+
+    // Recargar contactos
+    loadContacts();
+
+  } catch (error) {
+    console.error('Error importing old conversations:', error);
+    alert(`Error al importar conversaciones: ${error.message}\n\nRevisa la consola para más detalles.`);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = originalText;
+  }
+};
+
 window.importContacts = async function() {
   // Crear input de archivo dinámicamente
   const input = document.createElement('input');

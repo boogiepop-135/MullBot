@@ -66,6 +66,13 @@ export class BotManager {
     }
 
     /**
+     * Obtener Evolution API Service
+     */
+    public getEvolutionAPI(): EvolutionAPIv2Service {
+        return this.evolutionAPI;
+    }
+
+    /**
      * Inicializar instancia de Evolution API
      * Verifica si existe, si no la crea automáticamente
      */

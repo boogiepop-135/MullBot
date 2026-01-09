@@ -1004,7 +1004,10 @@
           <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Contactos</h1>
           <p class="text-gray-600 mt-1">Gestiona tus contactos</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3 flex-wrap">
+          <button onclick="importOldConversations()" class="btn-primary bg-purple-600 hover:bg-purple-700">
+            <i class="fas fa-sync-alt mr-2"></i>Importar Conversaciones Antiguas
+          </button>
           <button onclick="importContacts()" class="btn-primary bg-blue-600 hover:bg-blue-700">
             <i class="fas fa-upload mr-2"></i>Importar XLSX
           </button>
