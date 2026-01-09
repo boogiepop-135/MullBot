@@ -39,6 +39,9 @@ class EnvConfig {
     static GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
     static GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     static GOOGLE_SHEETS_RANGE = process.env.GOOGLE_SHEETS_RANGE || 'CatálogoProductosWhatsapp!A:F';
+    // Service Account para escritura (opcional, si no está usa API Key solo para lectura)
+    static GOOGLE_SHEETS_SERVICE_ACCOUNT_PATH = process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PATH;
+    static GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON;
 
     // Método para inicializar la ruta de Puppeteer
     private static initializePuppeteerPath(): void {

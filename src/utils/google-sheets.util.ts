@@ -29,18 +29,82 @@ export interface ProductFromSheet {
  */
 class GoogleSheetsService {
     private sheets: any;
+    private sheetsWrite: any; // Para escritura con Service Account
     private isConfigured: boolean = false;
+    private canWrite: boolean = false;
 
     constructor() {
-        this.initialize();
+        // Inicializar de forma síncrona
+        this.initializeSync();
     }
 
-    private initialize() {
+    private initializeSync() {
+        // Intentar usar Service Account primero (permite lectura y escritura)
+        const serviceAccountPath = EnvConfig.GOOGLE_SHEETS_SERVICE_ACCOUNT_PATH;
+        const serviceAccountJson = EnvConfig.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON;
+        
+        if (serviceAccountPath || serviceAccountJson) {
+            try {
+                let credentials;
+                const fs = require('fs');
+                
+                if (serviceAccountPath && fs.existsSync(serviceAccountPath)) {
+                    // Cargar desde archivo
+                    const keyFile = fs.readFileSync(serviceAccountPath, 'utf8');
+                    credentials = JSON.parse(keyFile);
+                } else if (serviceAccountJson) {
+                    // Cargar desde variable de entorno
+                    credentials = JSON.parse(serviceAccountJson);
+                } else {
+                    throw new Error('Service Account no encontrado');
+                }
+                
+                // Crear cliente con Service Account (de forma asíncrona al usarse)
+                // Guardamos las credenciales para inicializar cuando se necesite
+                (this as any).serviceAccountCredentials = credentials;
+                this.canWrite = true;
+                logger.info('✅ Service Account configurado (lectura y escritura habilitadas)');
+            } catch (error) {
+                logger.warn('⚠️ Error inicializando Service Account, usando API Key para lectura:', error);
+            }
+        }
+        
+        // Inicializar cliente para lectura (API Key o Service Account)
+        this.initializeReadClient();
+        
+        // Si no hay Service Account, usar API Key para lectura
+        if (!this.canWrite) {
+            this.initializeReadClient();
+        }
+    }
+
+    private initializeReadClient() {
         const apiKey = EnvConfig.GOOGLE_SHEETS_API_KEY;
         
         if (!apiKey) {
+            // Si hay Service Account, inicializar con eso
+            if ((this as any).serviceAccountCredentials) {
+                try {
+                    const auth = new google.auth.GoogleAuth({
+                        credentials: (this as any).serviceAccountCredentials,
+                        scopes: ['https://www.googleapis.com/auth/spreadsheets']
+                    });
+                    
+                    this.sheets = google.sheets({
+                        version: 'v4',
+                        auth
+                    });
+                    this.isConfigured = true;
+                    logger.info('✅ Google Sheets API inicializada con Service Account');
+                    return;
+                } catch (error) {
+                    logger.error('❌ Error inicializando Service Account:', error);
+                }
+            }
+            
             logger.warn('⚠️ Google Sheets API Key no configurada. El catálogo de productos no estará disponible desde Google Sheets.');
             logger.warn('Para habilitarlo, configura GOOGLE_SHEETS_API_KEY en tu archivo .env');
+            logger.warn('Para sincronización (escritura), configura GOOGLE_SHEETS_SERVICE_ACCOUNT_PATH o GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON');
             this.isConfigured = false;
             return;
         }
@@ -51,11 +115,35 @@ class GoogleSheetsService {
                 auth: apiKey
             });
             this.isConfigured = true;
-            logger.info('✅ Google Sheets API inicializada correctamente');
+            if (!this.canWrite) {
+                logger.info('✅ Google Sheets API inicializada con API Key (solo lectura habilitada)');
+                logger.info('ℹ️ Para habilitar sincronización (escritura), configura Service Account (ver GOOGLE_SHEETS_WRITE_SETUP.md)');
+            }
         } catch (error) {
             logger.error('❌ Error inicializando Google Sheets API:', error);
             this.isConfigured = false;
         }
+    }
+
+    /**
+     * Obtener cliente de escritura (Service Account)
+     */
+    private async getWriteClient() {
+        if (this.canWrite && (this as any).serviceAccountCredentials) {
+            if (!this.sheetsWrite) {
+                const auth = new google.auth.GoogleAuth({
+                    credentials: (this as any).serviceAccountCredentials,
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets']
+                });
+                
+                this.sheetsWrite = google.sheets({
+                    version: 'v4',
+                    auth
+                });
+            }
+            return this.sheetsWrite;
+        }
+        return null;
     }
 
     /**
@@ -297,7 +385,27 @@ class GoogleSheetsService {
             };
         }
 
+        // Verificar si tiene permisos de escritura
+        if (!this.canWrite) {
+            return {
+                success: false,
+                message: 'No tienes permisos de escritura. Para sincronizar productos, necesitas configurar Service Account. Ver GOOGLE_SHEETS_WRITE_SETUP.md para más información.',
+                synced: 0
+            };
+        }
+
         try {
+            // Obtener cliente de escritura
+            const sheetsClient = await this.getWriteClient();
+            
+            if (!sheetsClient) {
+                return {
+                    success: false,
+                    message: 'No tienes permisos de escritura. Para sincronizar productos, necesitas configurar Service Account. Ver GOOGLE_SHEETS_WRITE_SETUP.md para más información.',
+                    synced: 0
+                };
+            }
+
             logger.info(`🔄 Sincronizando ${products.length} productos hacia Google Sheets...`);
 
             // Preparar encabezados
@@ -323,7 +431,7 @@ class GoogleSheetsService {
             // Escribir datos
             const updateRange = `${sheetName}!A1:${this.getColumnLetter(headers[0].length)}${values.length}`;
             
-            await this.sheets.spreadsheets.values.update({
+            await sheetsClient.spreadsheets.values.update({
                 spreadsheetId,
                 range: updateRange,
                 valueInputOption: 'RAW',
@@ -346,7 +454,7 @@ class GoogleSheetsService {
             if (error.code === 403) {
                 return {
                     success: false,
-                    message: 'Error 403: La API Key no tiene permisos de escritura. Necesitas permisos de Editor.',
+                    message: 'Error 403: Sin permisos de escritura. Necesitas configurar Service Account con permisos de Editor en la hoja. Ver GOOGLE_SHEETS_WRITE_SETUP.md',
                     synced: 0
                 };
             }
