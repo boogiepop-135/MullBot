@@ -110,6 +110,7 @@ window.showSection = function (sectionId) {
       break;
     case 'ai-monitor':
       loadAIMonitor();
+      loadBotConfig(); // Cargar también la configuración de IA
       break;
     case 'campaigns':
       loadCampaigns();
@@ -1840,9 +1841,17 @@ async function loadBotConfig() {
     setInputValue('welcome-message-input', config.welcomeMessage);
     setInputValue('pause-message-input', config.pauseMessage);
     
-    // IA
+    // IA (cargar siempre, tanto en Configuración como en Monitor IA)
     setInputValue('ai-system-prompt-input', config.aiSystemPrompt);
     setInputValue('ai-model-input', config.aiModel);
+    
+    // Actualizar estado del modelo en Monitor IA si está disponible
+    const modelStatusDisplay = document.getElementById('ai-model-status-display');
+    if (modelStatusDisplay) {
+      const modelName = config.aiModel || 'gemini-2.0-flash-exp';
+      const shortName = modelName.replace('gemini-', '').replace('-exp', '').replace('gpt-', '').replace('4o-mini', 'GPT-4o Mini').replace('4o', 'GPT-4o');
+      modelStatusDisplay.textContent = shortName || 'Gemini 2.0 Flash';
+    }
     
     // Configuración de vendedor
     setInputValue('seller-personality-input', config.sellerPersonality || 'experto');
@@ -3321,6 +3330,14 @@ function updateAIGeneralStats(data) {
     const shortName = modelName.replace('gemini-', '').replace('-exp', '');
     activeModelEl.textContent = shortName;
     activeModelEl.className = data.activeModel ? 'text-xl font-bold text-green-600' : 'text-xl font-bold text-red-600';
+  }
+
+  // Actualizar también el estado del modelo en la sección de configuración
+  const modelStatusDisplay = document.getElementById('ai-model-status-display');
+  if (modelStatusDisplay && data.activeModel) {
+    const modelName = data.activeModel;
+    const shortName = modelName.replace('gemini-', '').replace('-exp', '').replace('gpt-', '').replace('4o-mini', 'GPT-4o Mini').replace('4o', 'GPT-4o');
+    modelStatusDisplay.textContent = shortName || 'Cargando...';
   }
 
   // Total requests

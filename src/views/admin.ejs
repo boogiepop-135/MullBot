@@ -1360,75 +1360,22 @@
                 <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Bot</label>
                 <input type="text" id="bot-name-input" placeholder="MüllBot"
                   class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                <p class="text-xs text-gray-500 mt-2">Nombre que verán los usuarios al interactuar con el bot</p>
               </div>
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Emoji del Bot</label>
                 <input type="text" id="bot-emoji-input" placeholder="🌱"
                   class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                <p class="text-xs text-gray-500 mt-2">Emoji que aparecerá junto al nombre del bot</p>
               </div>
-              <div>
+              <div class="md:col-span-2">
                 <label class="block text-sm font-bold text-gray-700 mb-2">Delay de Respuesta (ms)</label>
                 <div class="flex items-center gap-2">
                   <input type="number" id="bot-delay-input" min="0" step="1000" placeholder="10000"
                     class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
                   <span class="text-xs text-gray-500 whitespace-nowrap" id="current-delay-text"></span>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">Tiempo de espera antes de responder (1000ms = 1s)</p>
-              </div>
-              <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Modelo de IA</label>
-                <select id="ai-model-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                  <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                  <option value="gpt-4o-mini">GPT-4o Mini</option>
-                  <option value="gpt-4o">GPT-4o</option>
-                </select>
-              </div>
-              <div class="md:col-span-2">
-                <label class="block text-sm font-bold text-gray-700 mb-2">Prompt del Sistema (IA)</label>
-                <textarea id="ai-system-prompt-input" rows="4" placeholder="Instrucciones personalizadas para la IA..."
-                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
-                <p class="text-xs text-gray-500 mt-2">Deja vacío para usar el prompt predeterminado</p>
-            </div>
-          </div>
-
-            <!-- Sección Vendedor -->
-            <div class="mt-8 pt-6 border-t border-gray-200">
-              <h3 class="text-lg font-bold text-gray-800 mb-4">🎯 Perfil de Vendedor</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Personalidad del Vendedor</label>
-                  <select id="seller-personality-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                    <option value="experto">🧠 Experto - Profesional y capacitado</option>
-                    <option value="amigable">😊 Amigable - Cercano y genera confianza</option>
-                    <option value="formal">👔 Formal - Corporativo y profesional</option>
-                    <option value="persuasivo">💪 Persuasivo - Experto en técnicas de cierre</option>
-                  </select>
-                  <p class="text-xs text-gray-500 mt-2">Define el estilo de comunicación del bot</p>
-            </div>
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">¿Puede ofrecer descuentos?</label>
-                  <div class="flex items-center gap-4 mt-2">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="can-offer-discounts" id="discounts-yes" value="true" class="text-black focus:ring-green-500">
-                      <span class="text-sm">Sí</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="can-offer-discounts" id="discounts-no" value="false" checked class="text-black focus:ring-green-500">
-                      <span class="text-sm">No</span>
-                    </label>
-                  </div>
-                </div>
-                <div id="discount-options" class="hidden">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Descuento Máximo (%)</label>
-                  <input type="number" id="max-discount-input" min="1" max="50" value="10"
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
-                  <p class="text-xs text-gray-500 mt-2">Porcentaje máximo que el bot puede ofrecer</p>
-                </div>
-                <div id="discount-conditions-container" class="md:col-span-2 hidden">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Condiciones para Ofrecer Descuentos</label>
-                  <textarea id="discount-conditions-input" rows="3" placeholder="Ej: Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones..."
-                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
-                </div>
+                <p class="text-xs text-gray-500 mt-2">Tiempo de espera antes de responder (1000ms = 1s). Simula tiempo de respuesta humano.</p>
               </div>
             </div>
           </div>
@@ -1946,6 +1893,88 @@
             <button onclick="exportAIStats()" class="btn-secondary py-4">
               <i class="fas fa-download mr-2"></i>
               Exportar Estadísticas
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configuración de IA -->
+      <div class="content-card mb-6">
+        <div class="p-6 border-b border-gray-100">
+          <h3 class="font-bold text-lg text-gray-800">⚙️ Configuración de Inteligencia Artificial</h3>
+          <p class="text-sm text-gray-500 mt-1">Personaliza el modelo, prompt y comportamiento del bot</p>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">Modelo de IA</label>
+              <select id="ai-model-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="gpt-4o">GPT-4o</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-2">Modelo de IA que utilizará el bot para generar respuestas</p>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">Estado del Modelo</label>
+              <div class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
+                <p class="text-sm font-medium text-gray-700" id="ai-model-status-display">Cargando...</p>
+              </div>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-bold text-gray-700 mb-2">Prompt del Sistema (IA)</label>
+              <textarea id="ai-system-prompt-input" rows="4" placeholder="Instrucciones personalizadas para la IA..."
+                class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
+              <p class="text-xs text-gray-500 mt-2">Instrucciones específicas que seguirá la IA. Deja vacío para usar el prompt predeterminado.</p>
+            </div>
+          </div>
+
+          <!-- Sección Perfil de Vendedor -->
+          <div class="mt-6 pt-6 border-t border-gray-200">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">🎯 Perfil de Vendedor</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Personalidad del Vendedor</label>
+                <select id="seller-personality-input" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                  <option value="experto">🧠 Experto - Profesional y capacitado</option>
+                  <option value="amigable">😊 Amigable - Cercano y genera confianza</option>
+                  <option value="formal">👔 Formal - Corporativo y profesional</option>
+                  <option value="persuasivo">💪 Persuasivo - Experto en técnicas de cierre</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-2">Define el estilo de comunicación del bot con los clientes</p>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">¿Puede ofrecer descuentos?</label>
+                <div class="flex items-center gap-4 mt-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="can-offer-discounts" id="discounts-yes" value="true" class="text-black focus:ring-green-500">
+                    <span class="text-sm">Sí</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="can-offer-discounts" id="discounts-no" value="false" checked class="text-black focus:ring-green-500">
+                    <span class="text-sm">No</span>
+                  </label>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Permite al bot ofrecer descuentos automáticamente</p>
+              </div>
+              <div id="discount-options" class="hidden">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Descuento Máximo (%)</label>
+                <input type="number" id="max-discount-input" min="1" max="50" value="10"
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all">
+                <p class="text-xs text-gray-500 mt-2">Porcentaje máximo que el bot puede ofrecer</p>
+              </div>
+              <div id="discount-conditions-container" class="md:col-span-2 hidden">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Condiciones para Ofrecer Descuentos</label>
+                <textarea id="discount-conditions-input" rows="3" placeholder="Ej: Solo ofrecer descuentos cuando el cliente pregunte directamente por promociones..."
+                  class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"></textarea>
+                <p class="text-xs text-gray-500 mt-2">Reglas específicas sobre cuándo el bot puede ofrecer descuentos</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-6 border-t border-gray-200 flex justify-end">
+            <button onclick="saveBotConfig()" class="btn-primary px-8 py-3">
+              <i class="fas fa-save mr-2"></i>Guardar Configuración de IA
             </button>
           </div>
         </div>

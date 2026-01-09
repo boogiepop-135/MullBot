@@ -256,6 +256,63 @@ ASSEMBLYAI_API_KEY=tu_api_key
 - Monitoreo del estado del bot
 - Estadísticas de ventas y leads
 
+### 📋 Secciones del Panel de Administración
+
+#### 🏠 Dashboard
+Vista general con estadísticas, métricas y contactos recientes. Muestra el resumen de tu CRM.
+
+#### 📇 Contactos
+Gestiona todos tus contactos, cambia estados y chatea directamente con ellos desde el panel.
+
+#### 🎧 Asesorías
+Cola de solicitudes de atención humana. Atiende clientes en tiempo real cuando solicitan hablar con un asesor.
+
+#### 📢 Campañas
+Crea y programa campañas masivas de mensajería a contactos. Programa envíos masivos de mensajes.
+
+#### 📝 Plantillas
+Guarda y reutiliza mensajes predefinidos para respuestas rápidas. Acelera la comunicación con clientes.
+
+#### 📦 Productos
+Catálogo de productos. Sincroniza con Google Sheets automáticamente para mantener precios actualizados.
+
+#### 🤖 Contenido Bot
+Edita respuestas automáticas y mensajes del bot. Personaliza cómo responde el bot a diferentes situaciones.
+
+#### ✨ Automatizaciones
+Crea reglas automáticas que se ejecutan cuando ocurren eventos (cambio de estado, mensaje recibido, etc.).
+
+#### ⚙️ Configuración
+**Pestaña General:**
+- Nombre del Bot: Nombre que verán los usuarios
+- Emoji del Bot: Emoji que aparecerá junto al nombre
+- Delay de Respuesta: Tiempo de espera antes de responder (simula tiempo humano)
+
+**Otras pestañas:**
+- Negocio: Información de tu empresa
+- Mensajes: Mensajes personalizados del bot
+- Pagos: Información de métodos de pago
+- WhatsApp: Gestión de conexión de WhatsApp
+- Seguridad: Cambio de contraseña y configuración de seguridad
+
+#### 🧠 Monitor IA
+**Estadísticas de IA:**
+- Monitorea uso de tokens, costos y rendimiento de la IA
+- Estado de los modelos de IA en tiempo real
+- Estadísticas de caché y ahorro de costos
+
+**Configuración de IA (ahora ubicada aquí):**
+- **Modelo de IA**: Selecciona el modelo que utilizará el bot (Gemini 2.0 Flash, GPT-4o Mini, GPT-4o)
+- **Prompt del Sistema**: Instrucciones personalizadas que seguirá la IA
+- **Perfil de Vendedor**:
+  - Personalidad del Vendedor: Experto, Amigable, Formal o Persuasivo
+  - ¿Puede ofrecer descuentos?: Habilita o deshabilita que el bot ofrezca descuentos
+  - Descuento Máximo: Porcentaje máximo que puede ofrecer
+  - Condiciones para Descuentos: Reglas específicas sobre cuándo ofrecer descuentos
+
+#### 📖 Guía de Uso
+Documentación completa con instrucciones detalladas de cada sección del CRM.
+
 ## 🖥️ Aplicación de Escritorio
 
 MullBot ahora incluye una aplicación de escritorio para Windows, Linux y macOS.
