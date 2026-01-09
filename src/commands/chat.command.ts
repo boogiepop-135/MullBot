@@ -81,11 +81,25 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     // Normalizar query PRIMERO para poder usarlo en las verificaciones
     const normalizedQuery = query.toLowerCase().trim();
 
-    // Verificar si es solicitud de precios/catálogo (antes de otras opciones)
-    const precioKeywords = ['precio', 'precios', 'catalogo', 'catálogo', 'productos', 'producto', 'cuanto', 'costo', 'paquete', 'paquetes'];
-    const isPrecioRequest = precioKeywords.some(keyword => normalizedQuery.includes(keyword)) || 
-                           /^1[\s\.\)\-]*$/.test(query.trim()) ||
-                           /^1[\s\.\)\-]/.test(query.trim());
+    // Verificar si es solicitud de precios/catálogo/productos (antes de otras opciones)
+    // Keywords expandidos para detectar más variaciones
+    const precioKeywords = [
+        'precio', 'precios', 'catalogo', 'catálogo', 'productos', 'producto', 
+        'cuanto', 'costo', 'paquete', 'paquetes', 'lista', 'listado',
+        'tiene', 'tienes', 'ofreces', 'vendes', 'mostrar', 'ver',
+        'que tienen', 'que tienes', 'que ofreces', 'que vendes',
+        'productos que', 'lista de productos', 'catálogo de productos'
+    ];
+    
+    // Detectar solicitudes de productos/precios
+    const hasProductKeyword = precioKeywords.some(keyword => normalizedQuery.includes(keyword));
+    const isNumericOption1 = /^1[\s\.\)\-]*$/.test(query.trim()) || /^1[\s\.\)\-]/.test(query.trim());
+    // Detectar frases comunes sobre productos
+    const isProductQuestion = /(que|qué|cuál|cuáles|cuáles).*(productos?|tienes?|tiene|ofreces?|vendes?|lista)/i.test(query) ||
+                              /(productos?|lista|catálogo).*(tienes?|tiene|ofreces?|vendes?|tener)/i.test(query) ||
+                              /(mostrar|ver|muestra|muéstrame).*(productos?|lista|catálogo)/i.test(query);
+    
+    const isPrecioRequest = hasProductKeyword || isNumericOption1 || isProductQuestion;
     
     if (isPrecioRequest) {
         // Intentar obtener catálogo desde Google Sheets
@@ -95,14 +109,19 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             const useGoogleSheets = !!EnvConfig.default.GOOGLE_SHEETS_API_KEY && !!EnvConfig.default.GOOGLE_SHEETS_SPREADSHEET_ID;
             
             if (useGoogleSheets) {
-                logger.info('📊 Obteniendo catálogo desde Google Sheets para solicitud de precios...');
+                logger.info('📊 Obteniendo catálogo desde Google Sheets para solicitud de productos/precios...');
+                logger.info(`📊 Query detectada: "${query}"`);
                 const products = await googleSheetsService.getProductCatalog();
                 
                 if (products && products.length > 0) {
                     const catalogMessage = googleSheetsService.formatCatalogForWhatsApp(products);
                     quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png', intent: 'price' };
-                    logger.info(`✅ Catálogo de Google Sheets preparado (${products.length} productos)`);
+                    logger.info(`✅ Catálogo de Google Sheets preparado (${products.length} productos) para query: "${query}"`);
+                } else {
+                    logger.warn(`⚠️ Google Sheets no retornó productos para query: "${query}"`);
                 }
+            } else {
+                logger.warn('⚠️ Google Sheets no está configurado para query de productos');
             }
         } catch (error) {
             logger.error('❌ Error obteniendo catálogo de Google Sheets:', error);
