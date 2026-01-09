@@ -143,6 +143,43 @@ docker compose down
 docker compose up -d --build
 ```
 
+## 📊 Google Sheets - Catálogo de Productos en Tiempo Real
+
+Mullbot puede leer tu catálogo de productos directamente desde Google Sheets, permitiendo actualizar precios y productos sin reiniciar el bot.
+
+### ✨ Características
+
+- 📈 **Actualización en tiempo real**: Modifica precios sin reiniciar
+- 👥 **Colaborativo**: Múltiples personas pueden editar el catálogo
+- 💰 **Precios con descuento**: Muestra ofertas especiales automáticamente
+- 📦 **Control de disponibilidad**: Oculta productos agotados
+- 🔄 **Fallback automático**: Si falla, usa catálogo estático
+
+### 🚀 Configuración Rápida
+
+1. **Crea tu hoja** con estas columnas:
+   ```
+   Producto | Descripción | Precio | Precio con descuento | Imagen Link | Disponibilidad
+   ```
+
+2. **Obtén API Key** de [Google Cloud Console](https://console.cloud.google.com/)
+   - Habilita "Google Sheets API"
+   - Crea una API Key
+
+3. **Configura variables de entorno** en tu `.env`:
+   ```env
+   GOOGLE_SHEETS_API_KEY=tu_api_key_aqui
+   GOOGLE_SHEETS_SPREADSHEET_ID=1ABC123xyz456DEF789
+   GOOGLE_SHEETS_RANGE=CatálogoProductosWhatsapp!A:F
+   ```
+
+4. **Haz tu hoja pública** (Compartir → Cualquiera con el enlace → Lector)
+
+5. **Reinicia el bot** y ¡listo! 🎉
+
+### 📚 Documentación Completa
+
+Para instrucciones detalladas, consulta: **[GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md)**
 
 ## 📱 Comandos del Agente de Ventas
 

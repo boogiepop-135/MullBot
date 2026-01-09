@@ -14,6 +14,10 @@ services:
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # Google Sheets API - Catálogo de productos en tiempo real (opcional)
+      GOOGLE_SHEETS_API_KEY: ${GOOGLE_SHEETS_API_KEY:-}
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID:-}
+      GOOGLE_SHEETS_RANGE: ${GOOGLE_SHEETS_RANGE:-CatálogoProductosWhatsapp!A:F}
       # Evolution API Configuration
       USE_EVOLUTION_API: "true"
       EVOLUTION_URL: http://evolution-api:8080

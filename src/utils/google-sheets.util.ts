@@ -1,0 +1,243 @@
+import { google } from 'googleapis';
+import logger from '../configs/logger.config';
+import EnvConfig from '../configs/env.config';
+
+export interface ProductFromSheet {
+    producto: string;
+    descripcion: string;
+    precio: number;
+    precioConDescuento?: number;
+    imagenLink?: string;
+    disponibilidad: boolean;
+}
+
+/**
+ * Servicio para leer el catálogo de productos desde Google Sheets
+ * 
+ * Configuración necesaria:
+ * 1. GOOGLE_SHEETS_API_KEY - API Key de Google Cloud Console
+ * 2. GOOGLE_SHEETS_SPREADSHEET_ID - ID de la hoja de cálculo (se obtiene de la URL)
+ * 3. GOOGLE_SHEETS_RANGE - Rango de celdas (ej: "CatálogoProductosWhatsapp!A1:F100")
+ * 
+ * La hoja debe tener las siguientes columnas:
+ * - Producto
+ * - Descripción
+ * - Precio
+ * - Precio con descuento (opcional)
+ * - Imagen Link (opcional)
+ * - Disponibilidad (debe decir "Sí", "Si", "true", "1" para estar disponible)
+ */
+class GoogleSheetsService {
+    private sheets: any;
+    private isConfigured: boolean = false;
+
+    constructor() {
+        this.initialize();
+    }
+
+    private initialize() {
+        const apiKey = EnvConfig.GOOGLE_SHEETS_API_KEY;
+        
+        if (!apiKey) {
+            logger.warn('⚠️ Google Sheets API Key no configurada. El catálogo de productos no estará disponible desde Google Sheets.');
+            logger.warn('Para habilitarlo, configura GOOGLE_SHEETS_API_KEY en tu archivo .env');
+            this.isConfigured = false;
+            return;
+        }
+
+        try {
+            this.sheets = google.sheets({
+                version: 'v4',
+                auth: apiKey
+            });
+            this.isConfigured = true;
+            logger.info('✅ Google Sheets API inicializada correctamente');
+        } catch (error) {
+            logger.error('❌ Error inicializando Google Sheets API:', error);
+            this.isConfigured = false;
+        }
+    }
+
+    /**
+     * Lee el catálogo de productos desde Google Sheets
+     * @returns Array de productos con su información
+     */
+    async getProductCatalog(): Promise<ProductFromSheet[]> {
+        if (!this.isConfigured) {
+            logger.warn('Google Sheets no está configurado. Retornando catálogo vacío.');
+            return [];
+        }
+
+        const spreadsheetId = EnvConfig.GOOGLE_SHEETS_SPREADSHEET_ID;
+        const range = EnvConfig.GOOGLE_SHEETS_RANGE || 'CatálogoProductosWhatsapp!A:F';
+
+        if (!spreadsheetId) {
+            logger.error('❌ GOOGLE_SHEETS_SPREADSHEET_ID no configurado');
+            return [];
+        }
+
+        try {
+            logger.info(`📊 Obteniendo catálogo de productos desde Google Sheets...`);
+            logger.debug(`Spreadsheet ID: ${spreadsheetId}, Range: ${range}`);
+
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range,
+            });
+
+            const rows = response.data.values;
+            
+            if (!rows || rows.length === 0) {
+                logger.warn('⚠️ No se encontraron datos en la hoja de Google Sheets');
+                return [];
+            }
+
+            // Primera fila son los encabezados
+            const headers = rows[0].map((h: string) => h.toLowerCase().trim());
+            logger.debug(`Encabezados encontrados: ${headers.join(', ')}`);
+
+            // Encontrar índices de columnas (flexible para diferentes nombres)
+            const productoIdx = this.findColumnIndex(headers, ['producto', 'product', 'nombre']);
+            const descripcionIdx = this.findColumnIndex(headers, ['descripcion', 'descripción', 'description']);
+            const precioIdx = this.findColumnIndex(headers, ['precio', 'price']);
+            const precioDescuentoIdx = this.findColumnIndex(headers, ['precio con descuento', 'precio descuento', 'descuento', 'sale price']);
+            const imagenIdx = this.findColumnIndex(headers, ['imagen link', 'imagen', 'image', 'image link', 'url imagen']);
+            const disponibilidadIdx = this.findColumnIndex(headers, ['disponibilidad', 'disponible', 'availability', 'stock', 'en stock']);
+
+            if (productoIdx === -1 || descripcionIdx === -1 || precioIdx === -1) {
+                logger.error('❌ No se encontraron las columnas requeridas (Producto, Descripción, Precio)');
+                logger.error(`Columnas encontradas: ${headers.join(', ')}`);
+                return [];
+            }
+
+            // Procesar filas (saltando el encabezado)
+            const products: ProductFromSheet[] = [];
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                
+                // Validar que la fila tenga datos
+                if (!row || row.length === 0 || !row[productoIdx]) {
+                    continue;
+                }
+
+                try {
+                    const producto = row[productoIdx]?.toString().trim();
+                    const descripcion = row[descripcionIdx]?.toString().trim() || '';
+                    const precioStr = row[precioIdx]?.toString().trim().replace(/[,$]/g, '');
+                    const precio = parseFloat(precioStr);
+
+                    // Validar precio
+                    if (isNaN(precio)) {
+                        logger.warn(`⚠️ Fila ${i + 1}: Precio inválido para producto "${producto}"`);
+                        continue;
+                    }
+
+                    const product: ProductFromSheet = {
+                        producto,
+                        descripcion,
+                        precio,
+                        disponibilidad: true // Por defecto disponible
+                    };
+
+                    // Precio con descuento (opcional)
+                    if (precioDescuentoIdx !== -1 && row[precioDescuentoIdx]) {
+                        const descuentoStr = row[precioDescuentoIdx].toString().trim().replace(/[,$]/g, '');
+                        const precioConDescuento = parseFloat(descuentoStr);
+                        if (!isNaN(precioConDescuento) && precioConDescuento > 0) {
+                            product.precioConDescuento = precioConDescuento;
+                        }
+                    }
+
+                    // Imagen (opcional)
+                    if (imagenIdx !== -1 && row[imagenIdx]) {
+                        product.imagenLink = row[imagenIdx].toString().trim();
+                    }
+
+                    // Disponibilidad (opcional)
+                    if (disponibilidadIdx !== -1 && row[disponibilidadIdx]) {
+                        const disponible = row[disponibilidadIdx].toString().toLowerCase().trim();
+                        product.disponibilidad = ['si', 'sí', 'yes', 'true', '1', 'disponible', 'available'].includes(disponible);
+                    }
+
+                    products.push(product);
+                } catch (error) {
+                    logger.error(`❌ Error procesando fila ${i + 1}:`, error);
+                }
+            }
+
+            logger.info(`✅ Se obtuvieron ${products.length} productos del catálogo`);
+            return products;
+
+        } catch (error: any) {
+            if (error.code === 403) {
+                logger.error('❌ Error 403: Acceso denegado a Google Sheets. Verifica:');
+                logger.error('   1. Que tu API Key sea válida');
+                logger.error('   2. Que Google Sheets API esté habilitada en tu proyecto');
+                logger.error('   3. Que la hoja de cálculo sea pública o compartida');
+            } else if (error.code === 404) {
+                logger.error('❌ Error 404: Hoja de cálculo no encontrada. Verifica el SPREADSHEET_ID');
+            } else {
+                logger.error('❌ Error obteniendo datos de Google Sheets:', error);
+            }
+            return [];
+        }
+    }
+
+    /**
+     * Busca el índice de una columna por varios nombres posibles
+     */
+    private findColumnIndex(headers: string[], possibleNames: string[]): number {
+        for (const name of possibleNames) {
+            const index = headers.findIndex(h => h.includes(name));
+            if (index !== -1) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Formatea el catálogo de productos para WhatsApp
+     */
+    formatCatalogForWhatsApp(products: ProductFromSheet[]): string {
+        if (products.length === 0) {
+            return '❌ No hay productos disponibles en el catálogo en este momento.';
+        }
+
+        let message = '🌱 *CATÁLOGO DE PRODUCTOS MÜLLBLUE*\n\n';
+
+        products.forEach((product, index) => {
+            // Solo mostrar productos disponibles
+            if (!product.disponibilidad) {
+                return;
+            }
+
+            message += `*${index + 1}. ${product.producto}*\n`;
+            
+            if (product.descripcion) {
+                message += `${product.descripcion}\n`;
+            }
+
+            // Mostrar precio con descuento si existe
+            if (product.precioConDescuento && product.precioConDescuento < product.precio) {
+                message += `💰 Precio: ~$${product.precio.toFixed(2)}~ *$${product.precioConDescuento.toFixed(2)}*\n`;
+                const ahorro = product.precio - product.precioConDescuento;
+                const porcentaje = ((ahorro / product.precio) * 100).toFixed(0);
+                message += `✨ ¡Ahorra $${ahorro.toFixed(2)} (${porcentaje}% off)!\n`;
+            } else {
+                message += `💰 Precio: *$${product.precio.toFixed(2)}*\n`;
+            }
+
+            message += '\n';
+        });
+
+        message += '_Los precios se actualizan en tiempo real_ ✨\n\n';
+        message += '¿Te gustaría más información sobre algún producto? 😊';
+
+        return message;
+    }
+}
+
+// Singleton
+export const googleSheetsService = new GoogleSheetsService();

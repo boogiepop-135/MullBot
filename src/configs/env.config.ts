@@ -35,6 +35,10 @@ class EnvConfig {
     static JWT_SECRET = process.env.JWT_SECRET;
     static API_BASE_URL = process.env.API_BASE_URL || "https://mullbot-production.up.railway.app";
     
+    // Google Sheets API - Para catálogo de productos en tiempo real
+    static GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
+    static GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+    static GOOGLE_SHEETS_RANGE = process.env.GOOGLE_SHEETS_RANGE || 'CatálogoProductosWhatsapp!A:F';
 
     // Método para inicializar la ruta de Puppeteer
     private static initializePuppeteerPath(): void {
