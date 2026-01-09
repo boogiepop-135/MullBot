@@ -1127,6 +1127,83 @@ async function loadProducts() {
   }
 }
 
+// Sincronizar productos de la base de datos hacia Google Sheets
+async function syncProductsToGoogleSheets() {
+  if (!confirm('¿Estás seguro de que deseas sincronizar todos los productos de la base de datos hacia Google Sheets?\n\n⚠️ Esto reemplazará el contenido actual de la hoja de cálculo.')) {
+    return;
+  }
+
+  // Buscar el botón que activó la función
+  const buttons = document.querySelectorAll('button');
+  let syncButton = null;
+  for (const btn of buttons) {
+    if (btn.innerHTML.includes('Sincronizar a Google Sheets')) {
+      syncButton = btn;
+      break;
+    }
+  }
+
+  try {
+    // Mostrar indicador de carga
+    if (syncButton) {
+      const originalText = syncButton.innerHTML;
+      syncButton.disabled = true;
+      syncButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sincronizando...';
+
+      const token = localStorage.getItem('token');
+      const response = await fetch('/crm/products/sync-to-sheets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      syncButton.disabled = false;
+      syncButton.innerHTML = originalText;
+
+      if (data.success) {
+        alert(`✅ ¡Sincronización exitosa!\n\n${data.message}\n\nLos productos ahora están disponibles en Google Sheets.`);
+        loadProducts();
+      } else {
+        alert(`❌ Error al sincronizar:\n\n${data.error || data.message || 'Error desconocido'}\n\nVerifica:\n- Que Google Sheets esté configurado (API Key y Spreadsheet ID)\n- Que la hoja sea editable (permisos de Editor)\n- Que la API Key tenga permisos de escritura`);
+      }
+    } else {
+      // Fallback sin botón
+      const token = localStorage.getItem('token');
+      const response = await fetch('/crm/products/sync-to-sheets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`✅ ¡Sincronización exitosa!\n\n${data.message}`);
+        loadProducts();
+      } else {
+        alert(`❌ Error: ${data.error || data.message || 'Error desconocido'}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error sincronizando productos:', error);
+    alert(`❌ Error al sincronizar productos:\n\n${error.message || 'Error desconocido'}`);
+    
+    // Restaurar botón
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.innerHTML = '<i class="fas fa-sync-alt mr-2"></i><span>Sincronizar a Google Sheets</span>';
+    }
+  }
+}
+
+// Hacer función global
+window.syncProductsToGoogleSheets = syncProductsToGoogleSheets;
+
 function renderProducts(products) {
   const tbody = document.getElementById('products-table-body');
   if (!tbody) return;

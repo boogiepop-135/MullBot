@@ -265,6 +265,138 @@ class GoogleSheetsService {
     }
 
     /**
+     * Sincroniza productos de la base de datos hacia Google Sheets
+     * Reemplaza todo el contenido de la hoja con los productos de la DB
+     */
+    async syncProductsToSheet(products: Array<{
+        name: string;
+        description?: string | null;
+        price: number;
+        imageUrl?: string | null;
+        inStock: boolean;
+    }>): Promise<{ success: boolean; message: string; synced: number }> {
+        if (!this.isConfigured) {
+            return {
+                success: false,
+                message: 'Google Sheets no está configurado',
+                synced: 0
+            };
+        }
+
+        const spreadsheetId = EnvConfig.GOOGLE_SHEETS_SPREADSHEET_ID;
+        const range = EnvConfig.GOOGLE_SHEETS_RANGE || 'CatálogoProductosWhatsapp!A:F';
+        
+        // Extraer el nombre de la hoja del rango
+        const sheetName = range.split('!')[0] || 'CatálogoProductosWhatsapp';
+
+        if (!spreadsheetId) {
+            return {
+                success: false,
+                message: 'GOOGLE_SHEETS_SPREADSHEET_ID no configurado',
+                synced: 0
+            };
+        }
+
+        try {
+            logger.info(`🔄 Sincronizando ${products.length} productos hacia Google Sheets...`);
+
+            // Preparar encabezados
+            const headers = [
+                ['Nombre del producto', 'DESCRIPCIÓN', 'PRECIO', 'URL IMAGEN', 'Disponibilidad']
+            ];
+
+            // Preparar filas de datos
+            const rows = products.map(product => [
+                product.name || '',
+                product.description || '',
+                `$${product.price.toFixed(2)}`,
+                product.imageUrl || '',
+                product.inStock ? 'Sí' : 'No'
+            ]);
+
+            // Combinar encabezados y datos
+            const values = [...headers, ...rows];
+
+            // Limpiar la hoja primero (opcional, puede comentarse si quieres preservar formato)
+            // await this.clearSheet(spreadsheetId, sheetName);
+
+            // Escribir datos
+            const updateRange = `${sheetName}!A1:${this.getColumnLetter(headers[0].length)}${values.length}`;
+            
+            await this.sheets.spreadsheets.values.update({
+                spreadsheetId,
+                range: updateRange,
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values
+                }
+            });
+
+            logger.info(`✅ ${products.length} productos sincronizados exitosamente hacia Google Sheets`);
+
+            return {
+                success: true,
+                message: `${products.length} productos sincronizados exitosamente`,
+                synced: products.length
+            };
+
+        } catch (error: any) {
+            logger.error('❌ Error sincronizando productos hacia Google Sheets:', error);
+            
+            if (error.code === 403) {
+                return {
+                    success: false,
+                    message: 'Error 403: La API Key no tiene permisos de escritura. Necesitas permisos de Editor.',
+                    synced: 0
+                };
+            }
+            
+            return {
+                success: false,
+                message: `Error: ${error.message || 'Error desconocido'}`,
+                synced: 0
+            };
+        }
+    }
+
+    /**
+     * Limpia el contenido de una hoja (opcional)
+     */
+    private async clearSheet(spreadsheetId: string, sheetName: string): Promise<void> {
+        try {
+            // Primero obtener el rango actual para limpiarlo
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range: `${sheetName}!A:Z`
+            });
+
+            if (response.data.values && response.data.values.length > 1) {
+                // Limpiar todo excepto la primera fila (encabezados)
+                const range = `${sheetName}!A2:Z${response.data.values.length}`;
+                await this.sheets.spreadsheets.values.clear({
+                    spreadsheetId,
+                    range
+                });
+            }
+        } catch (error) {
+            logger.warn('⚠️ No se pudo limpiar la hoja, continuando con actualización...', error);
+        }
+    }
+
+    /**
+     * Convierte un número de columna a letra (1 -> A, 2 -> B, 27 -> AA)
+     */
+    private getColumnLetter(columnNumber: number): string {
+        let result = '';
+        while (columnNumber > 0) {
+            columnNumber--;
+            result = String.fromCharCode(65 + (columnNumber % 26)) + result;
+            columnNumber = Math.floor(columnNumber / 26);
+        }
+        return result;
+    }
+
+    /**
      * Formatea el catálogo de productos para WhatsApp
      */
     formatCatalogForWhatsApp(products: ProductFromSheet[]): string {

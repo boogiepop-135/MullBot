@@ -736,6 +736,61 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
+    // Sincronizar productos de DB hacia Google Sheets
+    router.post('/products/sync-to-sheets', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            // Obtener todos los productos de la base de datos
+            const products = await prisma.product.findMany({
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (products.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No hay productos en la base de datos para sincronizar'
+                });
+            }
+
+            // Importar servicio de Google Sheets
+            const { googleSheetsService } = await import('../../utils/google-sheets.util');
+
+            // Preparar productos para sincronización
+            const productsToSync = products.map(product => ({
+                name: product.name,
+                description: product.description,
+                price: product.price,
+                imageUrl: product.imageUrl,
+                inStock: product.inStock
+            }));
+
+            // Sincronizar hacia Google Sheets
+            const result = await googleSheetsService.syncProductsToSheet(productsToSync);
+
+            if (result.success) {
+                logger.info(`✅ ${result.synced} productos sincronizados hacia Google Sheets`);
+                res.json({
+                    success: true,
+                    message: result.message,
+                    synced: result.synced
+                });
+            } else {
+                logger.error(`❌ Error sincronizando productos: ${result.message}`);
+                res.status(500).json({
+                    success: false,
+                    error: result.message,
+                    synced: result.synced
+                });
+            }
+        } catch (error: any) {
+            logger.error('Error sincronizando productos hacia Google Sheets:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Error sincronizando productos',
+                message: error.message
+            });
+        }
+    });
+
     // Auth API
     // Endpoint para crear usuario (requiere autenticación admin)
     router.post('/auth/register', authenticate, authorizeAdmin, async (req, res) => {
