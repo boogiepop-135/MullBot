@@ -2,6 +2,7 @@ import express from "express";
 import logger from "../configs/logger.config";
 import { BotManager } from "../bot.manager";
 import crmRouter from "../crm/api/crm.api";
+import advisoryRouter from "../crm/api/advisory.api";
 import webhookRouter from "./webhook.api";
 import { authenticate, authorizeAdmin } from "../crm/middlewares/auth.middleware";
 
@@ -504,6 +505,7 @@ export default function (botManager: BotManager) {
     });
 
     router.use("/crm", crmRouter(botManager));
+    router.use("/api/advisory", advisoryRouter);
     
     // Webhook handler para Evolution API v2
     router.use("/webhook", webhookRouter(botManager));

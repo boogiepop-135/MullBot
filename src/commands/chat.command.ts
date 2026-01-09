@@ -145,15 +145,56 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 },
             );
 
-            // Notificar al agente humano
+            // Crear asesoría en la base de datos
             try {
-                const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
+                const prisma = (await import('../database/prisma')).default;
                 const contactName = message.from === (message as any)._data.notifyName ? (message as any)._data.notifyName : null;
-                await notifyAgentAboutContact(message.from, contactName);
-                logger.info(`Agent notified about contact request from ${message.from}`);
-            } catch (notifyError) {
-                logger.error('Error notifying agent about contact request:', notifyError);
-                // No fallar si la notificación falla
+                
+                // Obtener últimos 5 mensajes para contexto
+                const recentMessages = await prisma.message.findMany({
+                    where: { phoneNumber: message.from },
+                    orderBy: { timestamp: 'desc' },
+                    take: 5
+                });
+
+                const conversationSnapshot = recentMessages.reverse().map(msg => ({
+                    from: msg.isFromBot ? 'bot' : 'customer',
+                    body: msg.body,
+                    timestamp: msg.timestamp
+                }));
+
+                // Generar resumen breve
+                const customerMessages = conversationSnapshot.filter(m => m.from === 'customer');
+                let summary = 'Nueva solicitud de asesoría';
+                if (customerMessages.length > 0) {
+                    const lastMsg = customerMessages[customerMessages.length - 1].body;
+                    summary = `"${lastMsg.substring(0, 80)}${lastMsg.length > 80 ? '...' : ''}"`;
+                }
+
+                // Crear asesoría
+                await prisma.advisory.create({
+                    data: {
+                        customerPhone: message.from,
+                        customerName: contactName || 'Cliente',
+                        status: 'PENDING',
+                        conversationSnapshot,
+                        summary,
+                        lastActivityAt: new Date()
+                    }
+                });
+
+                logger.info(`✅ Asesoría creada en DB para ${message.from}`);
+
+                // También notificar por el método anterior (opcional)
+                try {
+                    const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
+                    await notifyAgentAboutContact(message.from, contactName);
+                } catch (notifyError) {
+                    logger.warn('Error en notificación legacy:', notifyError);
+                }
+            } catch (dbError) {
+                logger.error('Error creando asesoría en DB:', dbError);
+                // No fallar todo el flujo si falla la creación
             }
         }
 

@@ -90,6 +90,11 @@ window.showSection = function (sectionId) {
   currentPage = sectionId;
   window.location.hash = sectionId;
 
+  // Detener polling de asesorías al cambiar de sección
+  if (sectionId !== 'advisories' && typeof stopAdvisoriesPolling === 'function') {
+    stopAdvisoriesPolling();
+  }
+
   // Load data
   switch (sectionId) {
     case 'dashboard':
@@ -97,6 +102,11 @@ window.showSection = function (sectionId) {
       break;
     case 'contacts':
       loadContacts();
+      break;
+    case 'advisories':
+      if (typeof initAdvisoriesPanel === 'function') {
+        initAdvisoriesPanel();
+      }
       break;
     case 'ai-monitor':
       loadAIMonitor();
@@ -180,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Initial navigation based on hash
   const hash = window.location.hash.substring(1);
-  if (hash && ['dashboard', 'contacts', 'campaigns', 'templates', 'products', 'users', 'bot-content', 'settings'].includes(hash)) {
+  if (hash && ['dashboard', 'contacts', 'advisories', 'campaigns', 'templates', 'products', 'users', 'bot-content', 'settings'].includes(hash)) {
     showSection(hash);
   } else {
     showSection('dashboard');
