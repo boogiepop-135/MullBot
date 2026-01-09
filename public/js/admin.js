@@ -1204,6 +1204,84 @@ async function syncProductsToGoogleSheets() {
 // Hacer función global
 window.syncProductsToGoogleSheets = syncProductsToGoogleSheets;
 
+// Sincronizar productos desde Google Sheets hacia la base de datos
+async function syncProductsFromGoogleSheets() {
+  if (!confirm('¿Estás seguro de que deseas sincronizar productos desde Google Sheets hacia la base de datos?\n\n⚠️ Esto creará o actualizará productos en la base de datos basándose en la hoja de Google Sheets.')) {
+    return;
+  }
+
+  // Buscar el botón que activó la función
+  const buttons = document.querySelectorAll('button');
+  let syncButton = null;
+  for (const btn of buttons) {
+    if (btn.innerHTML.includes('Sincronizar desde Google Sheets')) {
+      syncButton = btn;
+      break;
+    }
+  }
+
+  try {
+    // Mostrar indicador de carga
+    if (syncButton) {
+      const originalText = syncButton.innerHTML;
+      syncButton.disabled = true;
+      syncButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sincronizando...';
+
+      const token = localStorage.getItem('token');
+      const response = await fetch('/crm/products/sync-from-sheets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      syncButton.disabled = false;
+      syncButton.innerHTML = originalText;
+
+      if (data.success) {
+        alert(`✅ ¡Sincronización exitosa!\n\n${data.message}\n\n- Productos creados: ${data.stats.created}\n- Productos actualizados: ${data.stats.updated}\n- Errores: ${data.stats.errors}`);
+        // Recargar productos
+        loadProducts();
+      } else {
+        alert(`❌ Error al sincronizar:\n\n${data.error || data.message || 'Error desconocido'}\n\nVerifica:\n- Que Google Sheets esté configurado (API Key y Spreadsheet ID)\n- Que la hoja tenga productos con las columnas correctas\n- Que la hoja sea pública o compartida`);
+      }
+    } else {
+      // Fallback sin botón
+      const token = localStorage.getItem('token');
+      const response = await fetch('/crm/products/sync-from-sheets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`✅ ¡Sincronización exitosa!\n\n${data.message}`);
+        loadProducts();
+      } else {
+        alert(`❌ Error: ${data.error || data.message || 'Error desconocido'}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error sincronizando productos desde Google Sheets:', error);
+    alert(`❌ Error al sincronizar productos:\n\n${error.message || 'Error desconocido'}`);
+    
+    // Restaurar botón
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.innerHTML = '<i class="fas fa-download mr-2"></i><span>Sincronizar desde Google Sheets</span>';
+    }
+  }
+}
+
+// Hacer función global
+window.syncProductsFromGoogleSheets = syncProductsFromGoogleSheets;
+
 function renderProducts(products) {
   const tbody = document.getElementById('products-table-body');
   if (!tbody) return;

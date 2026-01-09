@@ -9,6 +9,7 @@ import { sendCampaignMessages } from '../../crons/campaign.cron';
 import { AutomationService } from '../utils/automation.util';
 import { SaleStatus, CampaignStatus, BotContentCategory, NotificationType, Role, AutomationTrigger } from '@prisma/client';
 import { SessionState } from '../../services/session-manager.service';
+import EnvConfig from '../../configs/env.config';
 
 export const router = express.Router();
 
@@ -733,6 +734,100 @@ Tu solicitud ha sido registrada correctamente.
         } catch (error) {
             logger.error('Failed to delete product:', error);
             res.status(500).json({ error: 'Failed to delete product' });
+        }
+    });
+
+    // Sincronizar productos desde Google Sheets hacia la base de datos
+    router.post('/products/sync-from-sheets', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            // Importar servicio de Google Sheets
+            const { googleSheetsService } = await import('../../utils/google-sheets.util');
+            
+            // Verificar que Google Sheets esté configurado
+            if (!EnvConfig.GOOGLE_SHEETS_API_KEY || !EnvConfig.GOOGLE_SHEETS_SPREADSHEET_ID) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Google Sheets no está configurado. Configura GOOGLE_SHEETS_API_KEY y GOOGLE_SHEETS_SPREADSHEET_ID en las variables de entorno.'
+                });
+            }
+
+            logger.info('📥 Sincronizando productos desde Google Sheets hacia la base de datos...');
+
+            // Obtener productos desde Google Sheets
+            const productsFromSheets = await googleSheetsService.getProductCatalog();
+
+            if (!productsFromSheets || productsFromSheets.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No se encontraron productos en Google Sheets. Verifica que la hoja tenga datos y las columnas correctas.'
+                });
+            }
+
+            let created = 0;
+            let updated = 0;
+            let errors = 0;
+
+            // Sincronizar cada producto
+            for (const sheetProduct of productsFromSheets) {
+                try {
+                    // Buscar si ya existe un producto con el mismo nombre
+                    const existingProduct = await prisma.product.findFirst({
+                        where: {
+                            name: {
+                                equals: sheetProduct.producto,
+                                mode: 'insensitive'
+                            }
+                        }
+                    });
+
+                    const productData = {
+                        name: sheetProduct.producto,
+                        description: sheetProduct.descripcion || null,
+                        price: sheetProduct.precio,
+                        inStock: sheetProduct.disponibilidad,
+                        imageUrl: sheetProduct.imagenLink || null,
+                        category: null // Se puede agregar categoría después si es necesario
+                    };
+
+                    if (existingProduct) {
+                        // Actualizar producto existente
+                        await prisma.product.update({
+                            where: { id: existingProduct.id },
+                            data: productData
+                        });
+                        updated++;
+                    } else {
+                        // Crear nuevo producto
+                        await prisma.product.create({
+                            data: productData
+                        });
+                        created++;
+                    }
+                } catch (error) {
+                    logger.error(`Error sincronizando producto "${sheetProduct.producto}":`, error);
+                    errors++;
+                }
+            }
+
+            logger.info(`✅ Sincronización completada: ${created} creados, ${updated} actualizados, ${errors} errores`);
+
+            res.json({
+                success: true,
+                message: `Sincronización completada: ${created} productos creados, ${updated} actualizados, ${errors} errores`,
+                stats: {
+                    created,
+                    updated,
+                    errors,
+                    total: productsFromSheets.length
+                }
+            });
+        } catch (error: any) {
+            logger.error('Error sincronizando productos desde Google Sheets:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Error sincronizando productos',
+                message: error.message
+            });
         }
     });
 

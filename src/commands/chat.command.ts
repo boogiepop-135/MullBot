@@ -78,6 +78,9 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     // Esto debe hacerse ANTES de cualquier llamada a IA
     let quickResponse: { message: string; mediaPath?: string; intent?: string } | null = null;
 
+    // Normalizar query PRIMERO para poder usarlo en las verificaciones
+    const normalizedQuery = query.toLowerCase().trim();
+
     // Verificar si es solicitud de precios/catálogo (antes de otras opciones)
     const precioKeywords = ['precio', 'precios', 'catalogo', 'catálogo', 'productos', 'producto', 'cuanto', 'costo', 'paquete', 'paquetes'];
     const isPrecioRequest = precioKeywords.some(keyword => normalizedQuery.includes(keyword)) || 
@@ -120,7 +123,6 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     }
 
     // Verificar si es solicitud de menú
-    const normalizedQuery = query.toLowerCase().trim();
     if (normalizedQuery === 'menu' || normalizedQuery === 'menú' || normalizedQuery === 'volver') {
         quickResponse = { message: await getMainMenuResponse(), mediaPath: 'public/info.png' };
     }
@@ -130,7 +132,6 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
 
         // Detectar si es la opción 8 (hablar con agente)
         // El bot ya se pausó automáticamente en handleMessage, pero enviamos la respuesta de todas formas
-        const normalizedQuery = query.toLowerCase().trim();
         const isAgentRequest = normalizedQuery === '8' ||
             /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
             /^8[\s\.\)\-]/.test(normalizedQuery) ||
