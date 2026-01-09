@@ -123,9 +123,18 @@ class GoogleSheetsService {
                 'in stock', 'inventario'
             ]);
 
+            logger.info(`📊 Índices de columnas encontrados:`);
+            logger.info(`   - Producto: ${productoIdx >= 0 ? `índice ${productoIdx} (${headers[productoIdx]})` : 'NO ENCONTRADO'}`);
+            logger.info(`   - Descripción: ${descripcionIdx >= 0 ? `índice ${descripcionIdx} (${headers[descripcionIdx]})` : 'NO ENCONTRADO'}`);
+            logger.info(`   - Precio: ${precioIdx >= 0 ? `índice ${precioIdx} (${headers[precioIdx]})` : 'NO ENCONTRADO'}`);
+            logger.info(`   - Precio con descuento: ${precioDescuentoIdx >= 0 ? `índice ${precioDescuentoIdx} (${headers[precioDescuentoIdx]})` : 'NO ENCONTRADO (opcional)'}`);
+            logger.info(`   - URL Imagen: ${imagenIdx >= 0 ? `índice ${imagenIdx} (${headers[imagenIdx]})` : 'NO ENCONTRADO (opcional)'}`);
+            logger.info(`   - Disponibilidad: ${disponibilidadIdx >= 0 ? `índice ${disponibilidadIdx} (${headers[disponibilidadIdx]})` : 'NO ENCONTRADO (opcional)'}`);
+
             if (productoIdx === -1 || descripcionIdx === -1 || precioIdx === -1) {
                 logger.error('❌ No se encontraron las columnas requeridas (Producto, Descripción, Precio)');
-                logger.error(`Columnas encontradas: ${headers.join(', ')}`);
+                logger.error(`Columnas encontradas en Google Sheets: ${headers.join(', ')}`);
+                logger.error('Verifica que las columnas se llamen: "Nombre del producto" o "Producto", "DESCRIPCIÓN" o "Descripción", y "PRECIO" o "Precio"');
                 return [];
             }
 
@@ -143,12 +152,15 @@ class GoogleSheetsService {
                 try {
                     const producto = row[productoIdx]?.toString().trim();
                     const descripcion = row[descripcionIdx]?.toString().trim() || '';
-                    const precioStr = row[precioIdx]?.toString().trim().replace(/[,$]/g, '');
+                    
+                    // Parsear precio: remover $, comas, espacios y convertir a número
+                    let precioStr = row[precioIdx]?.toString().trim() || '';
+                    precioStr = precioStr.replace(/[$,\s]/g, ''); // Remover $, comas y espacios
                     const precio = parseFloat(precioStr);
 
                     // Validar precio
-                    if (isNaN(precio)) {
-                        logger.warn(`⚠️ Fila ${i + 1}: Precio inválido para producto "${producto}"`);
+                    if (isNaN(precio) || precio <= 0) {
+                        logger.warn(`⚠️ Fila ${i + 1}: Precio inválido para producto "${producto}" (valor: "${row[precioIdx]}")`);
                         continue;
                     }
 
@@ -161,9 +173,10 @@ class GoogleSheetsService {
 
                     // Precio con descuento (opcional)
                     if (precioDescuentoIdx !== -1 && row[precioDescuentoIdx]) {
-                        const descuentoStr = row[precioDescuentoIdx].toString().trim().replace(/[,$]/g, '');
+                        let descuentoStr = row[precioDescuentoIdx].toString().trim();
+                        descuentoStr = descuentoStr.replace(/[$,\s]/g, ''); // Remover $, comas y espacios
                         const precioConDescuento = parseFloat(descuentoStr);
-                        if (!isNaN(precioConDescuento) && precioConDescuento > 0) {
+                        if (!isNaN(precioConDescuento) && precioConDescuento > 0 && precioConDescuento < precio) {
                             product.precioConDescuento = precioConDescuento;
                         }
                     }
@@ -261,33 +274,48 @@ class GoogleSheetsService {
 
         let message = '🌱 *CATÁLOGO DE PRODUCTOS MÜLLBLUE*\n\n';
 
-        products.forEach((product, index) => {
-            // Solo mostrar productos disponibles
-            if (!product.disponibilidad) {
-                return;
-            }
+        // Filtrar solo productos disponibles
+        const availableProducts = products.filter(p => p.disponibilidad);
 
+        availableProducts.forEach((product, index) => {
             message += `*${index + 1}. ${product.producto}*\n`;
             
-            if (product.descripcion) {
-                message += `${product.descripcion}\n`;
+            if (product.descripcion && product.descripcion.trim()) {
+                // Limpiar la descripción (remover comillas y caracteres especiales)
+                let descripcion = product.descripcion
+                    .replace(/^["']|["']$/g, '') // Remover comillas al inicio/fin
+                    .replace(/\n+/g, '\n') // Normalizar saltos de línea
+                    .trim();
+                message += `${descripcion}\n`;
             }
 
-            // Mostrar precio con descuento si existe
-            if (product.precioConDescuento && product.precioConDescuento < product.precio) {
-                message += `💰 Precio: ~$${product.precio.toFixed(2)}~ *$${product.precioConDescuento.toFixed(2)}*\n`;
-                const ahorro = product.precio - product.precioConDescuento;
-                const porcentaje = ((ahorro / product.precio) * 100).toFixed(0);
+            // Mostrar precio formateado correctamente
+            if (product.precioConDescuento && product.precioConDescuento < product.precio && product.precioConDescuento > 0) {
+                const precioOriginal = Math.round(product.precio * 100) / 100;
+                const precioDescuento = Math.round(product.precioConDescuento * 100) / 100;
+                message += `💰 Precio: ~$${precioOriginal.toFixed(2)}~ *$${precioDescuento.toFixed(2)}*\n`;
+                const ahorro = precioOriginal - precioDescuento;
+                const porcentaje = Math.round((ahorro / precioOriginal) * 100);
                 message += `✨ ¡Ahorra $${ahorro.toFixed(2)} (${porcentaje}% off)!\n`;
             } else {
-                message += `💰 Precio: *$${product.precio.toFixed(2)}*\n`;
+                const precio = Math.round(product.precio * 100) / 100;
+                message += `💰 Precio: *$${precio.toFixed(2)}*\n`;
+            }
+
+            // Agregar URL de imagen si está disponible
+            if (product.imagenLink && product.imagenLink.trim()) {
+                message += `🖼️ [Ver imagen](${product.imagenLink})\n`;
             }
 
             message += '\n';
         });
 
-        message += '_Los precios se actualizan en tiempo real_ ✨\n\n';
-        message += '¿Te gustaría más información sobre algún producto? 😊';
+        message += '_Los precios se actualizan en tiempo real desde Google Sheets_ ✨\n\n';
+        message += '¿Te gustaría más información sobre algún producto? 😊\n\n';
+        message += '*Opciones:*\n';
+        message += '*1.* Información detallada de un producto\n';
+        message += '*2.* Métodos de pago\n';
+        message += '*3.* Hablar con un asesor';
 
         return message;
     }
