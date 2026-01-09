@@ -537,16 +537,64 @@ function hideAdvisoryBadge() {
 }
 
 /**
- * Reproducir sonido de notificación
+ * Reproducir sonido de notificación (tipo Samsung - amigable)
  */
 function playNotificationSound() {
-    // Audio simple para notificar
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuH0fPTgjMGHm7A7+OZUBAQVLX069tPDABAkN3wwmMjBCR+zPLQfzUHI3fJ8Nybx6Oz/8AAAADAwMD/wMDAwMDAwMAAAAAfAACAgYKCgoKCgoKCAQMDAgQBAIGCAgMDBAQEBAQDBAICAgAAAAIBAACBg4GCA4ODAAIDBAYBBQADAAECAAIDAAABAAABBQYCAAEBBAGCAY');
-    
+    // Crear un sonido tipo Samsung más amigable usando Web Audio API
     try {
-        audio.play().catch(e => console.log('No se pudo reproducir sonido'));
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Configuración para un sonido suave tipo Samsung
+        const duration = 0.3; // Duración más corta y suave
+        const sampleRate = audioContext.sampleRate;
+        const numSamples = Math.floor(duration * sampleRate);
+        const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+        const data = buffer.getChannelData(0);
+        
+        // Generar un tono más suave y agradable (frecuencia más baja, con decaimiento suave)
+        const frequency = 800; // Frecuencia más baja = más suave
+        const frequency2 = 600; // Segundo tono para un sonido más rico
+        
+        for (let i = 0; i < numSamples; i++) {
+            const t = i / sampleRate;
+            // Decaimiento exponencial para que sea más suave
+            const envelope = Math.exp(-t * 8);
+            // Combinar dos tonos con decaimiento
+            data[i] = (Math.sin(2 * Math.PI * frequency * t) * 0.3 + 
+                      Math.sin(2 * Math.PI * frequency2 * t) * 0.2) * envelope;
+        }
+        
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        
+        // Limpiar después de reproducir
+        setTimeout(() => {
+            source.disconnect();
+        }, duration * 1000);
+        
     } catch (e) {
-        // Silently fail if audio doesn't work
+        // Fallback: Si Web Audio API no está disponible, usar un sonido más simple
+        try {
+            // Generar un beep suave usando HTML5 Audio
+            const audioContext = new AudioContext();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800; // Frecuencia más suave
+            oscillator.type = 'sine'; // Onda seno = más suave
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch (fallbackError) {
+            console.log('No se pudo reproducir sonido de notificación');
+        }
     }
 }
 
