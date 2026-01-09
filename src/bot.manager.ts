@@ -519,12 +519,6 @@ export class BotManager {
         return this.userI18nCache.get(userNumber)!;
     }
 
-    /**
-     * Obtener servicio Evolution API (para uso externo)
-     */
-    public getEvolutionAPI(): EvolutionAPIv2Service {
-        return this.evolutionAPI;
-    }
 
     /**
      * Guardar mensaje enviado en base de datos

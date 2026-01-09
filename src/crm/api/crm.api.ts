@@ -2390,7 +2390,7 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                                 name: contactName,
                                 pushName: contactName,
                                 lastInteraction: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : new Date(),
-                                totalMessages: 0
+                                interactionsCount: 1
                             },
                             update: {
                                 name: contactName || undefined,
@@ -2428,26 +2428,35 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                                         continue; // Saltar mensajes sin contenido de texto
                                     }
 
-                                    const messageKey = msg.key?.id || `${msg.timestamp}-${Math.random()}`;
+                                    const messageId = msg.key?.id || `${msg.timestamp}-${Math.random()}`;
+                                    const from = msg.key?.fromMe === true || msg.fromMe === true 
+                                        ? contactId 
+                                        : (msg.key?.remoteJid || contactId);
+                                    const to = msg.key?.fromMe === true || msg.fromMe === true
+                                        ? (msg.key?.remoteJid || contactId)
+                                        : contactId;
+                                    const hasMedia = !!(msg.message?.imageMessage || msg.message?.videoMessage || msg.message?.audioMessage);
                                     
                                     await prisma.message.upsert({
                                         where: {
-                                            phoneNumber_key: {
-                                                phoneNumber: contactId,
-                                                key: messageKey
-                                            }
+                                            messageId: messageId
                                         },
                                         create: {
                                             phoneNumber: contactId,
-                                            key: messageKey,
-                                            messageText: messageText || '[Media]',
+                                            messageId: messageId,
+                                            from: from,
+                                            to: to,
+                                            body: messageText || '[Media]',
                                             isFromBot: msg.key?.fromMe === true || msg.fromMe === true,
                                             timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : new Date(),
-                                            rawData: msg as any
+                                            hasMedia: hasMedia,
+                                            type: hasMedia ? 'MEDIA' : 'TEXT',
+                                            metadata: msg as any
                                         },
                                         update: {
-                                            messageText: messageText || '[Media]',
-                                            timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : undefined
+                                            body: messageText || '[Media]',
+                                            timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : undefined,
+                                            hasMedia: hasMedia
                                         }
                                     });
 
