@@ -232,29 +232,50 @@ class GoogleSheetsService {
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
                 
-                // Validar que la fila tenga datos
-                if (!row || row.length === 0 || !row[productoIdx]) {
+                // Validar que la fila tenga al menos nombre de producto
+                const producto = row[productoIdx]?.toString().trim() || '';
+                
+                // Si no hay nombre de producto, saltar la fila
+                if (!producto) {
                     continue;
                 }
 
                 try {
-                    const producto = row[productoIdx]?.toString().trim();
+                    // Descripción puede estar vacía, eso está bien
                     const descripcion = row[descripcionIdx]?.toString().trim() || '';
                     
                     // Parsear precio: remover $, comas, espacios y convertir a número
                     let precioStr = row[precioIdx]?.toString().trim() || '';
+                    
+                    // Si no hay precio en la columna de precio, intentar buscar en la columna de descripción
+                    // (algunos productos tienen el precio mal ubicado)
+                    if (!precioStr && descripcion) {
+                        // Buscar patrón de precio en la descripción (ej: $650.00)
+                        const precioMatch = descripcion.match(/\$?\s*(\d{1,3}(?:[,\s]?\d{3})*(?:\.\d{2})?)/);
+                        if (precioMatch) {
+                            precioStr = precioMatch[1];
+                            logger.debug(`📊 Fila ${i + 1}: Precio encontrado en descripción: ${precioStr}`);
+                        }
+                    }
+                    
+                    // Validar que haya precio
+                    if (!precioStr) {
+                        logger.warn(`⚠️ Fila ${i + 1}: Producto "${producto}" no tiene precio, saltando...`);
+                        continue;
+                    }
+                    
                     precioStr = precioStr.replace(/[$,\s]/g, ''); // Remover $, comas y espacios
                     const precio = parseFloat(precioStr);
 
                     // Validar precio
                     if (isNaN(precio) || precio <= 0) {
-                        logger.warn(`⚠️ Fila ${i + 1}: Precio inválido para producto "${producto}" (valor: "${row[precioIdx]}")`);
+                        logger.warn(`⚠️ Fila ${i + 1}: Precio inválido para producto "${producto}" (valor original: "${row[precioIdx]}")`);
                         continue;
                     }
 
                     const product: ProductFromSheet = {
                         producto,
-                        descripcion,
+                        descripcion, // Puede estar vacío, eso está bien
                         precio,
                         disponibilidad: true // Por defecto disponible
                     };
