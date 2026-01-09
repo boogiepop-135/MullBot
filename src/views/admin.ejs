@@ -91,6 +91,49 @@
       transform: translateX(2px);
     }
 
+    /* Tooltip para items del sidebar */
+    .nav-item {
+      position: relative;
+    }
+
+    .nav-item .tooltip {
+      position: absolute;
+      left: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-item .tooltip::before {
+      content: '';
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 6px solid transparent;
+      border-right-color: rgba(0, 0, 0, 0.9);
+    }
+
+    .nav-item:hover .tooltip {
+      opacity: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .nav-item .tooltip {
+        display: none;
+      }
+    }
+
     /* Main content */
     .main-content {
       margin-left: var(--sidebar-width);
@@ -520,12 +563,14 @@
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-home w-7 text-center transition-colors text-lg"></i>
         <span class="ml-3">Dashboard</span>
+        <span class="tooltip">Vista general con estadísticas, métricas y contactos recientes</span>
       </a>
 
       <a href="#" onclick="showSection('contacts')" id="nav-contacts"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-address-book w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Contactos</span>
+        <span class="tooltip">Gestiona todos tus contactos, cambia estados y chatea directamente</span>
       </a>
 
       <a href="#" onclick="showSection('advisories')" id="nav-advisories"
@@ -533,54 +578,63 @@
         <i class="fas fa-headset w-7 text-center transition-colors text-lg"></i>
         <span class="ml-3">Asesorías</span>
         <span id="advisory-badge" class="hidden absolute right-3 top-1/2 -translate-y-1/2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">0</span>
+        <span class="tooltip">Cola de solicitudes de atención humana. Atiende clientes en tiempo real</span>
       </a>
 
       <a href="#" onclick="showSection('campaigns')" id="nav-campaigns"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-bullhorn w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Campañas</span>
+        <span class="tooltip">Crea y programa campañas masivas de mensajería a contactos</span>
       </a>
 
       <a href="#" onclick="showSection('templates')" id="nav-templates"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-file-alt w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Plantillas</span>
+        <span class="tooltip">Guarda y reutiliza mensajes predefinidos para respuestas rápidas</span>
       </a>
 
       <a href="#" onclick="showSection('products')" id="nav-products"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-box w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Productos</span>
+        <span class="tooltip">Catálogo de productos. Sincroniza con Google Sheets automáticamente</span>
       </a>
 
       <a href="#" onclick="showSection('users')" id="nav-users"
         class="nav-item hidden flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-users w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Usuarios</span>
+        <span class="tooltip">Gestiona usuarios y permisos del sistema</span>
       </a>
 
       <a href="#" onclick="showSection('bot-content')" id="nav-bot-content"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-comment-dots w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Contenido Bot</span>
+        <span class="tooltip">Edita respuestas automáticas y mensajes del bot</span>
       </a>
 
       <a href="#" onclick="showSection('automations')" id="nav-automations"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-magic w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Automatizaciones</span>
+        <span class="tooltip">Crea reglas automáticas que se ejecutan cuando ocurren eventos</span>
       </a>
 
       <a href="#" onclick="showSection('settings')" id="nav-settings"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-cog w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Configuración</span>
+        <span class="tooltip">Configura WhatsApp, personalización del bot y ajustes generales</span>
       </a>
 
       <a href="#" onclick="showSection('ai-monitor')" id="nav-ai-monitor"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-brain w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Monitor IA</span>
+        <span class="tooltip">Monitorea uso de tokens, costos y rendimiento de la IA</span>
       </a>
 
       <div class="pt-4 mt-4 border-t" style="border-color: var(--border-color);">
@@ -588,6 +642,7 @@
           class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
           <i class="fas fa-book w-7 text-center transition-colors text-lg"></i>
           <span class="ml-3">Guía de Uso</span>
+          <span class="tooltip">Documentación completa con instrucciones detalladas de cada sección</span>
         </a>
       </div>
     </nav>
