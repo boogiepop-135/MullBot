@@ -1283,36 +1283,90 @@ async function syncProductsFromGoogleSheets() {
 window.syncProductsFromGoogleSheets = syncProductsFromGoogleSheets;
 
 function renderProducts(products) {
-  const tbody = document.getElementById('products-table-body');
-  if (!tbody) return;
-  tbody.innerHTML = '';
+  const container = document.getElementById('products-container');
+  if (!container) return;
+  container.innerHTML = '';
 
   if (products.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-sm text-gray-500 text-center">No hay productos</td></tr>`;
+    container.innerHTML = `
+      <div class="col-span-full text-center py-12">
+        <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 text-lg">No hay productos</p>
+        <p class="text-gray-400 text-sm mt-2">Haz clic en "Nuevo Producto" o sincroniza desde Google Sheets</p>
+      </div>
+    `;
     return;
   }
 
   products.forEach(product => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="px-6 py-4 whitespace-nowrap">
-        <div class="text-sm font-medium text-gray-900">${product.name}</div>
-        <div class="text-xs text-gray-500">${product.description || ''}</div>
-      </td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${product.price}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${product.category || '-'}</td>
-      <td class="px-6 py-4 whitespace-nowrap">
-        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-          ${product.inStock ? 'En Stock' : 'Agotado'}
-        </span>
-      </td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-        <button onclick="openEditProductModal('${product._id}')" class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button>
-        <button onclick="deleteProduct('${product._id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
-      </td>
+    const card = document.createElement('div');
+    card.className = 'bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col';
+    
+    // Truncar descripción si es muy larga
+    const description = product.description || '';
+    const truncatedDesc = description.length > 150 ? description.substring(0, 150) + '...' : description;
+    
+    // Imagen si existe
+    const imageHtml = product.imageUrl 
+      ? `<img src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" class="w-full h-48 object-cover bg-gray-100" onerror="this.style.display='none'">`
+      : `<div class="w-full h-48 bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+           <i class="fas fa-box text-6xl text-gray-300"></i>
+         </div>`;
+    
+    card.innerHTML = `
+      ${imageHtml}
+      <div class="p-4 flex flex-col flex-1">
+        <div class="flex-1">
+          <h3 class="font-bold text-lg text-gray-900 mb-2 line-clamp-2" title="${escapeHtml(product.name)}">
+            ${escapeHtml(product.name)}
+          </h3>
+          ${description ? `
+            <p class="text-sm text-gray-600 mb-3 line-clamp-3" title="${escapeHtml(description)}">
+              ${escapeHtml(truncatedDesc)}
+            </p>
+          ` : ''}
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl font-bold text-indigo-600">$${parseFloat(product.price || 0).toFixed(2)}</span>
+            <span class="px-3 py-1 text-xs font-semibold rounded-full ${product.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+              ${product.inStock ? 'En Stock' : 'Agotado'}
+            </span>
+          </div>
+          ${product.category ? `
+            <div class="mb-3">
+              <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">${escapeHtml(product.category)}</span>
+            </div>
+          ` : ''}
+        </div>
+        <div class="flex gap-2 mt-auto pt-3 border-t border-gray-100">
+          <button onclick="openEditProductModal('${product._id}')" 
+            class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+            <i class="fas fa-edit"></i>
+            <span>Editar</span>
+          </button>
+          <button onclick="deleteProduct('${product._id}')" 
+            class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+            <i class="fas fa-trash"></i>
+            <span>Eliminar</span>
+          </button>
+        </div>
+      </div>
     `;
-    tbody.appendChild(tr);
+    container.appendChild(card);
   });
+}
+
+// Función helper para escapar HTML (si no existe)
+if (typeof escapeHtml === 'undefined') {
+  window.escapeHtml = function(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+  };
 }
 
 window.openCreateProductModal = function () {
