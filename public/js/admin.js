@@ -1336,11 +1336,53 @@ window.deleteProduct = async function (id) {
 
 // --- Helper Functions ---
 
+// Formatear fecha con zona horaria de México Central
 function formatDate(dateString) {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  // Formatear con zona horaria de México Central (America/Mexico_City)
+  const options = {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  };
+  
+  return date.toLocaleString('es-MX', options);
 }
+
+// Reloj en tiempo real con zona horaria de México Central
+function updateClock() {
+  const clockElement = document.getElementById('mexico-clock');
+  if (!clockElement) return;
+  
+  const now = new Date();
+  const options = {
+    timeZone: 'America/Mexico_City',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    day: '2-digit',
+    month: 'short',
+    weekday: 'short'
+  };
+  
+  const mexicoTime = now.toLocaleString('es-MX', options);
+  clockElement.innerHTML = `
+    <i class="fas fa-clock mr-2"></i>
+    <span class="font-semibold">${mexicoTime}</span>
+    <span class="text-xs ml-2 text-gray-500">CDT</span>
+  `;
+}
+
+// Actualizar reloj cada segundo
+setInterval(updateClock, 1000);
+updateClock(); // Inicializar inmediatamente
 
 // --- Chat & Other Modals (Simplified for brevity, assuming existence) ---
 window.openChatModal = function (phone, name) {
@@ -1412,23 +1454,35 @@ window.closeChatModal = function () {
   chatMessages = [];
 };
 
-async function loadChatMessages() {
+async function loadChatMessages(loadMore = false) {
   if (!currentChatPhoneNumber) {
     console.error('No phone number provided');
     return;
   }
   
   const container = document.getElementById('messages-container');
-  if (container) {
+  const loadMoreBtn = document.getElementById('load-more-messages-btn');
+  
+  if (!loadMore && container) {
     container.innerHTML = '<div class="flex justify-center items-center h-full"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
   }
   
   try {
     // Codificar el número de teléfono para la URL
     const encodedPhoneNumber = encodeURIComponent(currentChatPhoneNumber);
+    
+    // Si estamos cargando más, usar el timestamp del mensaje más antiguo
+    let url = `/crm/contacts/${encodedPhoneNumber}/messages?limit=500`;
+    if (loadMore && chatMessages && chatMessages.length > 0) {
+      const oldestMessage = chatMessages[0]; // El primero es el más antiguo
+      if (oldestMessage && oldestMessage.timestamp) {
+        url += `&before=${encodeURIComponent(oldestMessage.timestamp)}`;
+      }
+    }
+    
     // Agregar timestamp para evitar cache del navegador
     const cacheBuster = `_t=${Date.now()}`;
-    const url = `/crm/contacts/${encodedPhoneNumber}/messages?${cacheBuster}`;
+    url += `&${cacheBuster}`;
     
     const response = await fetch(url, {
       headers: { 
@@ -1443,11 +1497,19 @@ async function loadChatMessages() {
     }
     
     const data = await response.json();
-    chatMessages = data.messages || [];
-    renderChatMessages();
+    const newMessages = data.messages || [];
+    
+    if (loadMore && chatMessages) {
+      // Prependear mensajes antiguos al inicio
+      chatMessages = [...newMessages, ...chatMessages];
+    } else {
+      chatMessages = newMessages;
+    }
+    
+    renderChatMessages(data.hasMore);
   } catch (e) { 
     console.error('Error loading messages:', e);
-    if (container) {
+    if (container && !loadMore) {
       container.innerHTML = `<div class="flex flex-col justify-center items-center h-full text-red-500 p-4">
         <i class="fas fa-exclamation-triangle mb-2 text-2xl"></i>
         <p class="text-sm text-center">Error al cargar mensajes</p>
@@ -1457,15 +1519,32 @@ async function loadChatMessages() {
   }
 }
 
-function renderChatMessages() {
+window.loadMoreMessages = function() {
+  loadChatMessages(true);
+};
+
+function renderChatMessages(hasMore = false) {
   const container = document.getElementById('messages-container');
+  const loadMoreBtn = document.getElementById('load-more-messages-btn');
   if (!container) return;
+  
+  // Guardar posición de scroll antes de actualizar
+  const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+  const oldScrollHeight = container.scrollHeight;
   
   container.innerHTML = '';
   
   if (!chatMessages || chatMessages.length === 0) {
     container.innerHTML = '<div class="flex justify-center items-center h-full text-gray-400">No hay mensajes aún</div>';
+    if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
     return;
+  }
+  
+  // Botón para cargar más mensajes antiguos
+  if (hasMore && loadMoreBtn) {
+    loadMoreBtn.classList.remove('hidden');
+  } else if (loadMoreBtn) {
+    loadMoreBtn.classList.add('hidden');
   }
   
   chatMessages.forEach(msg => {
@@ -1487,7 +1566,16 @@ function renderChatMessages() {
     container.appendChild(div);
   });
   
-  container.scrollTop = container.scrollHeight;
+  // Restaurar posición de scroll
+  if (wasAtBottom) {
+    // Si estaba al final, mantener al final
+    container.scrollTop = container.scrollHeight;
+  } else {
+    // Si estaba arriba, mantener la posición relativa
+    const newScrollHeight = container.scrollHeight;
+    const scrollDiff = newScrollHeight - oldScrollHeight;
+    container.scrollTop = container.scrollTop + scrollDiff;
+  }
 }
 
 window.sendChatMessage = async function () {

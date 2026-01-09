@@ -1,6 +1,9 @@
 // Importar polyfills primero para Node.js 18
 import "./polyfills";
 
+// Configurar zona horaria a México Central (America/Mexico_City)
+process.env.TZ = 'America/Mexico_City';
+
 import express from "express";
 import logger from "./configs/logger.config";
 import EnvConfig from "./configs/env.config";

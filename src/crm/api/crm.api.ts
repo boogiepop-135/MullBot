@@ -1485,13 +1485,19 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
     router.get('/contacts/:phoneNumber/messages', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { phoneNumber } = req.params;
-            const { limit = 50, before, requiresAttention } = req.query; // Paginación opcional y filtro de atención
+            // Aumentar límite por defecto a 500 para cargar más historial
+            const { limit = 500, before, after, requiresAttention } = req.query;
 
             const where: any = { phoneNumber };
 
             // Si hay un timestamp "before", obtener mensajes anteriores a esa fecha
             if (before) {
-                where.timestamp = { lt: new Date(before) };
+                where.timestamp = { lt: new Date(before as string) };
+            }
+
+            // Si hay un timestamp "after", obtener mensajes posteriores a esa fecha
+            if (after) {
+                where.timestamp = { ...where.timestamp, gt: new Date(after as string) };
             }
 
             // Si se solicita solo mensajes que requieren atención
@@ -1499,10 +1505,13 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 where.requiresAttention = true;
             }
 
+            // Contar total de mensajes para este contacto
+            const totalMessages = await prisma.message.count({ where });
+
             const messages = await prisma.message.findMany({
                 where,
                 orderBy: { timestamp: 'desc' },
-                take: Number(limit)
+                take: Math.min(Number(limit), 1000) // Máximo 1000 mensajes por petición
             });
 
             // Ordenar por timestamp ascendente para mostrar en orden cronológico
@@ -1513,7 +1522,12 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
             res.set('Pragma', 'no-cache');
             res.set('Expires', '0');
             
-            res.json({ messages });
+            res.json({ 
+                messages,
+                total: totalMessages,
+                loaded: messages.length,
+                hasMore: totalMessages > messages.length
+            });
         } catch (error) {
             logger.error('Failed to fetch messages:', error);
             res.status(500).json({ error: 'Failed to fetch messages' });
