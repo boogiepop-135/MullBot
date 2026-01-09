@@ -78,9 +78,38 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     // Esto debe hacerse ANTES de cualquier llamada a IA
     let quickResponse: { message: string; mediaPath?: string; intent?: string } | null = null;
 
+    // Verificar si es solicitud de precios/catálogo (antes de otras opciones)
+    const precioKeywords = ['precio', 'precios', 'catalogo', 'catálogo', 'productos', 'producto', 'cuanto', 'costo', 'paquete', 'paquetes'];
+    const isPrecioRequest = precioKeywords.some(keyword => normalizedQuery.includes(keyword)) || 
+                           /^1[\s\.\)\-]*$/.test(query.trim()) ||
+                           /^1[\s\.\)\-]/.test(query.trim());
+    
+    if (isPrecioRequest) {
+        // Intentar obtener catálogo desde Google Sheets
+        try {
+            const { googleSheetsService } = await import('../utils/google-sheets.util');
+            const EnvConfig = await import('../configs/env.config');
+            const useGoogleSheets = !!EnvConfig.default.GOOGLE_SHEETS_API_KEY && !!EnvConfig.default.GOOGLE_SHEETS_SPREADSHEET_ID;
+            
+            if (useGoogleSheets) {
+                logger.info('📊 Obteniendo catálogo desde Google Sheets para solicitud de precios...');
+                const products = await googleSheetsService.getProductCatalog();
+                
+                if (products && products.length > 0) {
+                    const catalogMessage = googleSheetsService.formatCatalogForWhatsApp(products);
+                    quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png', intent: 'price' };
+                    logger.info(`✅ Catálogo de Google Sheets preparado (${products.length} productos)`);
+                }
+            }
+        } catch (error) {
+            logger.error('❌ Error obteniendo catálogo de Google Sheets:', error);
+            // Continuar con respuesta normal
+        }
+    }
+
     // Verificar si es una opción numérica (1-8)
     const optionMatch = query.match(/^(\d+)/);
-    if (optionMatch) {
+    if (optionMatch && !quickResponse) {
         const optionNumber = parseInt(optionMatch[1]);
         if (optionNumber >= 1 && optionNumber <= 8) {
             const response = await getOptionResponse(optionNumber);

@@ -93,16 +93,35 @@ class GoogleSheetsService {
             }
 
             // Primera fila son los encabezados
-            const headers = rows[0].map((h: string) => h.toLowerCase().trim());
-            logger.debug(`Encabezados encontrados: ${headers.join(', ')}`);
+            const headers = rows[0].map((h: string) => {
+                // Normalizar: convertir a minúsculas, eliminar espacios extra y caracteres especiales
+                return h.toString().toLowerCase().trim().replace(/\s+/g, ' ');
+            });
+            logger.info(`📊 Encabezados encontrados en Google Sheets: ${headers.join(', ')}`);
 
             // Encontrar índices de columnas (flexible para diferentes nombres)
-            const productoIdx = this.findColumnIndex(headers, ['producto', 'product', 'nombre']);
-            const descripcionIdx = this.findColumnIndex(headers, ['descripcion', 'descripción', 'description']);
-            const precioIdx = this.findColumnIndex(headers, ['precio', 'price']);
-            const precioDescuentoIdx = this.findColumnIndex(headers, ['precio con descuento', 'precio descuento', 'descuento', 'sale price']);
-            const imagenIdx = this.findColumnIndex(headers, ['imagen link', 'imagen', 'image', 'image link', 'url imagen']);
-            const disponibilidadIdx = this.findColumnIndex(headers, ['disponibilidad', 'disponible', 'availability', 'stock', 'en stock']);
+            const productoIdx = this.findColumnIndex(headers, [
+                'producto', 'product', 'nombre', 'nombre del producto', 'nombre producto', 
+                'product name', 'name', 'producto nombre'
+            ]);
+            const descripcionIdx = this.findColumnIndex(headers, [
+                'descripcion', 'descripción', 'description', 'descrip', 'detalle', 'details'
+            ]);
+            const precioIdx = this.findColumnIndex(headers, [
+                'precio', 'price', 'cost', 'costo', 'precio unitario'
+            ]);
+            const precioDescuentoIdx = this.findColumnIndex(headers, [
+                'precio con descuento', 'precio descuento', 'descuento', 'sale price', 
+                'precio final', 'precio oferta'
+            ]);
+            const imagenIdx = this.findColumnIndex(headers, [
+                'imagen link', 'imagen', 'image', 'image link', 'url imagen', 'url image',
+                'url', 'imagen url', 'image url', 'link', 'link imagen'
+            ]);
+            const disponibilidadIdx = this.findColumnIndex(headers, [
+                'disponibilidad', 'disponible', 'availability', 'stock', 'en stock', 
+                'in stock', 'inventario'
+            ]);
 
             if (productoIdx === -1 || descripcionIdx === -1 || precioIdx === -1) {
                 logger.error('❌ No se encontraron las columnas requeridas (Producto, Descripción, Precio)');
@@ -186,12 +205,47 @@ class GoogleSheetsService {
 
     /**
      * Busca el índice de una columna por varios nombres posibles
+     * Más flexible: busca palabras completas o parciales, ignorando mayúsculas/minúsculas
      */
     private findColumnIndex(headers: string[], possibleNames: string[]): number {
         for (const name of possibleNames) {
-            const index = headers.findIndex(h => h.includes(name));
+            const nameLower = name.toLowerCase().trim();
+            
+            // Buscar coincidencia exacta
+            let index = headers.findIndex(h => h === nameLower);
             if (index !== -1) {
+                logger.debug(`✅ Columna encontrada (exacta): "${nameLower}" en índice ${index}`);
                 return index;
+            }
+            
+            // Buscar si contiene la palabra (coincidencia parcial)
+            index = headers.findIndex(h => {
+                // Normalizar ambos strings para comparación más flexible
+                const hNormalized = h.replace(/[^\w\s]/g, '').toLowerCase();
+                const nameNormalized = nameLower.replace(/[^\w\s]/g, '');
+                
+                // Buscar si el header contiene todas las palabras del nombre buscado
+                const nameWords = nameNormalized.split(/\s+/);
+                return nameWords.every(word => hNormalized.includes(word)) || hNormalized.includes(nameNormalized);
+            });
+            
+            if (index !== -1) {
+                logger.debug(`✅ Columna encontrada (parcial): "${nameLower}" en índice ${index} (header: "${headers[index]}")`);
+                return index;
+            }
+            
+            // Buscar palabras individuales si el nombre tiene múltiples palabras
+            if (nameLower.includes(' ')) {
+                const words = nameLower.split(/\s+/);
+                for (const word of words) {
+                    if (word.length > 3) { // Solo buscar palabras de más de 3 caracteres
+                        index = headers.findIndex(h => h.includes(word));
+                        if (index !== -1) {
+                            logger.debug(`✅ Columna encontrada (palabra clave): "${word}" en índice ${index} (header: "${headers[index]}")`);
+                            return index;
+                        }
+                    }
+                }
             }
         }
         return -1;
