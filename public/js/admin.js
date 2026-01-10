@@ -202,14 +202,40 @@ document.addEventListener('DOMContentLoaded', function () {
   if (contactSearch) {
     contactSearch.addEventListener('input', function (e) {
       contactsSearch = e.target.value;
+      updateClearFiltersButton();
       if (currentPage === 'contacts') loadContacts();
     });
   }
+
+  // Función para actualizar visibilidad del botón limpiar filtros
+  function updateClearFiltersButton() {
+    const clearBtn = document.getElementById('clear-filters-btn');
+    if (clearBtn) {
+      if (currentSaleStatusFilter || contactsSearch) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+    }
+  }
+
+  // Función para limpiar filtros
+  window.clearContactFilters = function() {
+    currentSaleStatusFilter = '';
+    contactsSearch = '';
+    const statusFilter = document.getElementById('sale-status-filter');
+    const contactSearch = document.getElementById('contact-search');
+    if (statusFilter) statusFilter.value = '';
+    if (contactSearch) contactSearch.value = '';
+    updateClearFiltersButton();
+    if (currentPage === 'contacts') loadContacts();
+  };
 
   const statusFilter = document.getElementById('sale-status-filter');
   if (statusFilter) {
     statusFilter.addEventListener('change', function (e) {
       currentSaleStatusFilter = e.target.value;
+      updateClearFiltersButton();
       if (currentPage === 'contacts') loadContacts();
     });
   }
@@ -399,8 +425,9 @@ async function loadContacts(page = 1) {
       search: contactsSearch
     });
 
-    if (currentSaleStatusFilter && currentSaleStatusFilter !== 'paused') {
-      params.append('saleStatus', currentSaleStatusFilter);
+    if (currentSaleStatusFilter && currentSaleStatusFilter !== 'PAUSED') {
+      // Enviar en mayúsculas como espera el backend
+      params.append('saleStatus', currentSaleStatusFilter.toUpperCase());
     }
 
     const response = await fetch(`/crm/contacts?${params.toString()}`, {
@@ -411,10 +438,13 @@ async function loadContacts(page = 1) {
 
     let { data, meta } = await response.json();
 
-    if (currentSaleStatusFilter === 'paused') {
+    if (currentSaleStatusFilter === 'PAUSED') {
       data = data.filter(contact => contact.isPaused === true);
       // Client-side pagination adjustment would be needed here for perfect accuracy
     }
+
+    // Cargar información de campañas para cada contacto
+    await enrichContactsWithCampaignInfo(data);
 
     renderContacts(data);
     renderContactsPagination(meta);
@@ -433,8 +463,8 @@ function renderContacts(contacts) {
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  if (contacts.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-sm text-gray-500 text-center">No se encontraron contactos</td></tr>`;
+    if (contacts.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-sm text-gray-500 text-center">No se encontraron contactos</td></tr>`;
     return;
   }
 
@@ -476,6 +506,30 @@ function renderContacts(contacts) {
     // Para openStatusModal, usar el estado original pero normalizado, o el valor original si está disponible
     const statusForModal = (contact.saleStatus || 'lead').toLowerCase();
 
+    // Información adicional del contacto
+    const campaignCount = contact.campaignCount || 0;
+    const messageCount = contact.messageCount || 0;
+    const lastCampaign = contact.lastCampaignName || null;
+
+    let infoHTML = '<div class="text-xs text-gray-600 space-y-1">';
+    if (messageCount > 0) {
+      infoHTML += `<div><i class="fas fa-comment-dots text-blue-500 mr-1"></i>${messageCount} mensajes</div>`;
+    }
+    if (campaignCount > 0) {
+      infoHTML += `<div><i class="fas fa-bullhorn text-purple-500 mr-1"></i>${campaignCount} campaña${campaignCount > 1 ? 's' : ''}`;
+      if (lastCampaign) {
+        infoHTML += ` (última: ${escapeHtml(lastCampaign.substring(0, 20))}${lastCampaign.length > 20 ? '...' : ''})`;
+      }
+      infoHTML += '</div>';
+    }
+    if (contact.interactionsCount && contact.interactionsCount > 1) {
+      infoHTML += `<div><i class="fas fa-exchange-alt text-green-500 mr-1"></i>${contact.interactionsCount} interacciones</div>`;
+    }
+    if (!campaignCount && !messageCount && (!contact.interactionsCount || contact.interactionsCount <= 1)) {
+      infoHTML += '<div class="text-gray-400 italic">Sin actividad</div>';
+    }
+    infoHTML += '</div>';
+
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-gray-50 transition-colors';
     tr.innerHTML = `
@@ -488,6 +542,9 @@ function renderContacts(contacts) {
         ${isPaused ? '<span class="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Pausado</span>' : ''}
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(contact.lastInteraction)}</td>
+      <td class="px-6 py-4 text-sm text-gray-600">
+        ${infoHTML}
+      </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
         <div class="flex items-center space-x-3">
           <button onclick="openChatModal('${phoneNumber}', '${name}')" class="text-indigo-600 hover:text-indigo-900" title="Chat">
@@ -504,6 +561,60 @@ function renderContacts(contacts) {
     `;
     tbody.appendChild(tr);
   });
+}
+
+// Enriquecer contactos con información de campañas
+async function enrichContactsWithCampaignInfo(contacts) {
+  try {
+    // Obtener todas las campañas para buscar en cuáles está cada contacto
+    const response = await fetch('/crm/campaigns', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) return; // Si falla, continuar sin información de campañas
+    
+    const campaigns = await response.json();
+    
+    // Para cada contacto, buscar en qué campañas está
+    contacts.forEach(contact => {
+      const phoneNumber = contact.phoneNumber;
+      const phoneVariations = [
+        phoneNumber,
+        phoneNumber.replace(/@s\.whatsapp\.net$/, ''),
+        phoneNumber.replace(/@c\.us$/, ''),
+        `${phoneNumber.split('@')[0]}@s.whatsapp.net`,
+        `${phoneNumber.split('@')[0]}@c.us`
+      ];
+      
+      // Buscar campañas donde aparece este contacto
+      const contactCampaigns = campaigns.filter(campaign => 
+        campaign.contacts && campaign.contacts.some(campPhone => 
+          phoneVariations.includes(campPhone) || 
+          phoneVariations.some(v => campPhone.includes(v.split('@')[0]))
+        )
+      );
+      
+      contact.campaignCount = contactCampaigns.length;
+      
+      // Obtener la última campaña (más reciente)
+      if (contactCampaigns.length > 0) {
+        const sortedCampaigns = contactCampaigns.sort((a, b) => 
+          new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+        contact.lastCampaignName = sortedCampaigns[0].name;
+        contact.lastCampaignDate = sortedCampaigns[0].createdAt;
+      }
+      
+      // El conteo de mensajes ya viene del backend (contact.messageCount)
+      // Si no viene, usar interactionsCount como fallback
+      if (!contact.messageCount) {
+        contact.messageCount = contact.interactionsCount || 0;
+      }
+    });
+  } catch (error) {
+    console.error('Error enriching contacts with campaign info:', error);
+    // Continuar sin información de campañas si hay error
+  }
 }
 
 function renderContactsPagination(meta) {

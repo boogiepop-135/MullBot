@@ -34,9 +34,11 @@ export default function (botManager: BotManager) {
                 ];
             }
 
-            // Sale status filter
+            // Sale status filter - normalizar a mayúsculas para coincidir con enum
             if (saleStatus) {
-                where.saleStatus = saleStatus;
+                // Convertir a mayúsculas para que coincida con el enum SaleStatus
+                const normalizedStatus = (saleStatus as string).toUpperCase();
+                where.saleStatus = normalizedStatus as any;
             }
 
             // Parse sort
@@ -50,10 +52,23 @@ export default function (botManager: BotManager) {
                 take: Number(limit)
             });
 
+            // Enriquecer contactos con conteo de mensajes
+            const contactsWithMessageCount = await Promise.all(
+                contacts.map(async (contact) => {
+                    const messageCount = await prisma.message.count({
+                        where: { phoneNumber: contact.phoneNumber }
+                    });
+                    return {
+                        ...contact,
+                        messageCount
+                    };
+                })
+            );
+
             const total = await prisma.contact.count({ where });
 
             res.json({
-                data: contacts,
+                data: contactsWithMessageCount,
                 meta: {
                     total,
                     page: Number(page),
