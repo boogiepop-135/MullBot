@@ -91,15 +91,26 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         'productos que', 'lista de productos', 'catálogo de productos'
     ];
     
+    // Keywords para productos específicos y compra/reposición
+    const productSpecificKeywords = [
+        'bio-catalizador', 'biocatalizador', 'activador', 'compostero', 'fermentador',
+        'reponer', 'repon', 'comprar', 'compro', 'necesito', 'quiero', 'quisiera',
+        'solo el', 'solo la', 'solo', 'sólo', 'únicamente', 'solamente',
+        'individual', 'separado', 'por separado', 'cada uno'
+    ];
+    
     // Detectar solicitudes de productos/precios
     const hasProductKeyword = precioKeywords.some(keyword => normalizedQuery.includes(keyword));
+    const hasProductSpecificKeyword = productSpecificKeywords.some(keyword => normalizedQuery.includes(keyword));
     const isNumericOption1 = /^1[\s\.\)\-]*$/.test(query.trim()) || /^1[\s\.\)\-]/.test(query.trim());
     // Detectar frases comunes sobre productos
     const isProductQuestion = /(que|qué|cuál|cuáles|cuáles).*(productos?|tienes?|tiene|ofreces?|vendes?|lista)/i.test(query) ||
                               /(productos?|lista|catálogo).*(tienes?|tiene|ofreces?|vendes?|tener)/i.test(query) ||
-                              /(mostrar|ver|muestra|muéstrame).*(productos?|lista|catálogo)/i.test(query);
+                              /(mostrar|ver|muestra|muéstrame).*(productos?|lista|catálogo)/i.test(query) ||
+                              /(reponer|comprar|necesito|quiero|quisiera).*(bio-catalizador|biocatalizador|activador|compostero|producto)/i.test(query) ||
+                              /(solo|sólo|únicamente).*(bio-catalizador|biocatalizador|activador|compostero|producto)/i.test(query);
     
-    const isPrecioRequest = hasProductKeyword || isNumericOption1 || isProductQuestion;
+    const isPrecioRequest = hasProductKeyword || hasProductSpecificKeyword || isNumericOption1 || isProductQuestion;
     
     if (isPrecioRequest) {
         // Intentar obtener catálogo desde Google Sheets
@@ -322,6 +333,52 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 caption: AppConfig.instance.printMessage(chatReply)
             },
         );
+
+        // Si la pregunta parece ser sobre productos específicos o compra, 
+        // también enviar el catálogo después de la respuesta de la IA
+        const productPurchaseKeywords = [
+            'reponer', 'repon', 'comprar', 'compro', 'necesito', 'quiero', 'quisiera',
+            'bio-catalizador', 'biocatalizador', 'activador', 'compostero', 'fermentador',
+            'solo el', 'solo la', 'solo', 'sólo', 'únicamente', 'solamente',
+            'individual', 'separado', 'por separado', 'cada uno', 'precio de', 'costo de'
+        ];
+        
+        const isProductPurchaseQuery = productPurchaseKeywords.some(keyword => 
+            normalizedQuery.includes(keyword)
+        ) || /(que|qué|cuál).*(productos?|tienes?|tiene|ofreces?|vendes?)/i.test(query);
+
+        if (isProductPurchaseQuery && (intent === 'product' || intent === 'price' || normalizedQuery.includes('producto'))) {
+            try {
+                const { googleSheetsService } = await import('../utils/google-sheets.util');
+                const EnvConfig = await import('../configs/env.config');
+                const useGoogleSheets = !!EnvConfig.default.GOOGLE_SHEETS_API_KEY && !!EnvConfig.default.GOOGLE_SHEETS_SPREADSHEET_ID;
+                
+                if (useGoogleSheets) {
+                    logger.info('📊 Enviando catálogo adicional después de respuesta IA para query de productos...');
+                    const products = await googleSheetsService.getProductCatalog();
+                    
+                    if (products && products.length > 0) {
+                        const catalogMessage = googleSheetsService.formatCatalogForWhatsApp(products);
+                        
+                        // Pequeño delay antes de enviar el catálogo
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                        const catalogMedia = MessageMedia.fromFilePath("public/precio.png");
+                        await message.reply(
+                            catalogMedia,
+                            null,
+                            {
+                                caption: AppConfig.instance.printMessage(catalogMessage)
+                            },
+                        );
+                        logger.info(`✅ Catálogo adicional enviado (${products.length} productos) después de respuesta IA`);
+                    }
+                }
+            } catch (error) {
+                logger.error('❌ Error enviando catálogo adicional:', error);
+                // No fallar si hay error, solo loguear
+            }
+        }
 
     } catch (err) {
         logger.error(`Error en chat.command para query "${query}":`, err);
