@@ -195,7 +195,7 @@ export default function (botManager: BotManager) {
 
                         // Notificar al agente
                         try {
-                            const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
+                            const { notifyAgentAboutContact } = await import('../../utils/agent-notification.util');
                             await notifyAgentAboutContact(phoneNumber, previousContact?.name || previousContact?.pushName || null);
                         } catch (notifyError) {
                             logger.warn('Error notificando al agente desde cambio de estado:', notifyError);
