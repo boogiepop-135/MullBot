@@ -463,12 +463,18 @@ function renderContacts(contacts) {
   };
 
   contacts.forEach(contact => {
-    const status = statusLabels[contact.saleStatus || 'lead'] || statusLabels['lead'];
+    // Normalizar el estado a minúsculas para que coincida con statusLabels
+    // El backend devuelve en mayúsculas (LEAD, INTERESTED) pero necesitamos minúsculas
+    const normalizedStatus = (contact.saleStatus || 'lead').toLowerCase().replace(/\s+/g, '_');
+    const status = statusLabels[normalizedStatus] || statusLabels['lead'];
     const isPaused = contact.isPaused || false;
     const phoneNumber = escapeAttr(contact.phoneNumber || '');
     const name = escapeAttr(contact.name || contact.pushName || contact.phoneNumber || '');
     const displayPhone = escapeHtml(contact.phoneNumber || '');
     const displayName = escapeHtml(contact.name || contact.pushName || '-');
+    
+    // Para openStatusModal, usar el estado original pero normalizado, o el valor original si está disponible
+    const statusForModal = (contact.saleStatus || 'lead').toLowerCase();
 
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-gray-50 transition-colors';
@@ -487,7 +493,7 @@ function renderContacts(contacts) {
           <button onclick="openChatModal('${phoneNumber}', '${name}')" class="text-indigo-600 hover:text-indigo-900" title="Chat">
             <i class="fas fa-comments"></i>
           </button>
-          <button onclick="openStatusModal('${contact.phoneNumber}', '${contact.saleStatus || 'lead'}', '${contact.appointmentDate || ''}')" class="text-blue-600 hover:text-blue-900" title="Cambiar Estado">
+          <button onclick="openStatusModal('${contact.phoneNumber}', '${statusForModal}', '${contact.appointmentDate || ''}')" class="text-blue-600 hover:text-blue-900" title="Cambiar Estado">
             <i class="fas fa-edit"></i>
           </button>
           <button onclick="togglePauseContact('${contact.phoneNumber}', ${isPaused})" class="${isPaused ? 'text-green-600 hover:text-green-900' : 'text-orange-600 hover:text-orange-900'}" title="${isPaused ? 'Reanudar' : 'Pausar'}">
@@ -645,6 +651,47 @@ function removeContactFromCampaign(phoneNumber) {
   const checkbox = document.getElementById(`contact-${phoneNumber}`);
   if (checkbox) checkbox.checked = false;
 }
+
+// Seleccionar todos los contactos disponibles
+window.selectAllContacts = function() {
+  const checkboxes = document.querySelectorAll('.contact-checkbox');
+  const totalContacts = checkboxes.length;
+  
+  if (totalContacts === 0) {
+    alert('No hay contactos disponibles para seleccionar');
+    return;
+  }
+  
+  // Mostrar advertencia sobre envío por lotes
+  const message = `⚠️ Se seleccionarán ${totalContacts} contactos.\n\n` +
+                  `📢 **RECOMENDACIÓN:** Te recomendamos usar el envío por lotes para evitar problemas de rendimiento y bloqueos de WhatsApp.\n\n` +
+                  `💡 ¿Qué es el envío por lotes?\n` +
+                  `- Divide los mensajes en grupos más pequeños\n` +
+                  `- Envía con intervalos de tiempo entre cada lote\n` +
+                  `- Reduce el riesgo de bloqueos de WhatsApp\n` +
+                  `- Mejor para campañas grandes\n\n` +
+                  `Activa la opción "Campaña por Lotes" en el formulario y configura:\n` +
+                  `- Tamaño de lote: 25-50 contactos\n` +
+                  `- Intervalo: 15-30 minutos\n\n` +
+                  `¿Deseas continuar seleccionando todos los contactos?`;
+  
+  if (!confirm(message.replace(/\*\*/g, ''))) {
+    return;
+  }
+  
+  // Seleccionar todos los checkboxes
+  checkboxes.forEach(checkbox => {
+    if (!checkbox.checked) {
+      checkbox.checked = true;
+      const phoneNumber = checkbox.value;
+      const label = checkbox.closest('div').querySelector('label');
+      const name = label ? (label.querySelector('.font-medium')?.textContent || phoneNumber) : phoneNumber;
+      addContactToCampaign(phoneNumber, name);
+    }
+  });
+  
+  alert(`✅ ${totalContacts} contactos seleccionados.\n\n💡 Recuerda activar "Campaña por Lotes" para evitar problemas.`);
+};
 
 window.toggleBatchOptions = function() {
   const checkbox = document.getElementById('is-batch-campaign');
@@ -2478,7 +2525,10 @@ window.changePassword = async function() {
 // --- Status Modal Functions ---
 window.openStatusModal = function(phoneNumber, currentStatus, appointmentDate) {
   currentStatusPhone = phoneNumber;
-  document.getElementById('status-select').value = currentStatus || 'lead';
+  // Normalizar el estado: convertir a mayúsculas para que coincida con los valores del select
+  // El select tiene valores en mayúsculas (LEAD, INTERESTED, etc.)
+  const normalizedStatus = (currentStatus || 'lead').toUpperCase().replace(/\s+/g, '_');
+  document.getElementById('status-select').value = normalizedStatus;
   document.getElementById('appointment-date').value = appointmentDate ? appointmentDate.substring(0, 16) : '';
   document.getElementById('status-notes').value = '';
   document.getElementById('status-modal').classList.remove('hidden');
@@ -2509,7 +2559,13 @@ window.saveStatusChange = async function() {
     if (!response.ok) throw new Error('Failed to update status');
     
     closeStatusModal();
-    loadContacts();
+    
+    // Recargar contactos y dashboard para reflejar el cambio
+    loadContacts(contactsPage); // Mantener la página actual
+    if (currentPage === 'dashboard') {
+      loadDashboardData(); // Actualizar dashboard si está visible
+    }
+    
     alert('Estado actualizado correctamente');
   } catch (error) {
     console.error('Error updating status:', error);
