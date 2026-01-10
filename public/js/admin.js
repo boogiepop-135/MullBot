@@ -468,15 +468,16 @@ function renderContacts(contacts) {
     return;
   }
 
-  const statusLabels = {
-    'lead': { label: 'Lead', bg: 'bg-gray-100 text-gray-800' },
-    'interested': { label: 'Interesado', bg: 'bg-blue-100 text-blue-800' },
-    'info_requested': { label: 'Info Solicitada', bg: 'bg-indigo-100 text-indigo-800' },
-    'payment_pending': { label: 'Pago Pendiente', bg: 'bg-yellow-100 text-yellow-800' },
-    'appointment_scheduled': { label: 'Cita Agendada', bg: 'bg-orange-100 text-orange-800' },
-    'appointment_confirmed': { label: 'Cita Confirmada', bg: 'bg-green-100 text-green-800' },
-    'completed': { label: 'Completado', bg: 'bg-green-100 text-green-800' }
-  };
+      const statusLabels = {
+        'lead': { label: 'Lead', bg: 'bg-gray-100 text-gray-800' },
+        'interested': { label: 'Interesado', bg: 'bg-blue-100 text-blue-800' },
+        'info_requested': { label: 'Info Solicitada', bg: 'bg-indigo-100 text-indigo-800' },
+        'agent_requested': { label: 'Hablar con Asesor', bg: 'bg-purple-100 text-purple-800' },
+        'payment_pending': { label: 'Pago Pendiente', bg: 'bg-yellow-100 text-yellow-800' },
+        'appointment_scheduled': { label: 'Cita Agendada', bg: 'bg-orange-100 text-orange-800' },
+        'appointment_confirmed': { label: 'Cita Confirmada', bg: 'bg-green-100 text-green-800' },
+        'completed': { label: 'Completado', bg: 'bg-green-100 text-green-800' }
+      };
 
   // Función helper para escapar HTML
   const escapeHtml = (text) => {

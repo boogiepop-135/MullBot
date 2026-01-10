@@ -88,7 +88,7 @@ export default function (botManager: BotManager) {
             const { phoneNumber } = req.params;
             const { saleStatus, saleStatusNotes } = req.body;
 
-            const validStatuses: SaleStatus[] = ['LEAD', 'INTERESTED', 'INFO_REQUESTED', 'PAYMENT_PENDING', 'APPOINTMENT_SCHEDULED', 'APPOINTMENT_CONFIRMED', 'COMPLETED'];
+            const validStatuses: SaleStatus[] = ['LEAD', 'INTERESTED', 'INFO_REQUESTED', 'AGENT_REQUESTED', 'PAYMENT_PENDING', 'APPOINTMENT_SCHEDULED', 'APPOINTMENT_CONFIRMED', 'COMPLETED'];
             const saleStatusUpper = saleStatus.toUpperCase() as SaleStatus;
             if (!validStatuses.includes(saleStatusUpper)) {
                 return res.status(400).json({ error: `Invalid sale status. Must be one of: ${validStatuses.join(', ')}` });
@@ -126,6 +126,87 @@ export default function (botManager: BotManager) {
             }
             if (req.body.appointmentNotes !== undefined) {
                 updateData.appointmentNotes = req.body.appointmentNotes;
+            }
+
+            // Si el nuevo estado es AGENT_REQUESTED, crear asesoría automáticamente
+            if (saleStatusUpper === SaleStatus.AGENT_REQUESTED) {
+                updateData.isPaused = true; // Pausar el bot automáticamente
+                
+                try {
+                    // Normalizar número de teléfono
+                    const phoneNumberClean = phoneNumber.split('@')[0];
+                    const phoneNumberWithSuffix = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+
+                    // Verificar si ya existe una asesoría pendiente o activa
+                    const existingAdvisory = await prisma.advisory.findFirst({
+                        where: {
+                            OR: [
+                                { customerPhone: phoneNumber },
+                                { customerPhone: phoneNumberWithSuffix },
+                                { customerPhone: phoneNumberClean }
+                            ],
+                            status: {
+                                in: ['PENDING', 'ACTIVE']
+                            }
+                        }
+                    });
+
+                    if (!existingAdvisory) {
+                        // Obtener últimos 5 mensajes para contexto
+                        const recentMessages = await prisma.message.findMany({
+                            where: {
+                                OR: [
+                                    { phoneNumber: phoneNumber },
+                                    { phoneNumber: phoneNumberWithSuffix },
+                                    { phoneNumber: phoneNumberClean }
+                                ]
+                            },
+                            orderBy: { timestamp: 'desc' },
+                            take: 5
+                        });
+
+                        const conversationSnapshot = recentMessages.reverse().map(msg => ({
+                            from: msg.isFromBot ? 'bot' : 'customer',
+                            body: msg.body,
+                            timestamp: msg.timestamp
+                        }));
+
+                        // Generar resumen breve
+                        const customerMessages = conversationSnapshot.filter(m => m.from === 'customer');
+                        let summary = 'Solicitud de asesoría desde cambio de estado';
+                        if (customerMessages.length > 0) {
+                            const lastMsg = customerMessages[customerMessages.length - 1].body;
+                            summary = `"${lastMsg.substring(0, 80)}${lastMsg.length > 80 ? '...' : ''}"`;
+                        }
+
+                        // Crear asesoría
+                        await prisma.advisory.create({
+                            data: {
+                                customerPhone: phoneNumberWithSuffix,
+                                customerName: previousContact?.name || previousContact?.pushName || 'Cliente',
+                                status: 'PENDING',
+                                conversationSnapshot,
+                                summary,
+                                lastActivityAt: new Date()
+                            }
+                        });
+
+                        logger.info(`✅ Asesoría creada automáticamente para ${phoneNumberWithSuffix} desde cambio de estado a AGENT_REQUESTED`);
+
+                        // Notificar al agente
+                        try {
+                            const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
+                            await notifyAgentAboutContact(phoneNumber, previousContact?.name || previousContact?.pushName || null);
+                        } catch (notifyError) {
+                            logger.warn('Error notificando al agente desde cambio de estado:', notifyError);
+                        }
+                    } else {
+                        logger.info(`ℹ️ Ya existe una asesoría activa para ${phoneNumber}, no se creó una nueva`);
+                    }
+                } catch (advisoryError) {
+                    logger.error('Error creando asesoría desde cambio de estado:', advisoryError);
+                    // No fallar el cambio de estado si falla la creación de asesoría
+                }
             }
 
             const contact = await prisma.contact.update({
@@ -411,7 +492,7 @@ Tu solicitud ha sido registrada correctamente.
                             // Verificar si el contacto ya existe
                             const existingContact = await prisma.contact.findUnique({ where: { phoneNumber } });
 
-                            const validStatuses = ['LEAD', 'INTERESTED', 'INFO_REQUESTED', 'PAYMENT_PENDING', 'APPOINTMENT_SCHEDULED', 'APPOINTMENT_CONFIRMED', 'COMPLETED'];
+                            const validStatuses = ['LEAD', 'INTERESTED', 'INFO_REQUESTED', 'AGENT_REQUESTED', 'PAYMENT_PENDING', 'APPOINTMENT_SCHEDULED', 'APPOINTMENT_CONFIRMED', 'COMPLETED'];
                             const statusUpper = saleStatus.toUpperCase() as SaleStatus;
                             const finalStatus = validStatuses.includes(statusUpper) ? statusUpper : SaleStatus.LEAD;
 
