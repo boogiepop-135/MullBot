@@ -56,10 +56,18 @@ router.post('/create', async (req: Request, res: Response) => {
             });
         }
 
+        // Normalizar número de teléfono para búsqueda
+        const phoneNumber = customerPhone.split('@')[0];
+        const phoneNumberWithSuffix = customerPhone.includes('@') ? customerPhone : `${customerPhone}@s.whatsapp.net`;
+
         // Verificar si ya tiene una asesoría pendiente o activa
         const existing = await prisma.advisory.findFirst({
             where: {
-                customerPhone,
+                OR: [
+                    { customerPhone: customerPhone },
+                    { customerPhone: phoneNumberWithSuffix },
+                    { customerPhone: phoneNumber }
+                ],
                 status: {
                     in: ['PENDING', 'ACTIVE']
                 }
