@@ -208,11 +208,23 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             // Crear asesoría en la base de datos
             try {
                 const prisma = (await import('../database/prisma')).default;
+                const { SaleStatus } = await import('@prisma/client');
+                
+                // Normalizar número de teléfono (remover @s.whatsapp.net para búsqueda)
+                const phoneNumber = message.from.split('@')[0];
+                const phoneNumberWithSuffix = message.from.includes('@') ? message.from : `${message.from}@s.whatsapp.net`;
+                
                 const contactName = message.from === (message as any)._data.notifyName ? (message as any)._data.notifyName : null;
                 
-                // Obtener últimos 5 mensajes para contexto
+                // Buscar mensajes usando el número normalizado y con sufijo
                 const recentMessages = await prisma.message.findMany({
-                    where: { phoneNumber: message.from },
+                    where: {
+                        OR: [
+                            { phoneNumber: message.from },
+                            { phoneNumber: phoneNumberWithSuffix },
+                            { phoneNumber: phoneNumber }
+                        ]
+                    },
                     orderBy: { timestamp: 'desc' },
                     take: 5
                 });
@@ -231,19 +243,55 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     summary = `"${lastMsg.substring(0, 80)}${lastMsg.length > 80 ? '...' : ''}"`;
                 }
 
-                // Crear asesoría
-                await prisma.advisory.create({
-                    data: {
-                        customerPhone: message.from,
-                        customerName: contactName || 'Cliente',
-                        status: 'PENDING',
-                        conversationSnapshot,
-                        summary,
-                        lastActivityAt: new Date()
+                // Verificar si ya existe una asesoría pendiente o activa para este contacto
+                const existingAdvisory = await prisma.advisory.findFirst({
+                    where: {
+                        OR: [
+                            { customerPhone: message.from },
+                            { customerPhone: phoneNumberWithSuffix },
+                            { customerPhone: phoneNumber }
+                        ],
+                        status: {
+                            in: ['PENDING', 'ACTIVE']
+                        }
                     }
                 });
 
-                logger.info(`✅ Asesoría creada en DB para ${message.from}`);
+                if (existingAdvisory) {
+                    logger.info(`ℹ️ Ya existe una asesoría activa para ${message.from}`);
+                } else {
+                    // Crear asesoría usando el número con sufijo (formato completo)
+                    await prisma.advisory.create({
+                        data: {
+                            customerPhone: phoneNumberWithSuffix,
+                            customerName: contactName || 'Cliente',
+                            status: 'PENDING',
+                            conversationSnapshot,
+                            summary,
+                            lastActivityAt: new Date()
+                        }
+                    });
+
+                    logger.info(`✅ Asesoría creada en DB para ${phoneNumberWithSuffix}`);
+                }
+
+                // Actualizar estado del contacto a INFO_REQUESTED y pausar el bot
+                await prisma.contact.updateMany({
+                    where: {
+                        OR: [
+                            { phoneNumber: message.from },
+                            { phoneNumber: phoneNumberWithSuffix },
+                            { phoneNumber: phoneNumber }
+                        ]
+                    },
+                    data: {
+                        saleStatus: SaleStatus.INFO_REQUESTED,
+                        isPaused: true,
+                        saleStatusNotes: 'Cliente solicitó hablar con un asesor humano'
+                    }
+                });
+
+                logger.info(`✅ Contacto ${phoneNumber} actualizado a INFO_REQUESTED y pausado`);
 
                 // También notificar por el método anterior (opcional)
                 try {

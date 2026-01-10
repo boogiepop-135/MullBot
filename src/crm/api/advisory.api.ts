@@ -23,6 +23,9 @@ router.get('/queue', authenticate, async (req: Request, res: Response) => {
             ]
         });
 
+        // Log para debugging
+        logger.debug(`📋 Cola de asesorías: ${advisories.length} encontradas`);
+
         res.json({
             success: true,
             advisories,
@@ -71,9 +74,15 @@ router.post('/create', async (req: Request, res: Response) => {
             });
         }
 
-        // Obtener últimos 5 mensajes para el resumen
+        // Obtener últimos 5 mensajes para el resumen (buscar con diferentes formatos de número)
         const recentMessages = await prisma.message.findMany({
-            where: { phoneNumber: customerPhone },
+            where: {
+                OR: [
+                    { phoneNumber: customerPhone },
+                    { phoneNumber: phoneNumberWithSuffix },
+                    { phoneNumber: phoneNumber }
+                ]
+            },
             orderBy: { timestamp: 'desc' },
             take: 5
         });
@@ -87,10 +96,10 @@ router.post('/create', async (req: Request, res: Response) => {
         // Generar resumen automático
         const summary = await generateConversationSummary(conversationSnapshot);
 
-        // Crear asesoría
+        // Crear asesoría usando el número con sufijo (formato completo)
         const advisory = await prisma.advisory.create({
             data: {
-                customerPhone,
+                customerPhone: phoneNumberWithSuffix,
                 customerName: customerName || 'Cliente',
                 status: 'PENDING',
                 conversationSnapshot,
@@ -135,9 +144,18 @@ router.post('/:id/accept', authenticate, async (req: Request, res: Response) => 
             }
         });
 
-        // Despausar al cliente si estaba pausado
+        // Despausar al cliente si estaba pausado (buscar con diferentes formatos de número)
+        const customerPhone = advisory.customerPhone.split('@')[0];
+        const customerPhoneWithSuffix = advisory.customerPhone.includes('@') ? advisory.customerPhone : `${advisory.customerPhone}@s.whatsapp.net`;
+
         await prisma.contact.updateMany({
-            where: { phoneNumber: advisory.customerPhone },
+            where: {
+                OR: [
+                    { phoneNumber: advisory.customerPhone },
+                    { phoneNumber: customerPhoneWithSuffix },
+                    { phoneNumber: customerPhone }
+                ]
+            },
             data: { isPaused: false }
         });
 
@@ -260,8 +278,18 @@ router.get('/:id/messages', authenticate, async (req: Request, res: Response) =>
             });
         }
 
+        // Buscar mensajes usando el número normalizado y con sufijo
+        const phoneNumber = advisory.customerPhone.split('@')[0];
+        const phoneNumberWithSuffix = advisory.customerPhone.includes('@') ? advisory.customerPhone : `${advisory.customerPhone}@s.whatsapp.net`;
+
         const messages = await prisma.message.findMany({
-            where: { phoneNumber: advisory.customerPhone },
+            where: {
+                OR: [
+                    { phoneNumber: advisory.customerPhone },
+                    { phoneNumber: phoneNumberWithSuffix },
+                    { phoneNumber: phoneNumber }
+                ]
+            },
             orderBy: { timestamp: 'desc' },
             take: Number(limit)
         });
