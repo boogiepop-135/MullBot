@@ -1300,6 +1300,7 @@ Tu solicitud ha sido registrada correctamente.
                         leads: leads,
                         interested: interestedContacts,
                         infoRequested: infoRequested,
+                        agentRequested: agentRequested,
                         paymentPending: paymentPending,
                         appointmentScheduled: appointmentScheduled,
                         appointmentConfirmed: appointmentConfirmed,
