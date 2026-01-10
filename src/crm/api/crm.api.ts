@@ -1261,6 +1261,7 @@ Tu solicitud ha sido registrada correctamente.
             const leads = await prisma.contact.count({ where: { saleStatus: SaleStatus.LEAD } });
             const interestedContacts = await prisma.contact.count({ where: { saleStatus: SaleStatus.INTERESTED } });
             const infoRequested = await prisma.contact.count({ where: { saleStatus: SaleStatus.INFO_REQUESTED } });
+            const agentRequested = await prisma.contact.count({ where: { saleStatus: SaleStatus.AGENT_REQUESTED } });
             const paymentPending = await prisma.contact.count({ where: { saleStatus: SaleStatus.PAYMENT_PENDING } });
             const appointmentScheduled = await prisma.contact.count({ where: { saleStatus: SaleStatus.APPOINTMENT_SCHEDULED } });
             const appointmentConfirmed = await prisma.contact.count({ where: { saleStatus: SaleStatus.APPOINTMENT_CONFIRMED } });

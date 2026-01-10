@@ -276,6 +276,7 @@ async function loadDashboardData() {
     updateElement('leads-count', stats.contacts.byStatus.leads || 0);
     updateElement('interested-contacts', stats.contacts.byStatus.interested || 0);
     updateElement('info-requested-count', stats.contacts.byStatus.infoRequested || 0);
+    updateElement('agent-requested-count', stats.contacts.byStatus.agentRequested || 0);
     updateElement('payment-pending-count', stats.contacts.byStatus.paymentPending || 0);
     updateElement('appointment-scheduled-count', stats.contacts.byStatus.appointmentScheduled || 0);
     updateElement('appointment-confirmed-count', stats.contacts.byStatus.appointmentConfirmed || 0);
