@@ -16,17 +16,17 @@ let advisoryPollingInterval = null;
 function initAdvisoriesPanel() {
     console.log('🎧 Inicializando panel de asesorías...');
     
+    // Resetear conteo inicial
+    lastAdvisoryIds = new Set();
+    
     // Cargar cola inicial
     refreshAdvisoriesQueue();
     
-    // Polling cada 5 segundos
+    // Polling cada 3 segundos para notificaciones más rápidas
     if (advisoryPollingInterval) {
         clearInterval(advisoryPollingInterval);
     }
-    advisoryPollingInterval = setInterval(refreshAdvisoriesQueue, 5000);
-    
-    // Notificación sonora
-    playNotificationSound();
+    advisoryPollingInterval = setInterval(refreshAdvisoriesQueue, 3000);
 }
 
 /**
@@ -205,11 +205,14 @@ function showNewAdvisoryNotification(advisory) {
     }
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// Función helper para escapar HTML (si no existe globalmente)
+if (typeof escapeHtml === 'undefined') {
+    window.escapeHtml = function(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
 }
 
 /**
@@ -265,9 +268,24 @@ function renderAdvisoriesQueue(advisories) {
                 ${advisory.summary ? `
                     <p class="text-sm text-gray-700 mb-2 line-clamp-2">${advisory.summary}</p>
                 ` : ''}
-                <div class="flex items-center gap-2 text-xs text-gray-500">
-                    <i class="fas fa-clock"></i>
-                    <span>${timeAgo}</span>
+                <div class="flex items-center justify-between mt-2">
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <i class="fas fa-clock"></i>
+                        <span>${timeAgo}</span>
+                    </div>
+                    ${advisory.notificationSent !== undefined ? `
+                        <div class="flex items-center gap-2 text-xs">
+                            ${advisory.notificationSent ? `
+                                <span class="px-2 py-1 rounded-full bg-green-100 text-green-800 font-semibold">
+                                    <i class="fas fa-check-circle mr-1"></i>Agente notificado
+                                </span>
+                            ` : `
+                                <span class="px-2 py-1 rounded-full bg-red-100 text-red-800 font-semibold">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>No notificado
+                                </span>
+                            `}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
