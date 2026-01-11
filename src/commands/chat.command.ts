@@ -81,6 +81,154 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     // Normalizar query PRIMERO para poder usarlo en las verificaciones
     const normalizedQuery = query.toLowerCase().trim();
 
+    // DETECTAR SOLICITUD DE AGENTE ANTES DE CUALQUIER OTRA COSA
+    // Esto debe hacerse PRIMERO para asegurar que se pausa el bot y se crea la asesoría
+    const isAgentRequest = normalizedQuery === '8' ||
+        /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
+        /^8[\s\.\)\-]/.test(normalizedQuery) ||
+        normalizedQuery.includes('agente') ||
+        normalizedQuery.includes('humano') ||
+        normalizedQuery.includes('persona') ||
+        normalizedQuery.includes('representante') ||
+        normalizedQuery.includes('asesor') ||
+        normalizedQuery.includes('pasarías con') ||
+        normalizedQuery.includes('pasar con') ||
+        normalizedQuery.includes('hablar con');
+
+    // Si es solicitud de agente, procesarla inmediatamente
+    if (isAgentRequest) {
+        logger.info(`🔔 Solicitud de agente detectada: "${query}"`);
+        
+        const agentMessage = `✅ *Solicitud Recibida*
+
+Tu solicitud para hablar con un asesor ha sido registrada.
+
+📝 *Estado:* En cola para atención humana
+⏰ Horario de atención: Lunes a Viernes 9am - 7pm
+
+Nuestro equipo se pondrá en contacto contigo lo antes posible.
+
+Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
+
+        // Enviar respuesta inmediata
+        const { getBotDelay } = await import('../utils/bot-config.util');
+        const delay = await getBotDelay();
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const { BotManager } = await import('../bot.manager');
+        const botManager = BotManager.getInstance();
+        const phoneNumber = message.from.split('@')[0];
+        
+        await botManager.sendMessage(phoneNumber, AppConfig.instance.printMessage(agentMessage));
+        await botManager.saveSentMessage(phoneNumber, AppConfig.instance.printMessage(agentMessage), null);
+
+        // Crear asesoría y actualizar estado
+        try {
+            const prisma = (await import('../database/prisma')).default;
+            const { SaleStatus } = await import('@prisma/client');
+            
+            // Normalizar número de teléfono
+            const phoneNumberWithSuffix = message.from.includes('@') ? message.from : `${message.from}@s.whatsapp.net`;
+            const contactName = (message as any)._data?.notifyName || null;
+            
+            // Obtener últimos 5 mensajes para contexto
+            const recentMessages = await prisma.message.findMany({
+                where: {
+                    OR: [
+                        { phoneNumber: message.from },
+                        { phoneNumber: phoneNumberWithSuffix },
+                        { phoneNumber: phoneNumber }
+                    ]
+                },
+                orderBy: { timestamp: 'desc' },
+                take: 5
+            });
+
+            const conversationSnapshot = recentMessages.reverse().map(msg => ({
+                from: msg.isFromBot ? 'bot' : 'customer',
+                body: msg.body,
+                timestamp: msg.timestamp
+            }));
+
+            // Generar resumen breve
+            const customerMessages = conversationSnapshot.filter(m => m.from === 'customer');
+            let summary = 'Nueva solicitud de asesoría';
+            if (customerMessages.length > 0) {
+                const lastMsg = customerMessages[customerMessages.length - 1].body;
+                summary = `"${lastMsg.substring(0, 80)}${lastMsg.length > 80 ? '...' : ''}"`;
+            }
+
+            // Verificar si ya existe una asesoría pendiente o activa
+            const existingAdvisory = await prisma.advisory.findFirst({
+                where: {
+                    OR: [
+                        { customerPhone: message.from },
+                        { customerPhone: phoneNumberWithSuffix },
+                        { customerPhone: phoneNumber }
+                    ],
+                    status: {
+                        in: ['PENDING', 'ACTIVE']
+                    }
+                }
+            });
+
+            if (existingAdvisory) {
+                logger.info(`ℹ️ Ya existe una asesoría activa para ${phoneNumberWithSuffix}. Actualizando...`);
+                await prisma.advisory.update({
+                    where: { id: existingAdvisory.id },
+                    data: {
+                        lastActivityAt: new Date(),
+                        summary: summary
+                    }
+                });
+            } else {
+                // Crear asesoría
+                await prisma.advisory.create({
+                    data: {
+                        customerPhone: phoneNumberWithSuffix,
+                        customerName: contactName || 'Cliente',
+                        status: 'PENDING',
+                        conversationSnapshot,
+                        summary,
+                        lastActivityAt: new Date()
+                    }
+                });
+                logger.info(`✅ Asesoría creada en DB para ${phoneNumberWithSuffix}`);
+            }
+
+            // Actualizar estado del contacto a AGENT_REQUESTED y pausar el bot
+            await prisma.contact.updateMany({
+                where: {
+                    OR: [
+                        { phoneNumber: message.from },
+                        { phoneNumber: phoneNumberWithSuffix },
+                        { phoneNumber: phoneNumber }
+                    ]
+                },
+                data: {
+                    saleStatus: SaleStatus.AGENT_REQUESTED,
+                    isPaused: true,
+                    saleStatusNotes: 'Cliente solicitó hablar con un asesor humano'
+                }
+            });
+
+            logger.info(`✅ Contacto ${phoneNumber} actualizado a AGENT_REQUESTED y pausado`);
+
+            // Notificar al agente
+            try {
+                const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
+                await notifyAgentAboutContact(message.from, contactName);
+            } catch (notifyError) {
+                logger.warn('Error notificando al agente:', notifyError);
+            }
+        } catch (dbError) {
+            logger.error('Error creando asesoría en DB:', dbError);
+        }
+
+        // SALIR - no enviar a IA
+        return;
+    }
+
     // Verificar si es solicitud de precios/catálogo/productos (antes de otras opciones)
     // Keywords expandidos para detectar más variaciones
     const precioKeywords = [
@@ -160,16 +308,6 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     if (quickResponse) {
         logger.info(`✅ Using quick response for query: "${query}" - NO se usaron tokens de IA`);
 
-        // Detectar si es la opción 8 (hablar con agente)
-        // El bot ya se pausó automáticamente en handleMessage, pero enviamos la respuesta de todas formas
-        const isAgentRequest = normalizedQuery === '8' ||
-            /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
-            /^8[\s\.\)\-]/.test(normalizedQuery) ||
-            normalizedQuery.includes('agente') ||
-            normalizedQuery.includes('humano') ||
-            normalizedQuery.includes('persona') ||
-            normalizedQuery.includes('representante');
-        
         // Enviar respuesta rápida con media si está disponible
         const mediaPath = quickResponse.mediaPath || "public/info.png";
         const media = MessageMedia.fromFilePath(mediaPath);
@@ -180,131 +318,6 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
                 caption: AppConfig.instance.printMessage(quickResponse.message)
             },
         );
-
-        // Si es solicitud de agente, enviar mensaje adicional y notificar al agente
-        if (isAgentRequest) {
-            const agentMessage = `✅ *Solicitud Recibida*
-
-Tu solicitud para hablar con un agente ha sido registrada.
-
-📝 *Estado:* En cola para atención humana
-⏰ Horario de atención: Lunes a Viernes 9am - 7pm
-
-Nuestro equipo se pondrá en contacto contigo lo antes posible.
-
-Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
-
-            const { getBotDelay } = await import('../utils/bot-config.util');
-            const delay = await getBotDelay();
-            await new Promise(resolve => setTimeout(resolve, delay));
-            await message.reply(
-                MessageMedia.fromFilePath("public/info.png"),
-                null,
-                {
-                    caption: AppConfig.instance.printMessage(agentMessage)
-                },
-            );
-
-            // Crear asesoría en la base de datos
-            try {
-                const prisma = (await import('../database/prisma')).default;
-                const { SaleStatus } = await import('@prisma/client');
-                
-                // Normalizar número de teléfono (remover @s.whatsapp.net para búsqueda)
-                const phoneNumber = message.from.split('@')[0];
-                const phoneNumberWithSuffix = message.from.includes('@') ? message.from : `${message.from}@s.whatsapp.net`;
-                
-                const contactName = message.from === (message as any)._data.notifyName ? (message as any)._data.notifyName : null;
-                
-                // Buscar mensajes usando el número normalizado y con sufijo
-                const recentMessages = await prisma.message.findMany({
-                    where: {
-                        OR: [
-                            { phoneNumber: message.from },
-                            { phoneNumber: phoneNumberWithSuffix },
-                            { phoneNumber: phoneNumber }
-                        ]
-                    },
-                    orderBy: { timestamp: 'desc' },
-                    take: 5
-                });
-
-                const conversationSnapshot = recentMessages.reverse().map(msg => ({
-                    from: msg.isFromBot ? 'bot' : 'customer',
-                    body: msg.body,
-                    timestamp: msg.timestamp
-                }));
-
-                // Generar resumen breve
-                const customerMessages = conversationSnapshot.filter(m => m.from === 'customer');
-                let summary = 'Nueva solicitud de asesoría';
-                if (customerMessages.length > 0) {
-                    const lastMsg = customerMessages[customerMessages.length - 1].body;
-                    summary = `"${lastMsg.substring(0, 80)}${lastMsg.length > 80 ? '...' : ''}"`;
-                }
-
-                // Verificar si ya existe una asesoría pendiente o activa para este contacto
-                const existingAdvisory = await prisma.advisory.findFirst({
-                    where: {
-                        OR: [
-                            { customerPhone: message.from },
-                            { customerPhone: phoneNumberWithSuffix },
-                            { customerPhone: phoneNumber }
-                        ],
-                        status: {
-                            in: ['PENDING', 'ACTIVE']
-                        }
-                    }
-                });
-
-                if (existingAdvisory) {
-                    logger.info(`ℹ️ Ya existe una asesoría activa para ${message.from}`);
-                } else {
-                    // Crear asesoría usando el número con sufijo (formato completo)
-                    await prisma.advisory.create({
-                        data: {
-                            customerPhone: phoneNumberWithSuffix,
-                            customerName: contactName || 'Cliente',
-                            status: 'PENDING',
-                            conversationSnapshot,
-                            summary,
-                            lastActivityAt: new Date()
-                        }
-                    });
-
-                    logger.info(`✅ Asesoría creada en DB para ${phoneNumberWithSuffix}`);
-                }
-
-                // Actualizar estado del contacto a INFO_REQUESTED y pausar el bot
-                await prisma.contact.updateMany({
-                    where: {
-                        OR: [
-                            { phoneNumber: message.from },
-                            { phoneNumber: phoneNumberWithSuffix },
-                            { phoneNumber: phoneNumber }
-                        ]
-                    },
-                    data: {
-                        saleStatus: SaleStatus.INFO_REQUESTED,
-                        isPaused: true,
-                        saleStatusNotes: 'Cliente solicitó hablar con un asesor humano'
-                    }
-                });
-
-                logger.info(`✅ Contacto ${phoneNumber} actualizado a INFO_REQUESTED y pausado`);
-
-                // También notificar por el método anterior (opcional)
-                try {
-                    const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
-                    await notifyAgentAboutContact(message.from, contactName);
-                } catch (notifyError) {
-                    logger.warn('Error en notificación legacy:', notifyError);
-                }
-            } catch (dbError) {
-                logger.error('Error creando asesoría en DB:', dbError);
-                // No fallar todo el flujo si falla la creación
-            }
-        }
 
         return; // IMPORTANTE: salir aquí para no llamar a IA
     }
