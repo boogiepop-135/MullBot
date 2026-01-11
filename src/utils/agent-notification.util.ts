@@ -81,7 +81,7 @@ export async function notifyAgentAboutContact(
 💬 Un cliente ha solicitado atención humana. El bot ha sido pausado automáticamente.
 ${conversationContext}
 📊 Para gestionar este contacto, ve al panel de administración:
-${botConfig.businessWebsite || 'https://bot.soporteches.online'}/admin
+https://bot.soporteches.online/admin
 
 ⚡ *Acciones rápidas:*
 • Responde a este número para comunicarte con el cliente
