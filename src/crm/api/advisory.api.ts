@@ -23,13 +23,62 @@ router.get('/queue', authenticate, async (req: Request, res: Response) => {
             ]
         });
 
+        // Verificar si se envió notificación al agente para cada asesoría
+        const advisoriesWithNotificationStatus = await Promise.all(
+            advisories.map(async (advisory) => {
+                try {
+                    // Verificar si hay un mensaje de notificación enviado al agente
+                    const botConfig = await prisma.botConfig.findFirst();
+                    if (botConfig?.humanAgentPhone) {
+                        const agentPhone = botConfig.humanAgentPhone.replace(/[@c.us\s\-\(\)\+]/g, '');
+                        const customerPhoneClean = advisory.customerPhone.replace('@s.whatsapp.net', '').replace(/^\+/, '');
+                        
+                        // Buscar mensaje de notificación enviado al agente en los últimos 5 minutos
+                        const notificationMessage = await prisma.message.findFirst({
+                            where: {
+                                OR: [
+                                    { phoneNumber: agentPhone },
+                                    { phoneNumber: `${agentPhone}@s.whatsapp.net` }
+                                ],
+                                body: {
+                                    contains: customerPhoneClean
+                                },
+                                timestamp: {
+                                    gte: new Date(advisory.startedAt.getTime() - 300000) // 5 minutos antes
+                                }
+                            },
+                            orderBy: { timestamp: 'desc' }
+                        });
+                        
+                        return {
+                            ...advisory,
+                            notificationSent: !!notificationMessage,
+                            agentPhone: agentPhone
+                        };
+                    }
+                    return {
+                        ...advisory,
+                        notificationSent: false,
+                        agentPhone: null
+                    };
+                } catch (error) {
+                    logger.warn(`Error verificando notificación para asesoría ${advisory.id}:`, error);
+                    return {
+                        ...advisory,
+                        notificationSent: false,
+                        agentPhone: null
+                    };
+                }
+            })
+        );
+
         // Log para debugging
-        logger.debug(`📋 Cola de asesorías: ${advisories.length} encontradas`);
+        logger.debug(`📋 Cola de asesorías: ${advisoriesWithNotificationStatus.length} encontradas`);
 
         res.json({
             success: true,
-            advisories,
-            count: advisories.length
+            advisories: advisoriesWithNotificationStatus,
+            count: advisoriesWithNotificationStatus.length
         });
     } catch (error: any) {
         logger.error('Error obteniendo cola de asesorías:', error);
