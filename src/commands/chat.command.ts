@@ -16,72 +16,10 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     let query = args.join(" ");
     const chat = await message.getChat();
 
-    // Detectar saludos simples y mostrar opciones
-    const saludosSimples = ['hola', 'hi', 'hello', 'buenos días', 'buenas tardes', 'buenas noches', 'hey'];
-    const esSaludoSimple = saludosSimples.includes(query.toLowerCase().trim());
-
-    if ((!query || esSaludoSimple) && message.type !== MessageTypes.VOICE) {
-        const opcionesIniciales = await getMainMenuResponse();
-
-        // Delay configurable para simular tiempo de respuesta humano
-        const { getBotDelay } = await import('../utils/bot-config.util');
-        const delay = await getBotDelay();
-        await new Promise(resolve => setTimeout(resolve, delay));
-
-        // Enviar mensaje usando Evolution API
-        const { BotManager } = await import('../bot.manager');
-        const botManager = BotManager.getInstance();
-        const phoneNumber = message.from.split('@')[0];
-        await botManager.sendMessage(phoneNumber, AppConfig.instance.printMessage(opcionesIniciales));
-        
-        // Guardar mensaje inicial en la base de datos
-        await botManager.saveSentMessage(phoneNumber, AppConfig.instance.printMessage(opcionesIniciales), null);
-        return;
-    }
-
-    if (message.type === MessageTypes.VOICE) {
-
-        const audioPath = `${AppConfig.instance.getDownloadDir()}/${message.id.id}.wav`;
-        const media = await message.downloadMedia();
-
-        const base64 = media.data;
-        const fileBuffer = Buffer.from(base64, 'base64');
-
-        const dir = path.dirname(audioPath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-
-        fs.writeFile(audioPath, fileBuffer, (err) => {
-            if (err) {
-                logger.error(`Error saving file: ${err}`);
-            } else {
-                logger.info(`File saved successfully to ${audioPath}`);
-            }
-        });
-
-        const transcript = await speechToText(audioPath);
-        del_file(audioPath);
-        query = transcript.text;
-
-        if (!query || !query.length) {
-            await message.reply(
-                MessageMedia.fromFilePath(AppConfig.instance.getBotAvatar("confused")),
-                null,
-                { sendVideoAsGif: true, caption: AppConfig.instance.printMessage("Something went wrong. Please try again later.") },
-            );
-            return;
-        }
-    }
-
-    // SIEMPRE verificar primero si hay una respuesta rápida disponible (ahorra tokens)
-    // Esto debe hacerse ANTES de cualquier llamada a IA
-    let quickResponse: { message: string; mediaPath?: string; intent?: string } | null = null;
-
     // Normalizar query PRIMERO para poder usarlo en las verificaciones
     const normalizedQuery = query.toLowerCase().trim();
 
-    // DETECTAR SOLICITUD DE AGENTE ANTES DE CUALQUIER OTRA COSA
+    // DETECTAR SOLICITUD DE AGENTE ANTES DE CUALQUIER OTRA COSA (incluso saludos)
     // Esto debe hacerse PRIMERO para asegurar que se pausa el bot y se crea la asesoría
     const isAgentRequest = normalizedQuery === '8' ||
         /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
@@ -93,10 +31,12 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         normalizedQuery.includes('asesor') ||
         normalizedQuery.includes('pasarías con') ||
         normalizedQuery.includes('pasar con') ||
-        normalizedQuery.includes('hablar con');
+        normalizedQuery.includes('hablar con') ||
+        normalizedQuery.includes('puedo hablar') ||
+        normalizedQuery.includes('me gustaría hablar');
 
-    // Si es solicitud de agente, procesarla inmediatamente
-    if (isAgentRequest) {
+    // Si es solicitud de agente, procesarla inmediatamente (ANTES de cualquier otra verificación)
+    if (isAgentRequest && message.type !== MessageTypes.VOICE) {
         logger.info(`🔔 Solicitud de agente detectada: "${query}"`);
         
         const agentMessage = `✅ *Solicitud Recibida*
@@ -215,19 +155,85 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             logger.info(`✅ Contacto ${phoneNumber} actualizado a AGENT_REQUESTED y pausado`);
 
             // Notificar al agente
+            let notificationSent = false;
             try {
                 const { notifyAgentAboutContact } = await import('../utils/agent-notification.util');
                 await notifyAgentAboutContact(message.from, contactName);
+                notificationSent = true;
+                logger.info(`✅ Notificación enviada al agente para ${phoneNumber}`);
             } catch (notifyError) {
-                logger.warn('Error notificando al agente:', notifyError);
+                logger.error('Error notificando al agente:', notifyError);
             }
         } catch (dbError) {
             logger.error('Error creando asesoría en DB:', dbError);
         }
 
-        // SALIR - no enviar a IA
+        // SALIR - no procesar más el mensaje
         return;
     }
+
+    // Detectar saludos simples y mostrar opciones (solo si NO es solicitud de agente)
+    const saludosSimples = ['hola', 'hi', 'hello', 'buenos días', 'buenas tardes', 'buenas noches', 'hey'];
+    const esSaludoSimple = saludosSimples.includes(normalizedQuery);
+
+    if ((!query || esSaludoSimple) && message.type !== MessageTypes.VOICE) {
+        const opcionesIniciales = await getMainMenuResponse();
+
+        // Delay configurable para simular tiempo de respuesta humano
+        const { getBotDelay } = await import('../utils/bot-config.util');
+        const delay = await getBotDelay();
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Enviar mensaje usando Evolution API
+        const { BotManager } = await import('../bot.manager');
+        const botManager = BotManager.getInstance();
+        const phoneNumber = message.from.split('@')[0];
+        await botManager.sendMessage(phoneNumber, AppConfig.instance.printMessage(opcionesIniciales));
+        
+        // Guardar mensaje inicial en la base de datos
+        await botManager.saveSentMessage(phoneNumber, AppConfig.instance.printMessage(opcionesIniciales), null);
+        return;
+    }
+
+    if (message.type === MessageTypes.VOICE) {
+
+        const audioPath = `${AppConfig.instance.getDownloadDir()}/${message.id.id}.wav`;
+        const media = await message.downloadMedia();
+
+        const base64 = media.data;
+        const fileBuffer = Buffer.from(base64, 'base64');
+
+        const dir = path.dirname(audioPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        fs.writeFile(audioPath, fileBuffer, (err) => {
+            if (err) {
+                logger.error(`Error saving file: ${err}`);
+            } else {
+                logger.info(`File saved successfully to ${audioPath}`);
+            }
+        });
+
+        const transcript = await speechToText(audioPath);
+        del_file(audioPath);
+        query = transcript.text;
+
+        if (!query || !query.length) {
+            await message.reply(
+                MessageMedia.fromFilePath(AppConfig.instance.getBotAvatar("confused")),
+                null,
+                { sendVideoAsGif: true, caption: AppConfig.instance.printMessage("Something went wrong. Please try again later.") },
+            );
+            return;
+        }
+    }
+
+    // SIEMPRE verificar primero si hay una respuesta rápida disponible (ahorra tokens)
+    // Esto debe hacerse ANTES de cualquier llamada a IA
+    let quickResponse: { message: string; mediaPath?: string; intent?: string } | null = null;
+
 
     // Verificar si es solicitud de precios/catálogo/productos (antes de otras opciones)
     // Keywords expandidos para detectar más variaciones

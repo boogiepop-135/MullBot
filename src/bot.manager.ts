@@ -241,10 +241,19 @@ export class BotManager {
 
             logger.info(`📨 Mensaje recibido de ${pushName} (${phoneNumber}): ${content || '[Media/Sticker]'}`);
 
-            // Verificar si el usuario está pausado
-            const contact = await prisma.contact.findUnique({ where: { phoneNumber } });
+            // Verificar si el usuario está pausado (buscar con diferentes formatos de número)
+            const phoneNumberWithSuffix = remoteJid.includes('@') ? remoteJid : `${remoteJid}@s.whatsapp.net`;
+            const contact = await prisma.contact.findFirst({
+                where: {
+                    OR: [
+                        { phoneNumber: phoneNumber },
+                        { phoneNumber: phoneNumberWithSuffix },
+                        { phoneNumber: remoteJid }
+                    ]
+                }
+            });
             if (contact && contact.isPaused) {
-                logger.info(`⏸️ Mensaje de usuario pausado ${phoneNumber} - ignorando`);
+                logger.info(`⏸️ Mensaje de usuario pausado ${phoneNumber} - ignorando (isPaused: ${contact.isPaused})`);
                 return;
             }
 

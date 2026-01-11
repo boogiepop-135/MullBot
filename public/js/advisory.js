@@ -43,6 +43,10 @@ function stopAdvisoriesPolling() {
 // COLA DE ASESORÍAS
 // ========================================
 
+// Variable para rastrear el último conteo de asesorías
+let lastAdvisoryCount = 0;
+let lastAdvisoryIds = new Set();
+
 /**
  * Refrescar cola de asesorías
  */
@@ -64,7 +68,19 @@ async function refreshAdvisoriesQueue() {
         const data = await response.json();
         
         if (data.success) {
+            const currentIds = new Set(data.advisories.map(a => a.id));
+            const newAdvisories = data.advisories.filter(a => !lastAdvisoryIds.has(a.id));
+            
+            // Si hay nuevas asesorías, mostrar notificación
+            if (newAdvisories.length > 0 && lastAdvisoryIds.size > 0) {
+                newAdvisories.forEach(advisory => {
+                    showNewAdvisoryNotification(advisory);
+                });
+                playNotificationSound();
+            }
+            
             advisoriesQueue = data.advisories;
+            lastAdvisoryIds = currentIds;
             renderAdvisoriesQueue(advisoriesQueue);
             updateAdvisoriesStats(data.advisories);
             
@@ -79,6 +95,121 @@ async function refreshAdvisoriesQueue() {
     } catch (error) {
         console.error('Error al cargar cola de asesorías:', error);
     }
+}
+
+/**
+ * Mostrar notificación cuando se crea una nueva asesoría
+ */
+function showNewAdvisoryNotification(advisory) {
+    // Crear o actualizar elemento de notificación
+    let notificationEl = document.getElementById('new-advisory-notification');
+    
+    if (!notificationEl) {
+        notificationEl = document.createElement('div');
+        notificationEl.id = 'new-advisory-notification';
+        notificationEl.className = 'fixed top-4 right-4 z-50 max-w-md';
+        document.body.appendChild(notificationEl);
+    }
+    
+    // Obtener información del agente
+    const botConfig = localStorage.getItem('botConfig') ? JSON.parse(localStorage.getItem('botConfig')) : null;
+    const agentPhone = botConfig?.humanAgentPhone || 'No configurado';
+    const notificationSent = advisory.notificationSent !== false; // Asumir que se envió si no se especifica
+    
+    notificationEl.innerHTML = `
+        <div class="bg-white border-2 border-purple-300 rounded-xl shadow-2xl p-6 animate-slide-in-right">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-purple-100 rounded-full p-3">
+                        <i class="fas fa-headset text-purple-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-900">🔔 Nueva Solicitud de Asesoría</h3>
+                        <p class="text-sm text-gray-500">${new Date(advisory.startedAt || advisory.createdAt).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })}</p>
+                    </div>
+                </div>
+                <button onclick="this.closest('#new-advisory-notification').remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3 mb-4">
+                <div>
+                    <span class="text-sm font-semibold text-gray-600">Cliente:</span>
+                    <span class="text-sm text-gray-900 ml-2">${escapeHtml(advisory.customerName || 'Sin nombre')}</span>
+                </div>
+                <div>
+                    <span class="text-sm font-semibold text-gray-600">Teléfono:</span>
+                    <span class="text-sm text-gray-900 ml-2">${escapeHtml(advisory.customerPhone.replace('@s.whatsapp.net', ''))}</span>
+                </div>
+                ${advisory.summary ? `
+                <div>
+                    <span class="text-sm font-semibold text-gray-600">Mensaje:</span>
+                    <p class="text-sm text-gray-700 mt-1 bg-gray-50 p-2 rounded">${escapeHtml(advisory.summary)}</p>
+                </div>
+                ` : ''}
+                <div>
+                    <span class="text-sm font-semibold text-gray-600">Estado de notificación:</span>
+                    <span class="ml-2 px-2 py-1 rounded-full text-xs font-semibold ${notificationSent ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${notificationSent ? '✅ Enviado al agente' : '❌ No enviado'}
+                    </span>
+                </div>
+                ${notificationSent ? `
+                <div>
+                    <span class="text-sm font-semibold text-gray-600">Agente notificado:</span>
+                    <span class="text-sm text-gray-700 ml-2">${escapeHtml(agentPhone)}</span>
+                </div>
+                ` : ''}
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="selectAdvisory('${advisory.id}'); document.getElementById('new-advisory-notification')?.remove();" 
+                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                    <i class="fas fa-comments mr-2"></i>Abrir Chat
+                </button>
+                <button onclick="this.closest('#new-advisory-notification').remove()" 
+                    class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Auto-cerrar después de 10 segundos
+    setTimeout(() => {
+        if (notificationEl && notificationEl.parentNode) {
+            notificationEl.remove();
+        }
+    }, 10000);
+    
+    // Agregar animación CSS si no existe
+    if (!document.getElementById('advisory-notification-style')) {
+        const style = document.createElement('style');
+        style.id = 'advisory-notification-style';
+        style.textContent = `
+            @keyframes slide-in-right {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            .animate-slide-in-right {
+                animation: slide-in-right 0.3s ease-out;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**

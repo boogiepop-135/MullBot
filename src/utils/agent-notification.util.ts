@@ -43,8 +43,31 @@ export async function notifyAgentAboutContact(
             return;
         }
 
-        // Crear mensaje de notificación
+        // Obtener últimos mensajes para mostrar contexto
+        const recentMessages = await prisma.message.findMany({
+            where: {
+                OR: [
+                    { phoneNumber: phoneNumber },
+                    { phoneNumber: phoneNumber.replace(/^\+/, '') },
+                    { phoneNumber: `${phoneNumber}@s.whatsapp.net` }
+                ]
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 3
+        });
+
+        // Crear mensaje de notificación con contexto de conversación
         const displayName = contactName || phoneNumber;
+        let conversationContext = '';
+        if (recentMessages.length > 0) {
+            conversationContext = '\n📝 *Últimos mensajes:*\n';
+            recentMessages.reverse().forEach((msg, idx) => {
+                const sender = msg.isFromBot ? 'Bot' : displayName;
+                const preview = msg.body.substring(0, 50) + (msg.body.length > 50 ? '...' : '');
+                conversationContext += `${idx + 1}. ${sender}: ${preview}\n`;
+            });
+        }
+
         const notificationMessage = `🔔 *Nueva Solicitud de Atención*
 
 👤 *Contacto:* ${displayName}
@@ -56,9 +79,9 @@ export async function notifyAgentAboutContact(
         })}
 
 💬 Un cliente ha solicitado atención humana. El bot ha sido pausado automáticamente.
-
+${conversationContext}
 📊 Para gestionar este contacto, ve al panel de administración:
-${botConfig.businessWebsite || 'https://tu-dominio.com'}/admin
+${botConfig.businessWebsite || 'https://bot.soporteches.online'}/admin
 
 ⚡ *Acciones rápidas:*
 • Responde a este número para comunicarte con el cliente
