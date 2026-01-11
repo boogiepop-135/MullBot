@@ -3,37 +3,30 @@ import { AppConfig } from "../configs/app.config";
 import { UserI18n } from "../utils/i18n.util";
 import prisma from "../database/prisma";
 import logger from "../configs/logger.config";
-import { googleSheetsService } from "../utils/google-sheets.util";
-import EnvConfig from "../configs/env.config";
+import { formatProductsForWhatsApp } from "../utils/product-formatter.util";
 
 export const run = async (message: Message, args: string[], userI18n: UserI18n) => {
    try {
-      // Intentar obtener catálogo desde Google Sheets si está configurado
-      const useGoogleSheets = !!EnvConfig.GOOGLE_SHEETS_API_KEY && !!EnvConfig.GOOGLE_SHEETS_SPREADSHEET_ID;
+      // Obtener productos desde la base de datos
+      logger.info('📊 Obteniendo catálogo desde la base de datos...');
       
-      if (useGoogleSheets) {
-         logger.info('📊 Obteniendo catálogo desde Google Sheets...');
+      const products = await prisma.product.findMany({
+         where: { inStock: true },
+         orderBy: { createdAt: 'desc' }
+      });
+      
+      if (products && products.length > 0) {
+         // Formatear catálogo para WhatsApp
+         const catalogMessage = formatProductsForWhatsApp(products);
          
-         try {
-            const products = await googleSheetsService.getProductCatalog();
-            
-            if (products && products.length > 0) {
-               // Formatear catálogo para WhatsApp
-               const catalogMessage = googleSheetsService.formatCatalogForWhatsApp(products);
-               
-               // Enviar con imagen de precios
-               const media = MessageMedia.fromFilePath("public/precio.png");
-               await message.reply(media, null, { caption: catalogMessage });
-               
-               logger.info(`✅ Catálogo de Google Sheets enviado (${products.length} productos)`);
-               return;
-            } else {
-               logger.warn('⚠️ Google Sheets no retornó productos, usando catálogo estático');
-            }
-         } catch (error) {
-            logger.error('❌ Error obteniendo catálogo de Google Sheets:', error);
-            logger.info('Fallback: usando catálogo estático de la base de datos');
-         }
+         // Enviar con imagen de precios
+         const media = MessageMedia.fromFilePath("public/precio.png");
+         await message.reply(media, null, { caption: catalogMessage });
+         
+         logger.info(`✅ Catálogo de productos enviado (${products.length} productos)`);
+         return;
+      } else {
+         logger.warn('⚠️ No hay productos disponibles en la base de datos');
       }
 
       // Fallback: usar catálogo estático de la base de datos

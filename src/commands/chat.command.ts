@@ -267,29 +267,28 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
     const isPrecioRequest = hasProductKeyword || hasProductSpecificKeyword || isNumericOption1 || isProductQuestion;
     
     if (isPrecioRequest) {
-        // Intentar obtener catálogo desde Google Sheets
+        // Obtener catálogo desde la base de datos
         try {
-            const { googleSheetsService } = await import('../utils/google-sheets.util');
-            const EnvConfig = await import('../configs/env.config');
-            const useGoogleSheets = !!EnvConfig.default.GOOGLE_SHEETS_API_KEY && !!EnvConfig.default.GOOGLE_SHEETS_SPREADSHEET_ID;
+            const prisma = (await import('../database/prisma')).default;
+            const { formatProductsForWhatsApp } = await import('../utils/product-formatter.util');
             
-            if (useGoogleSheets) {
-                logger.info('📊 Obteniendo catálogo desde Google Sheets para solicitud de productos/precios...');
-                logger.info(`📊 Query detectada: "${query}"`);
-                const products = await googleSheetsService.getProductCatalog();
-                
-                if (products && products.length > 0) {
-                    const catalogMessage = googleSheetsService.formatCatalogForWhatsApp(products);
-                    quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png', intent: 'price' };
-                    logger.info(`✅ Catálogo de Google Sheets preparado (${products.length} productos) para query: "${query}"`);
-                } else {
-                    logger.warn(`⚠️ Google Sheets no retornó productos para query: "${query}"`);
-                }
+            logger.info('📊 Obteniendo catálogo desde la base de datos para solicitud de productos/precios...');
+            logger.info(`📊 Query detectada: "${query}"`);
+            
+            const products = await prisma.product.findMany({
+                where: { inStock: true },
+                orderBy: { createdAt: 'desc' }
+            });
+            
+            if (products && products.length > 0) {
+                const catalogMessage = formatProductsForWhatsApp(products);
+                quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png', intent: 'price' };
+                logger.info(`✅ Catálogo de productos preparado (${products.length} productos) para query: "${query}"`);
             } else {
-                logger.warn('⚠️ Google Sheets no está configurado para query de productos');
+                logger.warn(`⚠️ No hay productos disponibles en la base de datos para query: "${query}"`);
             }
         } catch (error) {
-            logger.error('❌ Error obteniendo catálogo de Google Sheets:', error);
+            logger.error('❌ Error obteniendo catálogo de productos:', error);
             // Continuar con respuesta normal
         }
     }
