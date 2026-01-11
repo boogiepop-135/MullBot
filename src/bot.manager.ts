@@ -288,7 +288,7 @@ export class BotManager {
             // Procesar mensaje (onboard y comandos)
             await Promise.all([
                 onboardEvolution(this.evolutionAPI, phoneNumber, content, userI18n),
-                this.processMessageContentEvolution(phoneNumber, content, userI18n, messageData)
+                this.processMessageContentEvolution(phoneNumber, content, userI18n, messageData, pushName)
             ]);
 
         } catch (error) {
@@ -330,7 +330,8 @@ export class BotManager {
         phoneNumber: string,
         content: string,
         userI18n: UserI18n,
-        messageData: EvolutionMessageData
+        messageData: EvolutionMessageData,
+        pushName: string
     ): Promise<void> {
         try {
             // Detectar comprobantes de pago
