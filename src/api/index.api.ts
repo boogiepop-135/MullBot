@@ -474,9 +474,9 @@ export default function (botManager: BotManager) {
             const { query } = req.body;
             const testQuery = query || "Hola, esto es una prueba del sistema de IA";
 
-            logger.info("POST /ai-test - Testing AI connection");
+logger.info("POST /ai-test - Testing AI connection");
 
-            const { AIModelManager } = require("../services/ai-model-manager.service");
+            const { AIModelManager } = await import("../services/ai-model-manager.service");
             const aiManager = AIModelManager.getInstance();
 
             const startTime = Date.now();

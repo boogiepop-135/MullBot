@@ -251,13 +251,27 @@ router.post('/:id/complete', authenticate, async (req: Request, res: Response) =
             }
         });
 
-        // Despausar al cliente
+        // Normalizar número de teléfono para búsqueda
+        const customerPhone = advisory.customerPhone.split('@')[0];
+        const customerPhoneWithSuffix = advisory.customerPhone.includes('@') ? advisory.customerPhone : `${advisory.customerPhone}@s.whatsapp.net`;
+
+        // Despausar al cliente y actualizar estado a INTERESTED (ya fue asesorado)
         await prisma.contact.updateMany({
-            where: { phoneNumber: advisory.customerPhone },
-            data: { isPaused: false }
+            where: {
+                OR: [
+                    { phoneNumber: advisory.customerPhone },
+                    { phoneNumber: customerPhoneWithSuffix },
+                    { phoneNumber: customerPhone }
+                ]
+            },
+            data: { 
+                isPaused: false,
+                saleStatus: 'INTERESTED',
+                saleStatusNotes: 'Cliente ya fue asesorado'
+            }
         });
 
-        logger.info(`✅ Asesoría ${id} completada`);
+        logger.info(`✅ Asesoría ${id} completada - Contacto actualizado a INTERESTED`);
 
         res.json({
             success: true,
@@ -292,13 +306,27 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
             }
         });
 
-        // Despausar al cliente
+        // Normalizar número de teléfono para búsqueda
+        const customerPhone = advisory.customerPhone.split('@')[0];
+        const customerPhoneWithSuffix = advisory.customerPhone.includes('@') ? advisory.customerPhone : `${advisory.customerPhone}@s.whatsapp.net`;
+
+        // Despausar al cliente y actualizar estado a INTERESTED (ya fue asesorado)
         await prisma.contact.updateMany({
-            where: { phoneNumber: advisory.customerPhone },
-            data: { isPaused: false }
+            where: {
+                OR: [
+                    { phoneNumber: advisory.customerPhone },
+                    { phoneNumber: customerPhoneWithSuffix },
+                    { phoneNumber: customerPhone }
+                ]
+            },
+            data: { 
+                isPaused: false,
+                saleStatus: 'INTERESTED',
+                saleStatusNotes: 'Cliente ya fue asesorado (asesoría cancelada)'
+            }
         });
 
-        logger.info(`❌ Asesoría ${id} cancelada`);
+        logger.info(`❌ Asesoría ${id} cancelada - Contacto actualizado a INTERESTED`);
 
         res.json({
             success: true,

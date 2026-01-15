@@ -392,11 +392,11 @@ export class AIModelManager {
         };
     }
 
-    /**
+/**
      * Resetear estadísticas de un modelo
      */
-    public resetModelStats(modelId: AIModelType): boolean {
-        const model = this.models.get(modelId as any);
+    public resetModelStats(modelId: ModelId): boolean {
+        const model = this.models.get(modelId);
         if (model) {
             model.status = "available";
             model.requestCount = 0;

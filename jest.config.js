@@ -31,18 +31,18 @@ module.exports = {
     '!src/**/__tests__/**',
   ],
 
-  // Coverage thresholds (opcional - descomenta para hacer obligatorio)
-  // coverageThreshold: {
-  //   global: {
-  //     branches: 50,
-  //     functions: 50,
-  //     lines: 50,
-  //     statements: 50
-  //   }
-  // },
+  // Coverage thresholds
+  coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 50,
+      lines: 50,
+      statements: 50
+    }
+  },
 
   // Setup files (ejecutar antes de cada test)
-  // setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
 
   // Clear mocks between tests
   clearMocks: true,
@@ -57,7 +57,7 @@ module.exports = {
   ],
 
   // Module name mapper (para imports alias si los usas)
-  // moduleNameMapper: {
-  //   '^@/(.*)$': '<rootDir>/src/$1',
-  // },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
 };

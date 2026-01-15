@@ -60,3 +60,72 @@ export function formatProductsForWhatsApp(products: Product[]): string {
 
     return message;
 }
+
+/**
+ * Formatea información detallada de un producto específico
+ */
+export function formatProductDetails(product: Product): string {
+    let message = `🌱 *${product.name}*\n\n`;
+    
+    if (product.description && product.description.trim()) {
+        let descripcion = product.description
+            .replace(/^["']|["']$/g, '')
+            .replace(/\n+/g, '\n')
+            .trim();
+        message += `${descripcion}\n\n`;
+    }
+
+    const precio = Math.round(product.price * 100) / 100;
+    message += `💰 *Precio:* $${precio.toFixed(2)}\n`;
+
+    if (product.sizes && product.sizes.length > 0) {
+        message += `📏 *Tamaños disponibles:* ${product.sizes.join(', ')}\n`;
+    }
+
+    if (product.category) {
+        message += `📂 *Categoría:* ${product.category}\n`;
+    }
+
+    if (product.promotions && product.promotions.trim()) {
+        message += `\n✨ *Promociones:*\n${product.promotions}\n`;
+    }
+
+    if (product.imageUrl && product.imageUrl.trim()) {
+        message += `\n🖼️ [Ver imagen del producto](${product.imageUrl})\n`;
+    }
+
+    message += `\n*Estado:* ${product.inStock ? '✅ Disponible' : '❌ Agotado'}\n`;
+
+    message += '\n¿Te interesa este producto? 😊\n\n';
+    message += '*1.* 💰 Ver métodos de pago\n';
+    message += '*2.* 📦 Información de envío\n';
+    message += '*3.* 💬 Hablar con un asesor\n';
+    message += '*4.* 📋 Ver otros productos';
+
+    return message;
+}
+
+/**
+ * Busca un producto por nombre (búsqueda flexible)
+ */
+export function findProductByName(products: Product[], searchTerm: string): Product | null {
+    const normalizedSearch = searchTerm.toLowerCase().trim();
+    
+    // Buscar coincidencia exacta primero
+    let product = products.find(p => 
+        p.name.toLowerCase() === normalizedSearch ||
+        p.name.toLowerCase().includes(normalizedSearch) ||
+        normalizedSearch.includes(p.name.toLowerCase())
+    );
+    
+    if (product) return product;
+    
+    // Buscar por palabras clave en el nombre
+    const searchWords = normalizedSearch.split(/\s+/);
+    product = products.find(p => {
+        const productName = p.name.toLowerCase();
+        return searchWords.some(word => productName.includes(word));
+    });
+    
+    return product || null;
+}

@@ -512,6 +512,89 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 return;
             }
 
+            // Verificar si pregunta por catálogo de productos antes de usar IA
+            const normalizedContent = content.toLowerCase().trim();
+            const catalogKeywords = [
+                'catalogo', 'catálogo', 'productos', 'producto', 'lista de productos',
+                'que tienen', 'que tienes', 'que ofreces', 'que vendes',
+                'mostrar productos', 'ver productos', 'muestra productos',
+                'catálogo de productos', 'catalogo de productos'
+            ];
+            const isCatalogRequest = catalogKeywords.some(keyword => normalizedContent.includes(keyword));
+            
+            if (isCatalogRequest) {
+                logger.info(`📊 Usuario solicita catálogo de productos: ${content}`);
+                try {
+                    const prisma = (await import('./database/prisma')).default;
+                    const { formatProductsForWhatsApp } = await import('./utils/product-formatter.util');
+                    
+                    const products = await prisma.product.findMany({
+                        where: { inStock: true },
+                        orderBy: { createdAt: 'desc' }
+                    });
+                    
+                    if (products && products.length > 0) {
+                        const catalogMessage = formatProductsForWhatsApp(products);
+                        await this.evolutionAPI.sendMedia(phoneNumber, 'public/precio.png', catalogMessage);
+                        await this.saveSentMessage(phoneNumber, catalogMessage);
+                        logger.info(`✅ Catálogo enviado (${products.length} productos)`);
+                        return;
+                    } else {
+                        logger.warn('⚠️ No hay productos disponibles en la base de datos');
+                    }
+                } catch (error) {
+                    logger.error('❌ Error obteniendo catálogo:', error);
+                }
+            }
+
+            // Verificar si muestra interés en un producto específico
+            const interestKeywords = ['tengo interes', 'tengo interés', 'me interesa', 'quiero saber de', 'información de', 'info de', 'detalles de'];
+            const hasInterestKeyword = interestKeywords.some(keyword => normalizedContent.includes(keyword));
+            
+            if (hasInterestKeyword) {
+                logger.info(`🔍 Usuario muestra interés en producto: ${content}`);
+                try {
+                    const prisma = (await import('./database/prisma')).default;
+                    const { findProductByName, formatProductDetails } = await import('./utils/product-formatter.util');
+                    
+                    const products = await prisma.product.findMany({
+                        where: { inStock: true },
+                        orderBy: { createdAt: 'desc' }
+                    });
+                    
+                    // Extraer nombre del producto del mensaje
+                    const productName = content
+                        .replace(/tengo interes en|tengo interés en|me interesa|quiero saber de|información de|info de|detalles de/gi, '')
+                        .trim();
+                    
+                    if (productName && products.length > 0) {
+                        const product = findProductByName(products, productName);
+                        
+                        if (product) {
+                            const productDetails = formatProductDetails(product);
+                            
+                            // Si hay imagen URL, incluirla en el mensaje (el mensaje ya tiene el link)
+                            // Si no hay imagen, usar imagen por defecto
+                            if (product.imageUrl && product.imageUrl.startsWith('http')) {
+                                // Es una URL, solo enviar mensaje con el link incluido
+                                await this.evolutionAPI.sendMessage(phoneNumber, productDetails);
+                            } else if (product.imageUrl) {
+                                // Es una ruta local
+                                await this.evolutionAPI.sendMedia(phoneNumber, product.imageUrl, productDetails);
+                            } else {
+                                // Sin imagen, usar imagen por defecto
+                                await this.evolutionAPI.sendMedia(phoneNumber, 'public/precio.png', productDetails);
+                            }
+                            await this.saveSentMessage(phoneNumber, productDetails);
+                            logger.info(`✅ Información del producto "${product.name}" enviada`);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    logger.error('❌ Error obteniendo información del producto:', error);
+                }
+            }
+
             // Verificar si pregunta por estado de servicios antes de usar IA
             const { isServiceStatusQuery, generateServiceStatusResponse } = await import('./utils/service-status.util');
             
