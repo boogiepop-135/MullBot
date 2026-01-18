@@ -373,9 +373,43 @@ export class BotManager {
             // DETECTAR SOLICITUD DE AGENTE ANTES DE CUALQUIER OTRA COSA
             // Esto debe hacerse PRIMERO para asegurar que se pausa el bot y se crea la asesoría
             const normalizedQuery = content.toLowerCase().trim();
-            const isAgentRequest = normalizedQuery === '8' ||
-                /^8[\s\.\)\-]*$/.test(normalizedQuery) ||
-                /^8[\s\.\)\-]/.test(normalizedQuery) ||
+            
+            // Verificar si es solo un número que corresponde a "hablar con asesor"
+            // Puede ser "8", "8.", "8)", etc.
+            const isNumericAgentRequest = /^8[\s\.\)\-\d]*$/.test(normalizedQuery) || 
+                normalizedQuery === '8' ||
+                /^8[\s\.\)\-]/.test(normalizedQuery);
+            
+            // Verificar si el mensaje anterior del bot mencionaba la opción 8 para hablar con asesor
+            let previousMessageMentionedAgentOption = false;
+            try {
+                const prisma = (await import('./database/prisma')).default;
+                const recentBotMessage = await prisma.message.findFirst({
+                    where: {
+                        OR: [
+                            { phoneNumber: phoneNumber },
+                            { phoneNumber: `${phoneNumber}@s.whatsapp.net` },
+                            { phoneNumber: messageData.key.remoteJid }
+                        ],
+                        isFromBot: true
+                    },
+                    orderBy: { timestamp: 'desc' }
+                });
+                
+                if (recentBotMessage && recentBotMessage.body) {
+                    const botMessage = recentBotMessage.body.toLowerCase();
+                    // Verificar si el mensaje del bot mencionaba la opción 8 relacionada con asesor
+                    previousMessageMentionedAgentOption = 
+                        (botMessage.includes('*8.*') || botMessage.includes('*8.') || botMessage.includes('8.') || botMessage.includes('opción 8') || botMessage.includes('opcion 8')) &&
+                        (botMessage.includes('agente') || botMessage.includes('asesor') || botMessage.includes('humano') || botMessage.includes('persona'));
+                }
+            } catch (error) {
+                logger.error('Error verificando mensaje anterior del bot:', error);
+            }
+            
+            const isAgentRequest = isNumericAgentRequest ||
+                // Si es un número y el mensaje anterior mencionaba opción 8 para asesor
+                (previousMessageMentionedAgentOption && /^\d+$/.test(normalizedQuery) && normalizedQuery === '8') ||
                 normalizedQuery.includes('agente') ||
                 normalizedQuery.includes('humano') ||
                 normalizedQuery.includes('persona') ||

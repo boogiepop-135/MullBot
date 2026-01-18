@@ -707,14 +707,46 @@ async function loadAvailableContacts() {
   }
 }
 
+let allAvailableContacts = []; // Guardar todos los contactos para el buscador
+
 function renderAvailableContacts(contacts) {
   const container = document.getElementById('available-contacts');
   if (!container) return;
+  
+  // Guardar todos los contactos para el buscador
+  allAvailableContacts = contacts;
+  
+  // Aplicar filtro de búsqueda si existe
+  const searchInput = document.getElementById('contact-search-input');
+  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+  
+  const filteredContacts = searchTerm 
+    ? contacts.filter(contact => {
+        const name = (contact.name || '').toLowerCase();
+        const phone = contact.phoneNumber.toLowerCase();
+        return name.includes(searchTerm) || phone.includes(searchTerm);
+      })
+    : contacts;
+  
   container.innerHTML = '';
 
-  contacts.forEach(contact => {
+  if (filteredContacts.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-8 text-gray-400">
+        <i class="fas fa-search text-3xl mb-2"></i>
+        <p class="text-sm">No se encontraron contactos</p>
+      </div>
+    `;
+    // Actualizar checkbox "Seleccionar Todos"
+    const selectAllCheckbox = document.getElementById('select-all-contacts');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+    return;
+  }
+
+  filteredContacts.forEach(contact => {
     const div = document.createElement('div');
-    div.className = 'flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer';
+    div.className = 'flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer contact-item';
+    div.dataset.phone = contact.phoneNumber;
     div.innerHTML = `
       <input type="checkbox" id="contact-${contact.phoneNumber}" class="contact-checkbox mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" value="${contact.phoneNumber}">
       <label for="contact-${contact.phoneNumber}" class="flex-grow cursor-pointer">
@@ -725,10 +757,93 @@ function renderAvailableContacts(contacts) {
     div.querySelector('input').addEventListener('change', function () {
       if (this.checked) addContactToCampaign(contact.phoneNumber, contact.name || contact.phoneNumber);
       else removeContactFromCampaign(contact.phoneNumber);
+      updateSelectAllCheckbox();
     });
     container.appendChild(div);
   });
+  
+  // Actualizar checkbox "Seleccionar Todos"
+  updateSelectAllCheckbox();
 }
+
+// Función para filtrar contactos en tiempo real
+window.filterAvailableContacts = function(searchTerm) {
+  renderAvailableContacts(allAvailableContacts);
+};
+
+// Función para actualizar el checkbox "Seleccionar Todos"
+function updateSelectAllCheckbox() {
+  const selectAllCheckbox = document.getElementById('select-all-contacts');
+  if (!selectAllCheckbox) return;
+  
+  const visibleCheckboxes = Array.from(document.querySelectorAll('.contact-item .contact-checkbox:not([style*="display: none"])'));
+  const checkedCheckboxes = visibleCheckboxes.filter(cb => cb.checked);
+  
+  if (visibleCheckboxes.length === 0) {
+    selectAllCheckbox.checked = false;
+    selectAllCheckbox.indeterminate = false;
+  } else if (checkedCheckboxes.length === visibleCheckboxes.length) {
+    selectAllCheckbox.checked = true;
+    selectAllCheckbox.indeterminate = false;
+  } else if (checkedCheckboxes.length > 0) {
+    selectAllCheckbox.checked = false;
+    selectAllCheckbox.indeterminate = true;
+  } else {
+    selectAllCheckbox.checked = false;
+    selectAllCheckbox.indeterminate = false;
+  }
+}
+
+// Función para seleccionar/deseleccionar todos los contactos
+window.toggleSelectAllContacts = function(checked) {
+  const visibleCheckboxes = Array.from(document.querySelectorAll('.contact-item .contact-checkbox:not([style*="display: none"])'));
+  
+  if (visibleCheckboxes.length === 0) {
+    alert('No hay contactos disponibles para seleccionar');
+    return;
+  }
+  
+  if (checked) {
+    // Mostrar advertencia sobre envío por lotes
+    const message = `⚠️ Se seleccionarán ${visibleCheckboxes.length} contactos.\n\n` +
+                    `📢 **RECOMENDACIÓN:** Te recomendamos usar el envío por lotes para evitar problemas de rendimiento y bloqueos de WhatsApp.\n\n` +
+                    `💡 ¿Qué es el envío por lotes?\n` +
+                    `- Divide los mensajes en grupos más pequeños\n` +
+                    `- Envía con intervalos de tiempo entre cada lote\n` +
+                    `- Reduce el riesgo de bloqueos de WhatsApp\n` +
+                    `- Mejor para campañas grandes\n\n` +
+                    `Activa la opción "Campaña por Lotes" en el formulario y configura:\n` +
+                    `- Tamaño de lote: 25-50 contactos\n` +
+                    `- Intervalo: 15-30 minutos\n\n` +
+                    `¿Deseas continuar seleccionando todos los contactos?`;
+    
+    if (!confirm(message.replace(/\*\*/g, ''))) {
+      const selectAllCheckbox = document.getElementById('select-all-contacts');
+      if (selectAllCheckbox) selectAllCheckbox.checked = false;
+      return;
+    }
+  }
+  
+  // Seleccionar/deseleccionar todos los checkboxes visibles
+  visibleCheckboxes.forEach(checkbox => {
+    checkbox.checked = checked;
+    const phoneNumber = checkbox.value;
+    const contactItem = checkbox.closest('.contact-item');
+    if (contactItem) {
+      const label = contactItem.querySelector('label');
+      const name = label ? (label.querySelector('.font-medium')?.textContent || phoneNumber) : phoneNumber;
+      if (checked) {
+        addContactToCampaign(phoneNumber, name);
+      } else {
+        removeContactFromCampaign(phoneNumber);
+      }
+    }
+  });
+  
+  if (checked && visibleCheckboxes.length > 0) {
+    alert(`✅ ${visibleCheckboxes.length} contactos seleccionados.\n\n💡 Recuerda activar "Campaña por Lotes" para evitar problemas.`);
+  }
+};
 
 function addContactToCampaign(phoneNumber, name) {
   const selectedDiv = document.getElementById('selected-contacts');
@@ -765,45 +880,13 @@ function removeContactFromCampaign(phoneNumber) {
   if (checkbox) checkbox.checked = false;
 }
 
-// Seleccionar todos los contactos disponibles
+// Función legacy para compatibilidad (ahora usa toggleSelectAllContacts)
 window.selectAllContacts = function() {
-  const checkboxes = document.querySelectorAll('.contact-checkbox');
-  const totalContacts = checkboxes.length;
-  
-  if (totalContacts === 0) {
-    alert('No hay contactos disponibles para seleccionar');
-    return;
+  const selectAllCheckbox = document.getElementById('select-all-contacts');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = true;
+    toggleSelectAllContacts(true);
   }
-  
-  // Mostrar advertencia sobre envío por lotes
-  const message = `⚠️ Se seleccionarán ${totalContacts} contactos.\n\n` +
-                  `📢 **RECOMENDACIÓN:** Te recomendamos usar el envío por lotes para evitar problemas de rendimiento y bloqueos de WhatsApp.\n\n` +
-                  `💡 ¿Qué es el envío por lotes?\n` +
-                  `- Divide los mensajes en grupos más pequeños\n` +
-                  `- Envía con intervalos de tiempo entre cada lote\n` +
-                  `- Reduce el riesgo de bloqueos de WhatsApp\n` +
-                  `- Mejor para campañas grandes\n\n` +
-                  `Activa la opción "Campaña por Lotes" en el formulario y configura:\n` +
-                  `- Tamaño de lote: 25-50 contactos\n` +
-                  `- Intervalo: 15-30 minutos\n\n` +
-                  `¿Deseas continuar seleccionando todos los contactos?`;
-  
-  if (!confirm(message.replace(/\*\*/g, ''))) {
-    return;
-  }
-  
-  // Seleccionar todos los checkboxes
-  checkboxes.forEach(checkbox => {
-    if (!checkbox.checked) {
-      checkbox.checked = true;
-      const phoneNumber = checkbox.value;
-      const label = checkbox.closest('div').querySelector('label');
-      const name = label ? (label.querySelector('.font-medium')?.textContent || phoneNumber) : phoneNumber;
-      addContactToCampaign(phoneNumber, name);
-    }
-  });
-  
-  alert(`✅ ${totalContacts} contactos seleccionados.\n\n💡 Recuerda activar "Campaña por Lotes" para evitar problemas.`);
 };
 
 window.toggleBatchOptions = function() {
@@ -1553,12 +1636,12 @@ function renderProducts(products) {
           ` : ''}
         </div>
         <div class="flex gap-2 mt-auto pt-3 border-t border-gray-100">
-          <button onclick="openEditProductModal('${product._id}')" 
+          <button onclick="openEditProductModal('${product.id}')" 
             class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
             <i class="fas fa-edit"></i>
             <span>Editar</span>
           </button>
-          <button onclick="deleteProduct('${product._id}')" 
+          <button onclick="deleteProduct('${product.id}')" 
             class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
             <i class="fas fa-trash"></i>
             <span>Eliminar</span>
@@ -1600,11 +1683,11 @@ window.openCreateProductModal = function () {
 };
 
 window.openEditProductModal = function (id) {
-  const product = allProducts.find(p => p._id === id);
+  const product = allProducts.find(p => p.id === id || p._id === id); // Soporte para ambos formatos
   if (!product) return;
   currentProductId = id;
   document.getElementById('product-modal-title').textContent = 'Editar Producto';
-  document.getElementById('product-id').value = product._id;
+  document.getElementById('product-id').value = product.id || product._id;
   document.getElementById('product-name').value = product.name;
   document.getElementById('product-description').value = product.description || '';
   document.getElementById('product-price').value = product.price;
@@ -2216,43 +2299,80 @@ function renderBotContent(contents) {
   if (!container) return;
   container.innerHTML = '';
   
-  if (contents.length === 0) {
+  if (!contents || contents.length === 0) {
     container.innerHTML = `
-      <div class="col-span-full text-center py-8">
-        <p class="text-gray-500 mb-4">No hay contenido configurado</p>
-        <button onclick="initDefaultBotContent()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-          Inicializar contenido predeterminado
+      <div class="col-span-full text-center py-12">
+        <i class="fas fa-robot text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 mb-2 text-lg">No hay contenido configurado</p>
+        <p class="text-gray-400 text-sm mb-4">Inicializa el contenido predeterminado para comenzar</p>
+        <button onclick="initDefaultBotContent()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors">
+          <i class="fas fa-magic mr-2"></i>Inicializar contenido predeterminado
         </button>
       </div>`;
     return;
   }
   
   const categoryLabels = {
+    'QUICK_RESPONSE': 'Respuesta Rápida',
     'quick_response': 'Respuesta Rápida',
+    'COMMAND': 'Comando',
     'command': 'Comando',
+    'OTHER': 'Otro',
     'other': 'Otro'
   };
   
-  contents.forEach(content => {
-    const div = document.createElement('div');
-    div.className = 'bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow';
-    div.innerHTML = `
-      <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-        <div>
-          <h3 class="font-medium text-gray-800">${content.key}</h3>
-          <span class="text-xs text-gray-500">${categoryLabels[content.category] || content.category}</span>
-        </div>
-        <div class="flex space-x-2">
-          <button onclick="openEditBotContentModal('${content.key}')" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></button>
-          <button onclick="deleteBotContent('${content.key}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
-        </div>
-      </div>
-      <div class="p-4">
-        <p class="text-sm text-gray-600 mb-2">${content.description || 'Sin descripción'}</p>
-        <pre class="text-xs text-gray-500 bg-gray-50 p-2 rounded max-h-32 overflow-auto whitespace-pre-wrap">${content.content.substring(0, 200)}${content.content.length > 200 ? '...' : ''}</pre>
-      </div>
+  // Agrupar por categoría para mejor organización
+  const groupedByCategory = contents.reduce((acc, content) => {
+    const category = content.category || 'other';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(content);
+    return acc;
+  }, {});
+  
+  Object.keys(groupedByCategory).forEach(category => {
+    // Crear sección de categoría
+    const categoryDiv = document.createElement('div');
+    categoryDiv.className = 'col-span-full mb-4';
+    categoryDiv.innerHTML = `
+      <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <i class="fas fa-folder text-indigo-600"></i>
+        ${categoryLabels[category] || category}
+      </h3>
     `;
-    container.appendChild(div);
+    container.appendChild(categoryDiv);
+    
+    // Agregar productos de esta categoría
+    groupedByCategory[category].forEach(content => {
+      const div = document.createElement('div');
+      div.className = 'bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200';
+      const safeContent = (content.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const safeDescription = (content.description || 'Sin descripción').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      div.innerHTML = `
+        <div class="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100 flex justify-between items-start">
+          <div class="flex-1">
+            <h3 class="font-bold text-gray-900 mb-1">${escapeHtml(content.key)}</h3>
+            <p class="text-xs text-gray-500 mb-2">${safeDescription}</p>
+            ${content.mediaPath ? `<span class="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded"><i class="fas fa-image mr-1"></i>${escapeHtml(content.mediaPath)}</span>` : ''}
+          </div>
+          <div class="flex space-x-2 ml-4">
+            <button onclick="openEditBotContentModal('${escapeHtml(content.key)}')" 
+              class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors" 
+              title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button onclick="deleteBotContent('${escapeHtml(content.key)}')" 
+              class="text-red-600 hover:text-red-800 px-3 py-1 rounded-lg hover:bg-red-50 transition-colors" 
+              title="Eliminar">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="p-4">
+          <pre class="text-xs text-gray-700 bg-gray-50 p-3 rounded border border-gray-200 max-h-40 overflow-auto whitespace-pre-wrap font-mono">${safeContent.substring(0, 300)}${safeContent.length > 300 ? '...' : ''}</pre>
+        </div>
+      `;
+      container.appendChild(div);
+    });
   });
 }
 

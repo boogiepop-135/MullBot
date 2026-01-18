@@ -861,9 +861,16 @@ Tu solicitud ha sido registrada correctamente.
 
             let created = 0;
             let updated = 0;
+            let deleted = 0;
             let errors = 0;
 
-            // Sincronizar cada producto
+            // Obtener todos los productos existentes en la BD
+            const existingProducts = await prisma.product.findMany();
+            const productNamesFromSheets = new Set(
+                productsFromSheets.map(p => p.producto.toLowerCase().trim())
+            );
+
+            // Sincronizar cada producto desde Google Sheets
             for (const sheetProduct of productsFromSheets) {
                 try {
                     // Buscar si ya existe un producto con el mismo nombre
@@ -905,14 +912,34 @@ Tu solicitud ha sido registrada correctamente.
                 }
             }
 
-            logger.info(`✅ Sincronización completada: ${created} creados, ${updated} actualizados, ${errors} errores`);
+            // Eliminar productos que ya no están en Google Sheets
+            // Solo eliminar productos que fueron sincronizados desde Google Sheets
+            // (podríamos agregar un campo `syncedFromSheets` en el futuro)
+            for (const existingProduct of existingProducts) {
+                const productNameLower = existingProduct.name.toLowerCase().trim();
+                if (!productNamesFromSheets.has(productNameLower)) {
+                    try {
+                        await prisma.product.delete({
+                            where: { id: existingProduct.id }
+                        });
+                        deleted++;
+                        logger.info(`🗑️ Producto eliminado (no encontrado en Google Sheets): ${existingProduct.name}`);
+                    } catch (error) {
+                        logger.error(`Error eliminando producto "${existingProduct.name}":`, error);
+                        errors++;
+                    }
+                }
+            }
+
+            logger.info(`✅ Sincronización completada: ${created} creados, ${updated} actualizados, ${deleted} eliminados, ${errors} errores`);
 
             res.json({
                 success: true,
-                message: `Sincronización completada: ${created} productos creados, ${updated} actualizados, ${errors} errores`,
+                message: `Sincronización completada: ${created} productos creados, ${updated} actualizados, ${deleted} eliminados, ${errors} errores`,
                 stats: {
                     created,
                     updated,
+                    deleted,
                     errors,
                     total: productsFromSheets.length
                 }

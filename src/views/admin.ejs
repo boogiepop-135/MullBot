@@ -1184,12 +1184,20 @@
         <div class="space-y-6">
           <!-- Contact Selection -->
           <div class="content-card">
-            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 class="font-bold text-gray-800">Seleccionar Contactos</h3>
-              <button onclick="selectAllContacts()" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
-                <i class="fas fa-check-double"></i>
-                <span>Seleccionar Todos</span>
-              </button>
+            <div class="p-4 border-b border-gray-100">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-gray-800">Seleccionar Contactos</h3>
+                <label class="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">
+                  <input type="checkbox" id="select-all-contacts" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" onchange="toggleSelectAllContacts(this.checked)">
+                  <span>Seleccionar Todos</span>
+                </label>
+              </div>
+              <!-- Buscador de contactos -->
+              <div class="mb-3">
+                <input type="text" id="contact-search-input" placeholder="🔍 Buscar contacto por nombre o teléfono..." 
+                  class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 text-sm focus:border-indigo-500 outline-none transition-all"
+                  oninput="filterAvailableContacts(this.value)">
+              </div>
             </div>
             <div class="p-4 max-h-64 overflow-y-auto" id="available-contacts">
               <!-- Contacts loaded here -->
