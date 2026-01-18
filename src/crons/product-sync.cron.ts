@@ -1,7 +1,7 @@
 import { CronJob } from "cron";
 import logger from "../configs/logger.config";
 import prisma from "../database/prisma";
-import { EnvConfig } from "../configs/env.config";
+import EnvConfig from "../configs/env.config";
 
 /**
  * Sincroniza productos desde Google Sheets automáticamente
