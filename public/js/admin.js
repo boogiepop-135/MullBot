@@ -796,10 +796,30 @@ function updateSelectAllCheckbox() {
 
 // Función para seleccionar/deseleccionar todos los contactos
 window.toggleSelectAllContacts = function(checked) {
-  const visibleCheckboxes = Array.from(document.querySelectorAll('.contact-item .contact-checkbox:not([style*="display: none"])'));
+  // Asegurarse de que los contactos estén cargados
+  const container = document.getElementById('available-contacts');
+  if (!container) {
+    console.warn('Container de contactos disponibles no encontrado');
+    return;
+  }
+  
+  const visibleCheckboxes = Array.from(container.querySelectorAll('.contact-item .contact-checkbox:not([style*="display: none"])'));
   
   if (visibleCheckboxes.length === 0) {
-    alert('No hay contactos disponibles para seleccionar');
+    // Si no hay checkboxes visibles, verificar si hay contactos pero no están renderizados
+    if (allAvailableContacts.length === 0) {
+      alert('No hay contactos disponibles para seleccionar');
+    } else {
+      // Si hay contactos pero no están renderizados, volver a renderizarlos
+      renderAvailableContacts(allAvailableContacts);
+      // Intentar de nuevo después de un breve delay para que se rendericen
+      setTimeout(() => {
+        const newVisibleCheckboxes = Array.from(container.querySelectorAll('.contact-item .contact-checkbox:not([style*="display: none"])'));
+        if (newVisibleCheckboxes.length > 0) {
+          toggleSelectAllContacts(checked);
+        }
+      }, 100);
+    }
     return;
   }
   
@@ -867,15 +887,18 @@ function addContactToCampaign(phoneNumber, name) {
 }
 
 function removeContactFromCampaign(phoneNumber) {
-  const div = document.querySelector(`[data-phone="${phoneNumber}"]`);
-  if (div) div.remove();
-
+  // Solo buscar en la lista de seleccionados, no en la lista de disponibles
   const selectedDiv = document.getElementById('selected-contacts');
-  if (selectedDiv.children.length === 0) {
-    selectedDiv.innerHTML = '<p class="text-gray-400 text-sm text-center mt-4" id="no-contacts-message">Ningún contacto seleccionado</p>';
+  if (selectedDiv) {
+    const div = selectedDiv.querySelector(`[data-phone="${phoneNumber}"]`);
+    if (div) div.remove();
+
+    if (selectedDiv.children.length === 0) {
+      selectedDiv.innerHTML = '<p class="text-gray-400 text-sm text-center mt-4" id="no-contacts-message">Ningún contacto seleccionado</p>';
+    }
   }
 
-  // Sync checkbox
+  // Sync checkbox en la lista de disponibles (solo desmarcar, no eliminar)
   const checkbox = document.getElementById(`contact-${phoneNumber}`);
   if (checkbox) checkbox.checked = false;
 }
