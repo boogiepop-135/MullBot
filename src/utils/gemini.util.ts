@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
 import prisma from "../database/prisma";
 import { AIModelManager } from "../services/ai-model-manager.service";
+import logger from "../configs/logger.config";
 
 export type GeminiModel = "gemini-2.0-flash-exp" | "gemini-1.5-flash" | "gemini-1.5-pro";
 const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
@@ -55,9 +56,23 @@ POLÍTICA DE DESCUENTOS:
 - Destaca el valor del producto en lugar de negociar precio`;
         }
         
-        // Obtener prompt completo de Müllblue desde el archivo centralizado
-        const mullbluePromptModule = await import('./mullblue-prompt.util');
-        const basePrompt = mullbluePromptModule.getFullMullbluePrompt();
+        // Obtener prompt del sistema desde BotConfig (base de datos) o usar fallback
+        let basePrompt: string;
+        try {
+            if (botConfigDoc && botConfigDoc.aiSystemPrompt && botConfigDoc.aiSystemPrompt.trim().length > 0) {
+                basePrompt = botConfigDoc.aiSystemPrompt;
+                logger.info('✅ Usando prompt personalizado desde BotConfig (CRM)');
+            } else {
+                // Fallback al prompt estático
+                const mullbluePromptModule = await import('./mullblue-prompt.util');
+                basePrompt = mullbluePromptModule.getFullMullbluePrompt();
+                logger.info('ℹ️ Usando prompt predeterminado (BotConfig.aiSystemPrompt está vacío)');
+            }
+        } catch (error) {
+            logger.warn('Error obteniendo prompt desde BotConfig, usando fallback:', error);
+            const mullbluePromptModule = await import('./mullblue-prompt.util');
+            basePrompt = mullbluePromptModule.getFullMullbluePrompt();
+        }
         
         // Agregar solo las instrucciones de descuentos (el resto ya está en el prompt centralizado)
         const systemPrompt = basePrompt + `

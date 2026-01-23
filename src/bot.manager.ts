@@ -515,8 +515,15 @@ export class BotManager {
 
                     logger.info(`✅ Contacto ${phoneNumber} actualizado a AGENT_REQUESTED y pausado`);
 
-                    // Enviar mensaje de confirmación
-                    const agentMessage = `✅ *Solicitud Recibida*
+                    // Obtener mensaje personalizado desde BotContent (option_8_agent)
+                    let agentMessage: string;
+                    try {
+                        const { getAgentResponse } = await import('./utils/quick-responses.util');
+                        agentMessage = await getAgentResponse();
+                    } catch (error) {
+                        logger.error('Error obteniendo respuesta de agente personalizada:', error);
+                        // Fallback si hay error
+                        agentMessage = `✅ *Solicitud Recibida*
 
 Tu solicitud para hablar con un asesor ha sido registrada.
 
@@ -526,6 +533,7 @@ Tu solicitud para hablar con un asesor ha sido registrada.
 Nuestro equipo se pondrá en contacto contigo lo antes posible.
 
 Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
+                    }
 
                     await this.evolutionAPI.sendMessage(phoneNumber, agentMessage);
                     await this.saveSentMessage(phoneNumber, agentMessage);

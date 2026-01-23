@@ -27,9 +27,26 @@ export const aiCompletion = async (query: string, conversationHistory: Conversat
         if (EnvConfig.GEMINI_API_KEY) {
             logger.info(`🤖 Intentando Gemini con AIModelManager para query: "${cleanQuery.substring(0, 50)}..."`);
             
-            // Importar prompt completo de Müllblue
-            const mullbluePromptModule = await import('./mullblue-prompt.util');
-            const systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
+            // Obtener prompt del sistema desde BotConfig (base de datos) o usar fallback
+            let systemPrompt: string;
+            try {
+                const prisma = (await import('../database/prisma')).default;
+                const botConfig = await prisma.botConfig.findFirst();
+                
+                if (botConfig && botConfig.aiSystemPrompt && botConfig.aiSystemPrompt.trim().length > 0) {
+                    systemPrompt = botConfig.aiSystemPrompt;
+                    logger.info('✅ Usando prompt personalizado desde BotConfig (CRM)');
+                } else {
+                    // Fallback al prompt estático
+                    const mullbluePromptModule = await import('./mullblue-prompt.util');
+                    systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
+                    logger.info('ℹ️ Usando prompt predeterminado (BotConfig.aiSystemPrompt está vacío)');
+                }
+            } catch (error) {
+                logger.warn('Error obteniendo prompt desde BotConfig, usando fallback:', error);
+                const mullbluePromptModule = await import('./mullblue-prompt.util');
+                systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
+            }
 
             // Construir prompt con historial de conversación
             let fullQuery = cleanQuery;

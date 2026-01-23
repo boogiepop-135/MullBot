@@ -39,7 +39,15 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     if (isAgentRequest && message.type !== MessageTypes.VOICE) {
         logger.info(`🔔 Solicitud de agente detectada: "${query}"`);
         
-        const agentMessage = `✅ *Solicitud Recibida*
+        // Obtener mensaje personalizado desde BotContent (option_8_agent)
+        const { getAgentResponse } = await import('../utils/quick-responses.util');
+        let agentMessage: string;
+        try {
+            agentMessage = await getAgentResponse();
+        } catch (error) {
+            logger.error('Error obteniendo respuesta de agente personalizada:', error);
+            // Fallback si hay error
+            agentMessage = `✅ *Solicitud Recibida*
 
 Tu solicitud para hablar con un asesor ha sido registrada.
 
@@ -49,6 +57,7 @@ Tu solicitud para hablar con un asesor ha sido registrada.
 Nuestro equipo se pondrá en contacto contigo lo antes posible.
 
 Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
+        }
 
         // Enviar respuesta inmediata
         const { getBotDelay } = await import('../utils/bot-config.util');
@@ -271,6 +280,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
         try {
             const prisma = (await import('../database/prisma')).default;
             const { formatProductsForWhatsApp } = await import('../utils/product-formatter.util');
+            const { getCatalogResponse } = await import('../utils/quick-responses.util');
             
             logger.info('📊 Obteniendo catálogo desde la base de datos para solicitud de productos/precios...');
             logger.info(`📊 Query detectada: "${query}"`);
@@ -281,11 +291,30 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             });
             
             if (products && products.length > 0) {
-                const catalogMessage = formatProductsForWhatsApp(products);
+                // Primero intentar usar contenido personalizado catalogo_mullblue si existe
+                const customCatalog = await getCatalogResponse();
+                let catalogMessage: string;
+                
+                if (customCatalog) {
+                    // Si hay contenido personalizado, combinarlo con el catálogo de productos
+                    catalogMessage = `${customCatalog}\n\n${formatProductsForWhatsApp(products)}`;
+                    logger.info(`✅ Usando contenido personalizado catalogo_mullblue + productos de BD`);
+                } else {
+                    // Solo usar productos de la base de datos
+                    catalogMessage = formatProductsForWhatsApp(products);
+                }
+                
                 quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png', intent: 'price' };
                 logger.info(`✅ Catálogo de productos preparado (${products.length} productos) para query: "${query}"`);
             } else {
-                logger.warn(`⚠️ No hay productos disponibles en la base de datos para query: "${query}"`);
+                // Si no hay productos, intentar usar contenido personalizado como fallback
+                const customCatalog = await getCatalogResponse();
+                if (customCatalog) {
+                    quickResponse = { message: customCatalog, mediaPath: 'public/precio.png', intent: 'price' };
+                    logger.info(`✅ Usando contenido personalizado catalogo_mullblue (sin productos en BD)`);
+                } else {
+                    logger.warn(`⚠️ No hay productos disponibles en la base de datos para query: "${query}"`);
+                }
             }
         } catch (error) {
             logger.error('❌ Error obteniendo catálogo de productos:', error);
@@ -300,7 +329,32 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
         if (optionNumber >= 1 && optionNumber <= 8) {
             const response = await getOptionResponse(optionNumber);
             if (response) {
-                quickResponse = { message: response, mediaPath: 'public/info.png' };
+                // Para opción 2 (precios), combinar con productos si están disponibles
+                if (optionNumber === 2) {
+                    try {
+                        const prisma = (await import('../database/prisma')).default;
+                        const { formatProductsForWhatsApp } = await import('../utils/product-formatter.util');
+                        
+                        const products = await prisma.product.findMany({
+                            where: { inStock: true },
+                            orderBy: { createdAt: 'desc' }
+                        });
+                        
+                        if (products && products.length > 0) {
+                            const catalogMessage = formatProductsForWhatsApp(products);
+                            const combinedMessage = `${response}\n\n${catalogMessage}`;
+                            quickResponse = { message: combinedMessage, mediaPath: 'public/precio.png' };
+                            logger.info(`✅ Opción 2: usando contenido personalizado + productos de BD`);
+                        } else {
+                            quickResponse = { message: response, mediaPath: 'public/precio.png' };
+                        }
+                    } catch (error) {
+                        logger.error('Error obteniendo productos para opción 2:', error);
+                        quickResponse = { message: response, mediaPath: 'public/precio.png' };
+                    }
+                } else {
+                    quickResponse = { message: response, mediaPath: 'public/info.png' };
+                }
             }
         }
     }

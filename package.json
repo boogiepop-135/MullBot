@@ -48,6 +48,7 @@
     "scripts": {
     "health-check": "node scripts/health-check-simple.js",
     "health-check:ts": "ts-node scripts/health-check.ts",
+        "verify-crm": "ts-node scripts/verify-crm-connection.ts",
         "start": "node dist/index.js",
         "dev": "nodemon src/index.ts",
         "dev:refresh": "npm run clean:all && npm install && npm run dev",
