@@ -48,12 +48,42 @@ model Contact {
   appointmentNotes     String?  @db.Text
   paymentConfirmedAt   DateTime?
   assignedAgentPhone   String?  @default("")
+  
+  // Lead Scoring Avanzado (0-100)
+  leadScore            Int      @default(0)
+  engagementScore     Float    @default(0.0) // 0.0 - 1.0
+  conversionProbability Float   @default(0.0) // 0.0 - 1.0
+  
+  // BANT Framework
+  bantBudget           String?  // "yes", "no", "maybe", "not_asked"
+  bantAuthority        String?  // "yes", "no", "maybe", "not_asked"
+  bantNeed             String?  // "yes", "no", "maybe", "not_asked"
+  bantTimeline         String?  // "immediate", "week", "month", "quarter", "not_asked"
+  bantQualified        Boolean  @default(false)
+  
+  // Métricas de Calidad de Conversación
+  averageResponseTime  Int?     // en milisegundos
+  totalResponseTime    Int      @default(0) // acumulado
+  responseCount        Int      @default(0)
+  lastSentiment        String?  // "positive", "neutral", "negative", "frustrated"
+  sentimentScore       Float    @default(0.0) // -1.0 a 1.0
+  conversationQuality Float    @default(0.0) // 0.0 - 1.0
+  dropOffRate         Float    @default(0.0) // porcentaje de abandono
+  lastIntent           String?  // último intent detectado
+  intentConfidence     Float?   // confianza del último intent (0.0 - 1.0)
+  
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   // Relaciones
   messages Message[]
   notifications Notification[]
+  salesInteractions SalesInteraction[]
+  
+  @@index([leadScore(sort: Desc)])
+  @@index([engagementScore(sort: Desc)])
+  @@index([bantQualified])
+  @@index([lastSentiment])
 }
 
 enum SaleStatus {
@@ -82,6 +112,14 @@ model Message {
   mediaUrl          String?
   requiresAttention Boolean   @default(false)
   metadata          Json?
+  
+  // Métricas de calidad
+  responseTime      Int?      // tiempo de respuesta en ms (solo para mensajes del bot)
+  detectedIntent    String?   // intent detectado
+  intentConfidence  Float?    // confianza del intent (0.0 - 1.0)
+  sentiment         String?   // "positive", "neutral", "negative", "frustrated"
+  sentimentScore    Float?    // -1.0 a 1.0
+  
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -91,6 +129,8 @@ model Message {
   @@index([phoneNumber, timestamp(sort: Desc)])
   @@index([contactId, timestamp(sort: Desc)])
   @@index([requiresAttention, timestamp(sort: Desc)])
+  @@index([detectedIntent])
+  @@index([sentiment])
 }
 
 model Campaign {
@@ -322,4 +362,29 @@ enum AdvisoryStatus {
   COMPLETED
   CANCELLED
   EXPIRED
+}
+
+model SalesInteraction {
+  id                String   @id @default(uuid())
+  contactId         String
+  phoneNumber       String
+  intent            String   // 'info' | 'price' | 'product' | 'payment' | 'objection' | 'purchase' | 'other'
+  intentConfidence  Float    @default(0.0) // 0.0 - 1.0
+  userMessage       String   @db.Text
+  botResponse       String?  @db.Text
+  sentiment         String?  // "positive", "neutral", "negative", "frustrated"
+  sentimentScore    Float?  // -1.0 a 1.0
+  responseTime      Int?     // tiempo de respuesta en ms
+  scoreIncrease     Int      @default(0) // puntos agregados al lead score
+  metadata          Json?    // datos adicionales
+  timestamp         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relaciones
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, timestamp(sort: Desc)])
+  @@index([intent])
+  @@index([timestamp(sort: Desc)])
 }

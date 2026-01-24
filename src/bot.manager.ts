@@ -567,19 +567,13 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             if (isCatalogRequest) {
                 logger.info(`📊 Usuario solicita catálogo de productos: ${content}`);
                 try {
-                    const prisma = (await import('./database/prisma')).default;
-                    const { formatProductsForWhatsApp } = await import('./utils/product-formatter.util');
+                    const { ProductService } = await import('./services/product.service');
+                    const catalog = await ProductService.getCatalogMessage();
                     
-                    const products = await prisma.product.findMany({
-                        where: { inStock: true },
-                        orderBy: { createdAt: 'desc' }
-                    });
-                    
-                    if (products && products.length > 0) {
-                        const catalogMessage = formatProductsForWhatsApp(products);
-                        await this.evolutionAPI.sendMedia(phoneNumber, 'public/precio.png', catalogMessage);
-                        await this.saveSentMessage(phoneNumber, catalogMessage);
-                        logger.info(`✅ Catálogo enviado (${products.length} productos)`);
+                    if (catalog.hasProducts) {
+                        await this.evolutionAPI.sendMedia(phoneNumber, 'public/precio.png', catalog.message);
+                        await this.saveSentMessage(phoneNumber, catalog.message);
+                        logger.info(`✅ Catálogo enviado`);
                         return;
                     } else {
                         logger.warn('⚠️ No hay productos disponibles en la base de datos');
@@ -596,24 +590,18 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             if (hasInterestKeyword) {
                 logger.info(`🔍 Usuario muestra interés en producto: ${content}`);
                 try {
-                    const prisma = (await import('./database/prisma')).default;
-                    const { findProductByName, formatProductDetails } = await import('./utils/product-formatter.util');
-                    
-                    const products = await prisma.product.findMany({
-                        where: { inStock: true },
-                        orderBy: { createdAt: 'desc' }
-                    });
+                    const { ProductService } = await import('./services/product.service');
                     
                     // Extraer nombre del producto del mensaje
                     const productName = content
                         .replace(/tengo interes en|tengo interés en|me interesa|quiero saber de|información de|info de|detalles de/gi, '')
                         .trim();
                     
-                    if (productName && products.length > 0) {
-                        const product = findProductByName(products, productName);
+                    if (productName) {
+                        const product = await ProductService.findProductByName(productName);
                         
                         if (product) {
-                            const productDetails = formatProductDetails(product);
+                            const productDetails = ProductService.formatProductDetails(product);
                             
                             // Si hay imagen URL, incluirla en el mensaje (el mensaje ya tiene el link)
                             // Si no hay imagen, usar imagen por defecto
@@ -649,6 +637,10 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             }
 
             // Si no pregunta por estado, usar IA para responder
+            const responseStartTime = Date.now();
+            let botResponse = '';
+            let responseTime: number | undefined;
+            
             try {
                 const { aiCompletion } = await import('./utils/ai-fallback.util');
                 
@@ -658,7 +650,11 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 
                 const result = await aiCompletion(content, conversationHistory);
                 
-                logger.info(`📝 Respuesta de IA recibida (${result.text.length} chars): ${result.text.substring(0, 100)}...`);
+                // Calcular tiempo de respuesta
+                responseTime = Date.now() - responseStartTime;
+                botResponse = result.text;
+                
+                logger.info(`📝 Respuesta de IA recibida (${result.text.length} chars) en ${responseTime}ms: ${result.text.substring(0, 100)}...`);
                 
                 // Procesar respuesta para detectar y enviar imágenes
                 const { processResponseWithImages } = await import('./utils/image-sender.util');
@@ -679,13 +675,40 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 // Enviar texto (si hay, después de las imágenes)
                 if (cleanText && cleanText.length > 0) {
                     await this.evolutionAPI.sendMessage(phoneNumber, cleanText);
-                    await this.saveSentMessage(phoneNumber, cleanText);
+                    await this.saveSentMessage(phoneNumber, cleanText, responseTime);
+                    botResponse = cleanText;
                 }
             } catch (error) {
                 logger.error(`Error usando IA para responder: ${error}`);
+                responseTime = Date.now() - responseStartTime;
                 const errorMessage = 'Lo siento, no pude procesar tu consulta en este momento. Por favor, intenta de nuevo o contacta al soporte.';
                 await this.evolutionAPI.sendMessage(phoneNumber, errorMessage);
-                await this.saveSentMessage(phoneNumber, errorMessage);
+                await this.saveSentMessage(phoneNumber, errorMessage, responseTime);
+                botResponse = errorMessage;
+            }
+
+            // Trackear interacción con métricas avanzadas
+            try {
+                const salesTracker = (await import('./utils/sales-tracker.util')).default;
+                const sentimentAnalyzer = (await import('./utils/sentiment-analysis.util')).default;
+                
+                // Detectar intent y sentimiento
+                const intentDetection = salesTracker.detectIntent(content);
+                const sentimentResult = sentimentAnalyzer.analyze(content);
+                
+                await salesTracker.trackInteraction({
+                    phoneNumber,
+                    userMessage: content,
+                    botResponse,
+                    intent: intentDetection.intent,
+                    intentConfidence: intentDetection.confidence,
+                    responseTime,
+                    sentiment: sentimentResult.sentiment,
+                    sentimentScore: sentimentResult.score
+                });
+            } catch (trackingError) {
+                logger.error('Error trackeando interacción:', trackingError);
+                // No fallar el flujo principal si el tracking falla
             }
 
         } catch (error) {
@@ -802,12 +825,25 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
      * Guardar mensaje enviado en base de datos
      * @param phoneNumber Número de teléfono
      * @param message Texto del mensaje
+     * @param responseTime Tiempo de respuesta en milisegundos (opcional)
      * @param messageId ID del mensaje (opcional, para Evolution API puede ser null)
      */
-    public async saveSentMessage(phoneNumber: string, message: string, messageId?: string | null): Promise<void> {
+    public async saveSentMessage(phoneNumber: string, message: string, responseTime?: number, messageId?: string | null): Promise<void> {
         try {
             const uniqueMessageId = messageId || `${phoneNumber}-${Date.now()}-${Math.random()}`;
             const timestamp = new Date();
+
+            // Detectar intent y sentimiento del mensaje del bot (opcional, para análisis)
+            let detectedIntent: string | null = null;
+            let intentConfidence: number | null = null;
+            try {
+                const salesTracker = (await import('./utils/sales-tracker.util')).default;
+                const detection = salesTracker.detectIntent(message);
+                detectedIntent = detection.intent;
+                intentConfidence = detection.confidence;
+            } catch (error) {
+                // Ignorar errores de detección de intent en mensajes del bot
+            }
 
             await prisma.message.upsert({
                 where: { messageId: uniqueMessageId },
@@ -821,6 +857,9 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     timestamp: timestamp,
                     hasMedia: false,
                     requiresAttention: false,
+                    responseTime: responseTime || null,
+                    detectedIntent: detectedIntent || null,
+                    intentConfidence: intentConfidence || null,
                     metadata: {
                         messageId: messageId || null,
                         fromMe: true
@@ -837,6 +876,9 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     timestamp: timestamp,
                     hasMedia: false,
                     requiresAttention: false,
+                    responseTime: responseTime || null,
+                    detectedIntent: detectedIntent || null,
+                    intentConfidence: intentConfidence || null,
                     metadata: {
                         messageId: messageId || null,
                         fromMe: true
@@ -865,8 +907,12 @@ async function onboardEvolution(
     content: string,
     userI18n: UserI18n
 ): Promise<void> {
-    // Implementar lógica de onboarding si es necesario
-    // Por ahora, solo un placeholder
+    try {
+        const { onboardEvolution: onboardEvolutionUtil } = await import('./utils/onboarding-evolution.util');
+        await onboardEvolutionUtil(evolutionAPI, phoneNumber, content, userI18n, true);
+    } catch (error) {
+        logger.error('Error en onboardEvolution:', error);
+    }
 }
 
 async function sendAdminInfoEvolution(
@@ -875,10 +921,10 @@ async function sendAdminInfoEvolution(
 ): Promise<void> {
     try {
         const { sendAdminInfo } = await import('./utils/admin-info.util');
-        // Adaptar sendAdminInfo para usar Evolution API
-        // Por ahora, solo un placeholder
+        // sendAdminInfo ya usa BotManager que usa Evolution API internamente
+        await sendAdminInfo(null, phoneNumber);
     } catch (error) {
-        logger.error('Error sending admin info:', error);
+        logger.error('Error en sendAdminInfoEvolution:', error);
     }
 }
 
@@ -888,9 +934,9 @@ async function sendUpdatedAdminInfoEvolution(
 ): Promise<void> {
     try {
         const { sendUpdatedAdminInfo } = await import('./utils/admin-info.util');
-        // Adaptar sendUpdatedAdminInfo para usar Evolution API
-        // Por ahora, solo un placeholder
+        // sendUpdatedAdminInfo ya usa BotManager que usa Evolution API internamente
+        await sendUpdatedAdminInfo(null, phoneNumber);
     } catch (error) {
-        logger.error('Error sending updated admin info:', error);
+        logger.error('Error en sendUpdatedAdminInfoEvolution:', error);
     }
 }

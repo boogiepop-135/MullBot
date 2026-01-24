@@ -6,16 +6,16 @@ import SalesTracker from "../utils/sales-tracker.util";
 export const run = async (message: Message, args: string[], userI18n: UserI18n) => {
     const chat = await message.getChat();
     
-    // Obtener estadísticas de ventas
-    const stats = SalesTracker.getSalesStats();
+    // Obtener estadísticas de ventas (ahora es asíncrono)
+    const stats = await SalesTracker.getSalesStats();
     
     const estadisticas = `
 📊 *ESTADÍSTICAS DE VENTAS MÜLLBLUE*
 
 *RESUMEN GENERAL* 📈
-👥 Usuarios únicos: ${stats.uniqueUsers}
+👥 Contactos únicos: ${stats.uniqueContacts}
 💬 Total de interacciones: ${stats.totalInteractions}
-📱 Promedio por usuario: ${Math.round(stats.totalInteractions / stats.uniqueUsers)}
+📱 Promedio por contacto: ${stats.uniqueContacts > 0 ? Math.round(stats.totalInteractions / stats.uniqueContacts) : 0}
 
 *INTENCIONES DETECTADAS* 🎯
 ${Object.entries(stats.intentCounts)
@@ -35,7 +35,7 @@ ${Object.entries(stats.intentCounts)
 
 *TOP LEADS* 🏆
 ${stats.topLeads.map((lead, index) => 
-    `${index + 1}. Usuario ${lead.userId.slice(-4)} - Puntuación: ${lead.score} (${lead.interactions} interacciones)`
+    `${index + 1}. ${lead.name || lead.phoneNumber.slice(-4)} - Score: ${lead.leadScore} | Engagement: ${(lead.engagementScore * 100).toFixed(0)}% | Conversión: ${(lead.conversionProbability * 100).toFixed(0)}%`
 ).join('\n')}
 
 *ANÁLISIS DE CONVERSIÓN* 📊

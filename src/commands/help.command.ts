@@ -7,10 +7,11 @@ export const run = (message: Message, args: string[] = null, userI18n: UserI18n)
     const prefix = AppConfig.instance.getBotPrefix();
     const query = args.join(" ").trim();
 
+    // Comandos disponibles (solo los relacionados con ventas)
     const commandKeys = [
-        'onboard', 'help', 'ping', 'langlist', 'translate',
-        'chat', 'meme', 'joke', 'get', 'meteo',
-        'productos', 'guia', 'contacto', 'precios', 'pago', 'tarjeta'
+        'help', 'ping', 'chat',
+        'productos', 'guia', 'contacto', 'precios', 'pago', 'tarjeta',
+        'get', 'estadisticas'
     ];
 
     let content = "";

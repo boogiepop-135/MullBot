@@ -6,20 +6,24 @@ Ayuda a desarrolladores/agents a ser productivos rápidamente explicando la arqu
 ---
 
 ## Big picture & responsabilidades 🔧
-- **Qué es**: MullBot es un agente de ventas por WhatsApp que usa **Gemini** (primario) y **Claude** (fallback) para generar respuestas. Interactúa con usuarios vía `whatsapp-web.js`, guarda sesiones en **MongoDB** y expone un panel admin en Express/EJS.
+- **Qué es**: MullBot es un agente de ventas por WhatsApp que usa **Gemini** (primario) y **Claude** (fallback) para generar respuestas. Interactúa con usuarios vía **Evolution API v2**, guarda sesiones en **PostgreSQL** (Prisma) y expone un panel admin en Express/EJS.
 - **Componentes principales**:
   - `src/index.ts` — arranque: conecta DB, inicia `BotManager`, crons y rutas (EJS).
-  - `src/bot.manager.ts` — orquesta el cliente WhatsApp, manejo de QR/sesiones, reconexiones y flujo de mensajes.
-  - `src/commands/**` — comandos del bot; cada comando exporta `run(message, args, userI18n)`.
+  - `src/bot.manager.ts` — orquesta Evolution API v2, manejo de QR/sesiones, reconexiones y flujo de mensajes.
+  - `src/commands/**` — comandos del bot; cada comando exporta `run(message, args, userI18n)` y se adapta mediante `command-adapter.ts` para Evolution API.
+  - `src/services/evolution-api-v2.service.ts` — servicio principal para comunicación con Evolution API v2.
   - `src/utils/ai-fallback.util.ts` — lógica de IA: intenta Gemini, si falla usa Claude; contiene el *system prompt* de ventas.
-  - `src/configs/*` — configuración (env, puppeteer, mongo store, logger).
+  - `src/services/product.service.ts` — servicio centralizado para operaciones con productos.
+  - `src/configs/*` — configuración (env, logger, db).
 
 ## Qué debe saber un agent al editar/añadir código 🧭
-- **Comandos**: seguir la firma y patrones de `src/commands/chat.command.ts` — primero comprobar respuestas rápidas (ahorran tokens), después llamar `aiCompletion`.
+- **Comandos**: Los comandos legacy usan `run(message, args, userI18n)` pero se adaptan automáticamente a Evolution API mediante `src/commands/command-adapter.ts`. Los comandos pueden usar `MessageMedia.fromFilePath()` de whatsapp-web.js y el adaptador lo manejará correctamente.
   - Ejemplo: `export const run = async (message, args, userI18n) => { ... }`.
-- **Evitar**: volver a introducir soporte de OpenAI/ChatGPT; el archivo `src/utils/chat-gpt.util.ts` arroja un error a propósito.
-- **IA**: la configuración de modelo por defecto está en `src/crm/models/bot-config.model.ts` y el prompt principal está en `src/utils/ai-fallback.util.ts` (modifícalo con cuidado, afecta ventas y cumplimiento de tono).
-- **Sesiones WhatsApp**: la persistencia usa `wwebjs-mongo` (`MongoStore`) y guarda en colecciones como `auth_sessions`. Para forzar limpieza vea métodos en `BotManager` (`clearAllSessions`, `clearSessionFromMongoDB`, `logout`).
+- **Evolution API**: El bot usa Evolution API v2 completamente. No usar whatsapp-web.js directamente. Usar `EvolutionAPIv2Service` para enviar mensajes.
+- **IA**: La configuración de modelo por defecto está en `BotConfig` (Prisma) y el prompt principal está en `src/utils/ai-fallback.util.ts` (modifícalo con cuidado, afecta ventas y cumplimiento de tono).
+- **Sesiones WhatsApp**: La persistencia usa Evolution API v2 que maneja sesiones directamente. Para gestión de sesiones, usar `SessionManagerService`.
+- **Productos**: Usar `ProductService` para operaciones con productos (obtener catálogo, buscar productos, etc.).
+- **Manejo de errores**: Usar `src/utils/error-handler.util.ts` para manejo estandarizado de errores.
 - **Escalado a agente humano**: Puedes configurar un `humanAgentPhone` desde el panel de administración y activar `notifyAgentOnAttention`. Cuando un contacto solicite atención humana, el bot pausará al contacto, enviará el mensaje de confirmación al usuario y notificará al número de agente (incluyendo el teléfono del usuario y el texto original). El admin puede entonces atender la conversación desde el panel (Chat modal) o responder directamente desde WhatsApp.
 - **Puppeteer/Chrome**: el proyecto detecta rutas comunes en `src/configs/env.config.ts`. Si Puppeteer falla, comprueba `PUPPETEER_EXECUTABLE_PATH` y los logs (Railway puede necesitar `google-chrome-stable`).
 

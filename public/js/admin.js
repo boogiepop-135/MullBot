@@ -14,6 +14,8 @@ let chatMessagesInterval = null; // Interval para actualizar mensajes automátic
 let currentStatusPhone = null;
 let currentProductId = null;
 let currentTemplateId = null;
+let productsActiveTab = 'all'; // 'all' | 'product' | 'kit'
+let botContentActiveTab = 'quick_response'; // 'quick_response' | 'command' | 'other'
 
 // Authentication check
 async function checkAuth() {
@@ -1437,22 +1439,29 @@ function renderTemplates(templates) {
 
 async function loadProducts() {
   try {
-    // Siempre obtener productos frescos desde la BD (sin caché)
     const response = await fetch('/crm/products', {
       headers: { 
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Cache-Control': 'no-cache' // Forzar obtener datos frescos
+        'Cache-Control': 'no-cache'
       }
     });
     if (!response.ok) throw new Error('Failed to load products');
     allProducts = await response.json();
-    renderProducts(allProducts);
+    renderProducts();
     console.log(`✅ Productos cargados desde BD: ${allProducts.length} productos`);
   } catch (error) {
     console.error('Error loading products:', error);
     alert('Error al cargar productos. Por favor, recarga la página.');
   }
 }
+
+window.setProductsTab = function(tab) {
+  productsActiveTab = tab;
+  document.querySelectorAll('.products-tab').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+  });
+  renderProducts();
+};
 
 // Sincronizar productos de la base de datos hacia Google Sheets
 async function syncProductsToGoogleSheets() {
@@ -1609,23 +1618,35 @@ async function syncProductsFromGoogleSheets() {
 // Hacer función global
 window.syncProductsFromGoogleSheets = syncProductsFromGoogleSheets;
 
-function renderProducts(products) {
+function renderProducts() {
   const container = document.getElementById('products-container');
   if (!container) return;
-  container.innerHTML = '';
 
-  if (products.length === 0) {
+  let list = allProducts || [];
+  if (productsActiveTab === 'product') {
+    list = list.filter(function(p) { var c = (p.category || '').toLowerCase(); return c !== 'kit'; });
+  } else   if (productsActiveTab === 'kit') {
+    list = list.filter(function(p) { return p.category && p.category.toLowerCase() === 'kit'; });
+  }
+
+  container.innerHTML = '';
+  if (list.length === 0) {
+    const msg = productsActiveTab === 'kit' 
+      ? 'No hay kits. Crea uno con tipo "Kit" o cambia a "Productos".'
+      : productsActiveTab === 'product'
+        ? 'No hay productos individuales. Crea uno con tipo "Producto" o revisa "Kits".'
+        : 'No hay productos. Haz clic en "Nuevo" o sincroniza desde Google Sheets.';
     container.innerHTML = `
       <div class="col-span-full text-center py-12">
-        <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
-        <p class="text-gray-500 text-lg">No hay productos</p>
-        <p class="text-gray-400 text-sm mt-2">Haz clic en "Nuevo Producto" o sincroniza desde Google Sheets</p>
+        <i class="fas fa-${productsActiveTab === 'kit' ? 'box-open' : 'box'}-open text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 text-lg">${msg}</p>
+        <p class="text-gray-400 text-sm mt-2">Haz clic en "Nuevo" para agregar</p>
       </div>
     `;
     return;
   }
 
-  products.forEach(product => {
+  list.forEach(product => {
     const card = document.createElement('div');
     card.className = 'bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col';
     
@@ -1660,7 +1681,9 @@ function renderProducts(products) {
           </div>
           ${product.category ? `
             <div class="mb-3">
-              <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">${escapeHtml(product.category)}</span>
+              <span class="text-xs font-medium px-2 py-1 rounded ${(product.category || '').toLowerCase() === 'kit' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}">
+                ${(product.category || '').toLowerCase() === 'kit' ? '📦 Kit' : '🏷️ ' + escapeHtml(product.category)}
+              </span>
             </div>
           ` : ''}
         </div>
@@ -1698,12 +1721,12 @@ if (typeof escapeHtml === 'undefined') {
 
 window.openCreateProductModal = function () {
   currentProductId = null;
-  document.getElementById('product-modal-title').textContent = 'Nuevo Producto';
+  document.getElementById('product-modal-title').textContent = 'Nuevo Producto o Kit';
   document.getElementById('product-id').value = '';
   document.getElementById('product-name').value = '';
   document.getElementById('product-description').value = '';
   document.getElementById('product-price').value = '';
-  document.getElementById('product-category').value = '';
+  document.getElementById('product-category').value = 'Producto';
   document.getElementById('product-sizes').value = '';
   document.getElementById('product-promotions').value = '';
   document.getElementById('product-image-url').value = '';
@@ -1712,15 +1735,17 @@ window.openCreateProductModal = function () {
 };
 
 window.openEditProductModal = function (id) {
-  const product = allProducts.find(p => p.id === id || p._id === id); // Soporte para ambos formatos
+  const product = allProducts.find(p => p.id === id || p._id === id);
   if (!product) return;
   currentProductId = id;
-  document.getElementById('product-modal-title').textContent = 'Editar Producto';
+  document.getElementById('product-modal-title').textContent = 'Editar Producto o Kit';
   document.getElementById('product-id').value = product.id || product._id;
   document.getElementById('product-name').value = product.name;
   document.getElementById('product-description').value = product.description || '';
   document.getElementById('product-price').value = product.price;
-  document.getElementById('product-category').value = product.category || '';
+  const cat = (product.category || '').trim();
+  var catVal = (cat || '').trim();
+  document.getElementById('product-category').value = catVal.toLowerCase() === 'kit' ? 'Kit' : (catVal.toLowerCase() === 'otro' ? 'Otro' : (catVal || 'Producto'));
   document.getElementById('product-sizes').value = (product.sizes || []).join(', ');
   document.getElementById('product-promotions').value = product.promotions || '';
   document.getElementById('product-image-url').value = product.imageUrl || '';
@@ -2321,6 +2346,15 @@ window.saveBotConfig = async function() {
 // --- Bot Content Functions ---
 let allBotContent = [];
 
+var BOT_CONTENT_TEMPLATES = {
+  main_menu: { key: 'main_menu', category: 'quick_response', description: 'Menú principal al saludar', content: '👋 *MENÚ PRINCIPAL*\n\n¡Hola! ¿En qué puedo ayudarte?\n\n*1.* Proceso de compostaje\n*2.* Precios y promociones\n*3.* Métodos de pago\n*4.* Qué incluye el kit\n*5.* Dimensiones\n*6.* Envío\n*7.* Preguntas frecuentes\n*8.* Hablar con asesor\n\nEscribe el número 😊' },
+  option_1_process: { key: 'option_1_process', category: 'quick_response', description: 'Opción 1: Proceso de compostaje', content: '🌱 *PROCESO DE COMPOSTAJE*\n\n1️⃣ Depositar residuos orgánicos\n2️⃣ Espolvorear biocatalizador\n3️⃣ Compactar y tapar\n4️⃣ Repetir hasta llenar\n\n✅ Sin olores • ✅ Sin plagas' },
+  option_2_price: { key: 'option_2_price', category: 'quick_response', description: 'Opción 2: Precios', content: '💰 *PRECIOS Y PROMOCIONES*\n\nConsulta precios actualizados. Los productos se muestran desde el catálogo.\n\n¿Algo más?' },
+  option_8_agent: { key: 'option_8_agent', category: 'quick_response', description: 'Opción 8: Hablar con asesor', content: '👤 *ATENCIÓN PERSONALIZADA*\n\nTu solicitud está registrada. Un asesor te contactará pronto.\n\n⏰ Lunes a Viernes 9am–7pm\n\n¡Gracias! 🌱' },
+  catalogo_mullblue: { key: 'catalogo_mullblue', category: 'quick_response', description: 'Catálogo / enlace', content: 'Consulta nuestro catálogo completo aquí:\nhttps://wa.me/c/...' },
+  command_precios: { key: 'command_precios', category: 'command', description: 'Comando /precios', content: 'Te muestro nuestros productos y precios actualizados.' }
+};
+
 async function loadBotContent() {
   try {
     const response = await fetch('/crm/bot-content', {
@@ -2328,93 +2362,90 @@ async function loadBotContent() {
     });
     if (!response.ok) throw new Error('Failed to load bot content');
     allBotContent = await response.json();
-    renderBotContent(allBotContent);
+    renderBotContent();
   } catch (error) {
     console.error('Error loading bot content:', error);
   }
 }
 
-function renderBotContent(contents) {
+function renderBotContent() {
   const container = document.getElementById('bot-content-container');
   if (!container) return;
   container.innerHTML = '';
-  
-  if (!contents || contents.length === 0) {
+
+  var list = allBotContent || [];
+  var cat = botContentActiveTab;
+  function normCat(c) { return (c.category || '').toUpperCase().replace(/-/g, '_'); }
+  if (cat === 'quick_response') list = list.filter(function(c) { return normCat(c) === 'QUICK_RESPONSE'; });
+  else if (cat === 'command') list = list.filter(function(c) { return normCat(c) === 'COMMAND'; });
+  else if (cat === 'other') list = list.filter(function(c) { var x = normCat(c); return x !== 'QUICK_RESPONSE' && x !== 'COMMAND'; });
+
+  if (list.length === 0) {
+    var emptyMsg = cat === 'quick_response' ? 'No hay respuestas rápidas.' :
+      cat === 'command' ? 'No hay comandos (ej. /precios).' : 'No hay otros contenidos.';
     container.innerHTML = `
       <div class="col-span-full text-center py-12">
-        <i class="fas fa-robot text-6xl text-gray-300 mb-4"></i>
-        <p class="text-gray-500 mb-2 text-lg">No hay contenido configurado</p>
-        <p class="text-gray-400 text-sm mb-4">Inicializa el contenido predeterminado para comenzar</p>
-        <button onclick="initDefaultBotContent()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors">
-          <i class="fas fa-magic mr-2"></i>Inicializar contenido predeterminado
-        </button>
+        <i class="fas fa-${cat === 'command' ? 'terminal' : 'reply'} text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 mb-2 text-lg">${emptyMsg}</p>
+        <p class="text-gray-400 text-sm mb-4">Inicializa los predeterminados o crea uno nuevo.</p>
+        <div class="flex gap-3 justify-center flex-wrap">
+          <button onclick="initDefaultBotContent()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-magic mr-2"></i>Inicializar
+          </button>
+          <button onclick="openCreateBotContentModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-plus mr-2"></i>Nuevo
+          </button>
+        </div>
       </div>`;
     return;
   }
-  
-  const categoryLabels = {
-    'QUICK_RESPONSE': 'Respuesta Rápida',
-    'quick_response': 'Respuesta Rápida',
-    'COMMAND': 'Comando',
-    'command': 'Comando',
-    'OTHER': 'Otro',
-    'other': 'Otro'
-  };
-  
-  // Agrupar por categoría para mejor organización
-  const groupedByCategory = contents.reduce((acc, content) => {
-    const category = content.category || 'other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(content);
-    return acc;
-  }, {});
-  
-  Object.keys(groupedByCategory).forEach(category => {
-    // Crear sección de categoría
-    const categoryDiv = document.createElement('div');
-    categoryDiv.className = 'col-span-full mb-4';
-    categoryDiv.innerHTML = `
-      <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-        <i class="fas fa-folder text-indigo-600"></i>
-        ${categoryLabels[category] || category}
-      </h3>
-    `;
-    container.appendChild(categoryDiv);
-    
-    // Agregar productos de esta categoría
-    groupedByCategory[category].forEach(content => {
-      const div = document.createElement('div');
-      div.className = 'bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200';
-      const safeContent = (content.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const safeDescription = (content.description || 'Sin descripción').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      div.innerHTML = `
-        <div class="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100 flex justify-between items-start">
-          <div class="flex-1">
-            <h3 class="font-bold text-gray-900 mb-1">${escapeHtml(content.key)}</h3>
-            <p class="text-xs text-gray-500 mb-2">${safeDescription}</p>
-            ${content.mediaPath ? `<span class="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded"><i class="fas fa-image mr-1"></i>${escapeHtml(content.mediaPath)}</span>` : ''}
+
+  list.forEach(function(content) {
+    var isCmd = (content.category || '').toLowerCase() === 'command';
+    var displayKey = isCmd && content.key.indexOf('command_') === 0 ? '/' + content.key.replace('command_', '') : content.key;
+    var safeDesc = (content.description || 'Sin descripción').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    var pre = (content.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    var short = pre.length > 120 ? pre.substring(0, 120) + '...' : pre;
+    var div = document.createElement('div');
+    div.className = 'bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all';
+    div.innerHTML = `
+      <div class="p-4 flex justify-between items-start gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono font-bold text-gray-900">${isCmd ? '<span class="text-indigo-600">' + escapeHtml(displayKey) + '</span>' : escapeHtml(content.key)}</span>
+            ${content.mediaPath ? '<span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded"><i class="fas fa-image mr-1"></i>Imagen</span>' : ''}
           </div>
-          <div class="flex space-x-2 ml-4">
-            <button onclick="openEditBotContentModal('${escapeHtml(content.key)}')" 
-              class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors" 
-              title="Editar">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button onclick="deleteBotContent('${escapeHtml(content.key)}')" 
-              class="text-red-600 hover:text-red-800 px-3 py-1 rounded-lg hover:bg-red-50 transition-colors" 
-              title="Eliminar">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
+          <p class="text-sm text-gray-600 mb-2">${safeDesc}</p>
+          <pre class="text-xs text-gray-500 bg-gray-50 p-2 rounded max-h-20 overflow-auto whitespace-pre-wrap font-mono">${short}</pre>
         </div>
-        <div class="p-4">
-          <pre class="text-xs text-gray-700 bg-gray-50 p-3 rounded border border-gray-200 max-h-40 overflow-auto whitespace-pre-wrap font-mono">${safeContent.substring(0, 300)}${safeContent.length > 300 ? '...' : ''}</pre>
+        <div class="flex gap-2 shrink-0">
+          <button onclick="openEditBotContentModal('${escapeHtml(content.key).replace(/'/g, "\\'")}')" class="text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors" title="Editar"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteBotContent('${escapeHtml(content.key).replace(/'/g, "\\'")}')" class="text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors" title="Eliminar"><i class="fas fa-trash"></i></button>
         </div>
-      `;
-      container.appendChild(div);
-    });
+      </div>`;
+    container.appendChild(div);
   });
 }
+
+window.setBotContentTab = function(tab) {
+  botContentActiveTab = tab;
+  document.querySelectorAll('.bot-content-tab').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+  });
+  var help = document.getElementById('bot-content-commands-help');
+  if (help) help.classList.toggle('hidden', tab !== 'command');
+  renderBotContent();
+};
+
+window.applyBotContentTemplate = function(val) {
+  if (!val || !BOT_CONTENT_TEMPLATES[val]) return;
+  var t = BOT_CONTENT_TEMPLATES[val];
+  document.getElementById('bot-content-key-input').value = t.key;
+  document.getElementById('bot-content-category-input').value = t.category;
+  document.getElementById('bot-content-description-input').value = t.description || '';
+  document.getElementById('bot-content-text-input').value = t.content || '';
+  document.getElementById('bot-content-media-input').value = t.mediaPath || '';
+};
 
 window.initDefaultBotContent = async function() {
   if (!confirm('¿Inicializar contenido predeterminado del bot?')) return;
@@ -2437,6 +2468,8 @@ window.initDefaultBotContent = async function() {
 
 window.openCreateBotContentModal = function() {
   document.getElementById('bot-content-modal-title').textContent = 'Nuevo Contenido';
+  document.getElementById('bot-content-template-row').classList.remove('hidden');
+  document.getElementById('bot-content-template-select').value = '';
   document.getElementById('bot-content-key-input').value = '';
   document.getElementById('bot-content-key-input').disabled = false;
   document.getElementById('bot-content-description-input').value = '';
@@ -2447,15 +2480,17 @@ window.openCreateBotContentModal = function() {
 };
 
 window.openEditBotContentModal = function(key) {
-  const content = allBotContent.find(c => c.key === key);
+  var content = allBotContent.find(function(c) { return c.key === key; });
   if (!content) return;
-  
   document.getElementById('bot-content-modal-title').textContent = 'Editar Contenido';
+  document.getElementById('bot-content-template-row').classList.add('hidden');
   document.getElementById('bot-content-key-input').value = content.key;
   document.getElementById('bot-content-key-input').disabled = true;
   document.getElementById('bot-content-description-input').value = content.description || '';
-  document.getElementById('bot-content-category-input').value = content.category || 'other';
-  document.getElementById('bot-content-text-input').value = content.content;
+  var catMap = { 'QUICK_RESPONSE': 'quick_response', 'COMMAND': 'command', 'OTHER': 'other' };
+  var cat = (content.category || '').toUpperCase().replace(/-/g, '_');
+  document.getElementById('bot-content-category-input').value = catMap[cat] || 'other';
+  document.getElementById('bot-content-text-input').value = content.content || '';
   document.getElementById('bot-content-media-input').value = content.mediaPath || '';
   document.getElementById('bot-content-modal').classList.remove('hidden');
 };

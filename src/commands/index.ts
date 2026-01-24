@@ -1,18 +1,32 @@
+import { adaptLegacyCommand } from './command-adapter';
+
+// Importar comandos legacy
+const helpCmd = require("./help.command");
+const pingCmd = require("./ping.command");
+const chatCmd = require("./chat.command");
+const preciosCmd = require("./precios.command");
+const tarjetaCmd = require("./tarjeta.command");
+const pagoCmd = require("./pago.command");
+const productosCmd = require("./productos.command");
+const guiaCmd = require("./guia.command");
+const contactoCmd = require("./contacto.command");
+const estadisticasCmd = require("./estadisticas.command");
+const getCmd = require("./get.command");
+
+// Comandos innecesarios para bot de ventas - ELIMINADOS:
+// - meme, joke, meteo, translate, langlist, onboard, gpt
+
+// Adaptar comandos legacy a Evolution API
 export default {
-    help: require("./help.command"),
-    ping: require("./ping.command"),
-    onboard: require("./onboard.command"),
-    langlist: require("./langlist.command"),
-    translate: require("./translate.command"),
-    chat: require("./chat.command"),
-    meme: require("./meme.command"),
-    joke: require("./joke.command"),
-    get: require("./get.command"),
-    meteo: require("./meteo.command"),
-    productos: require("./productos.command"),
-    guia: require("./guia.command"),
-    contacto: require("./contacto.command"),
-    precios: require("./precios.command"),
-    pago: require("./pago.command"),
-    tarjeta: require("./tarjeta.command"),
-}
+    help: adaptLegacyCommand(helpCmd),
+    ping: adaptLegacyCommand(pingCmd),
+    chat: adaptLegacyCommand(chatCmd),
+    precios: adaptLegacyCommand(preciosCmd),
+    tarjeta: adaptLegacyCommand(tarjetaCmd),
+    pago: adaptLegacyCommand(pagoCmd),
+    productos: adaptLegacyCommand(productosCmd),
+    guia: adaptLegacyCommand(guiaCmd),
+    contacto: adaptLegacyCommand(contactoCmd),
+    estadisticas: adaptLegacyCommand(estadisticasCmd),
+    get: adaptLegacyCommand(getCmd),
+};

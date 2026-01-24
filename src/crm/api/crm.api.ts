@@ -1452,8 +1452,8 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const SalesTracker = (await import('../../utils/sales-tracker.util')).default;
 
-            // Get sales statistics
-            const salesStats = SalesTracker.getSalesStats();
+            // Get sales statistics (now async)
+            const salesStats = await SalesTracker.getSalesStats();
 
             // Get contact statistics
             const totalContacts = await prisma.contact.count();
@@ -1484,18 +1484,8 @@ Tu solicitud ha sido registrada correctamente.
             const campaigns = await prisma.campaign.findMany({ where: { status: CampaignStatus.SENT } });
             const totalMessagesSent = campaigns.reduce((sum, campaign) => sum + (campaign.sentCount || 0), 0);
 
-            // Get top leads from contacts based on interactions
-            const topLeadsContacts = await prisma.contact.findMany({
-                orderBy: { interactionsCount: 'desc' },
-                take: 10,
-                select: {
-                    phoneNumber: true,
-                    name: true,
-                    pushName: true,
-                    interactionsCount: true,
-                    lastInteraction: true
-                }
-            });
+            // Get top leads using new advanced scoring
+            const topLeads = await SalesTracker.getTopLeads(10);
 
             res.json({
                 sales: salesStats,
@@ -1521,20 +1511,33 @@ Tu solicitud ha sido registrada correctamente.
                     scheduled: scheduledCampaigns,
                     totalMessagesSent: totalMessagesSent
                 },
-                topLeads: topLeadsContacts.map(contact => {
-                    const score = SalesTracker.getLeadScore(contact.phoneNumber + '@c.us');
-                    return {
-                        phoneNumber: contact.phoneNumber,
-                        name: contact.name || contact.pushName || 'Unknown',
-                        interactionsCount: contact.interactionsCount,
-                        lastInteraction: contact.lastInteraction,
-                        score: score
-                    };
-                })
+                topLeads: topLeads.map(lead => ({
+                    phoneNumber: lead.phoneNumber,
+                    name: lead.name || 'Unknown',
+                    leadScore: lead.leadScore,
+                    engagementScore: lead.engagementScore,
+                    conversionProbability: lead.conversionProbability,
+                    interactionsCount: lead.interactionsCount,
+                    lastIntent: lead.lastIntent,
+                    lastSentiment: lead.lastSentiment
+                }))
             });
         } catch (error) {
             logger.error('Failed to fetch statistics:', error);
             res.status(500).json({ error: 'Failed to fetch statistics' });
+        }
+    });
+
+    // Advanced Metrics API
+    router.get('/metrics/advanced', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const timeRangeDays = parseInt(req.query.days as string) || 30;
+            const metricsService = (await import('../../services/metrics.service')).default;
+            const metrics = await metricsService.getAdvancedMetrics(timeRangeDays);
+            res.json(metrics);
+        } catch (error) {
+            logger.error('Failed to fetch advanced metrics:', error);
+            res.status(500).json({ error: 'Failed to fetch advanced metrics' });
         }
     });
 
@@ -1790,6 +1793,18 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
 ⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
 
 ¡Gracias por tu paciencia! 🌱`
+                },
+                {
+                    key: 'catalogo_mullblue',
+                    description: 'Catálogo / enlace',
+                    category: 'quick_response',
+                    content: 'Consulta nuestro catálogo completo en: https://wa.me/c/5215664531621'
+                },
+                {
+                    key: 'command_precios',
+                    description: 'Comando /precios',
+                    category: 'command',
+                    content: 'Te muestro nuestros productos y precios actualizados.'
                 }
             ];
 

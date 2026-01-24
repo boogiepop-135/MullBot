@@ -356,21 +356,38 @@ Esta guía explica todas las funcionalidades del panel de administración, organ
 
 ## 📦 Productos {#productos}
 
-**Descripción:** Gestiona tu catálogo de productos y sincroniza con Google Sheets.
+**Descripción:** Gestiona tu catálogo de productos y kits, sincroniza con Google Sheets y organiza por categorías.
 
 ### Vista Principal
+
+#### 📑 Pestañas de Filtrado
+**¿Para qué sirve?**
+- Organiza tus productos por categoría para facilitar la gestión
+- Filtra entre productos individuales y kits
+
+**Pestañas disponibles:**
+- **Todos**: Muestra todos los productos y kits
+- **Productos**: Solo productos individuales
+- **Kits**: Solo kits (productos combinados o paquetes)
+
+**Cómo usar:**
+1. Haz clic en la pestaña que quieres ver
+2. La lista se filtrará automáticamente
+3. Puedes cambiar entre pestañas en cualquier momento
 
 #### 🔄 Sincronizar desde Google Sheets
 **¿Para qué sirve?**
 - Importa productos desde tu hoja de Google Sheets
 - Actualiza precios y productos sin editar manualmente
 - Sincroniza el catálogo completo desde la hoja
+- **Nota**: Los cambios manuales pueden ser sobrescritos por la sincronización automática
 
 **Cómo usar:**
 1. Asegúrate de tener Google Sheets configurado (variables de entorno)
 2. Haz clic en "Sincronizar desde Google Sheets"
 3. El sistema importará los productos automáticamente
 4. Los productos aparecerán en la lista
+5. Recibirás notificaciones si hay cambios de precio o productos nuevos
 
 **Requisitos:**
 - Hoja con columnas: Producto, Descripción, Precio, Precio con descuento, Imagen Link, Disponibilidad
@@ -394,9 +411,11 @@ Esta guía explica todas las funcionalidades del panel de administración, organ
    - **Nombre**: Nombre del producto
    - **Descripción**: Descripción detallada
    - **Precio**: Precio en pesos
+   - **Categoría**: Selecciona entre "Producto", "Kit" u "Otro"
    - **Imagen**: URL de la imagen del producto
    - **En Stock**: Si el producto está disponible
 3. Guarda el producto
+4. **Nota**: Los cambios de precio o creación de productos notificarán automáticamente al agente
 
 ### Vista de Productos (Tarjetas)
 
@@ -407,27 +426,40 @@ Cada producto se muestra en una tarjeta con:
 - **Descripción**: Descripción truncada (máximo 3 líneas)
 - **Precio**: Precio destacado en verde
 - **Estado**: Badge "En Stock" o "Agotado"
-- **Categoría**: Categoría del producto
+- **Categoría**: Badge con la categoría (Producto, Kit, Otro)
 
 #### ✏️ Editar Producto
 **¿Para qué sirve?**
 - Modifica un producto existente
-- Actualiza precio, descripción, imagen, etc.
+- Actualiza precio, descripción, imagen, categoría, etc.
+- **Nota**: Los cambios de precio notificarán automáticamente al agente
 
 **Cómo usar:**
 1. Haz clic en el botón de editar (ícono de lápiz) en la tarjeta
 2. Modifica los campos necesarios
-3. Guarda los cambios
+3. Puedes cambiar la categoría entre Producto, Kit u Otro
+4. Guarda los cambios
 
 #### 🗑️ Eliminar Producto
 **¿Para qué sirve?**
 - Elimina un producto del catálogo
 - Útil para productos que ya no vendes
+- **Nota**: La eliminación notificará automáticamente al agente
 
 **Cómo usar:**
 1. Haz clic en el botón de eliminar (ícono de basura)
 2. Confirma la eliminación
 3. El producto se eliminará permanentemente
+
+### Notificaciones Automáticas
+
+El sistema envía notificaciones automáticas al agente cuando:
+- Se crea un nuevo producto
+- Se elimina un producto
+- Cambia el precio de un producto
+- Se sincroniza desde Google Sheets con cambios
+
+Estas notificaciones aparecen en WhatsApp del agente configurado.
 
 ---
 
@@ -446,31 +478,110 @@ Cada producto se muestra en una tarjeta con:
 
 ## 🤖 Contenido Bot {#contenido-bot}
 
-**Descripción:** Edita las respuestas automáticas y mensajes predefinidos del bot.
+**Descripción:** Edita las respuestas automáticas, comandos y mensajes predefinidos del bot. Organizado por categorías para facilitar la gestión.
 
-### Funcionalidades
+### Vista Principal
 
-#### 📝 Editar Comandos del Bot
+#### 📑 Pestañas de Categorías
 **¿Para qué sirve?**
-- Personaliza las respuestas a comandos como `/precios`, `/productos`, `/guia`, etc.
-- Define qué información muestra el bot para cada comando
+- Organiza el contenido del bot por tipo para facilitar la gestión
+- Filtra entre respuestas rápidas, comandos y otros contenidos
+
+**Pestañas disponibles:**
+- **Respuestas Rápidas**: Mensajes automáticos que el bot usa en conversaciones (ej: menú principal, opciones, etc.)
+- **Comandos**: Respuestas a comandos específicos como `/precios`, `/productos`, etc.
+- **Otros**: Contenido adicional que no encaja en las otras categorías
 
 **Cómo usar:**
-1. Haz clic en "Contenido Bot"
-2. Selecciona el comando que quieres editar
-3. Modifica el texto de la respuesta
-4. Opcionalmente, asocia una imagen
+1. Haz clic en la pestaña que quieres ver
+2. La lista se filtrará automáticamente
+3. Puedes cambiar entre pestañas en cualquier momento
+
+#### 🎯 Plantillas Predefinidas
+**¿Para qué sirve?**
+- Crea contenido nuevo rápidamente usando plantillas predefinidas
+- Ahorra tiempo al crear respuestas comunes
+- Incluye ejemplos de respuestas rápidas y comandos comunes
+
+**Cómo usar:**
+1. Haz clic en "Nuevo Contenido"
+2. Selecciona una plantilla del menú desplegable (opcional)
+3. Los campos se llenarán automáticamente con datos de ejemplo
+4. Personaliza el contenido según tus necesidades
+5. Guarda
+
+**Plantillas disponibles:**
+- Menú principal
+- Respuesta sobre precios
+- Respuesta sobre productos
+- Catálogo disponible
+- Y más...
+
+#### ➕ Nuevo Contenido
+**¿Para qué sirve?**
+- Crea nuevas respuestas o comandos personalizados
+- Útil para agregar funcionalidades específicas al bot
+
+**Cómo usar:**
+1. Haz clic en "Nuevo Contenido"
+2. Completa el formulario:
+   - **Clave (Key)**: Identificador único (ej: `main_menu`, `option_2_price`)
+   - **Categoría**: Selecciona entre Respuesta Rápida, Comando u Otro
+   - **Descripción**: Descripción breve del contenido
+   - **Contenido**: El mensaje que enviará el bot
+   - **Plantilla (Opcional)**: Selecciona una plantilla para pre-llenar campos
+3. Guarda el contenido
+
+#### 📝 Editar Contenido Existente
+**¿Para qué sirve?**
+- Modifica respuestas existentes del bot
+- Actualiza mensajes sin crear nuevos contenidos
+- Personaliza comandos y respuestas rápidas
+
+**Cómo usar:**
+1. Haz clic en el contenido que quieres editar
+2. Se abrirá el modal de edición
+3. Modifica el contenido del mensaje
+4. Opcionalmente, actualiza la ruta de imagen
 5. Guarda los cambios
 
 #### 🖼️ Asociar Media
 **¿Para qué sirve?**
 - Agrega imágenes o archivos a las respuestas del bot
 - Por ejemplo, una imagen de catálogo con el comando `/precios`
+- El bot enviará el archivo junto con el mensaje
 
 **Cómo usar:**
-1. Al editar un contenido, sube una imagen o archivo
-2. El bot enviará el archivo junto con el mensaje
-3. Guarda los cambios
+1. Al editar un contenido, ingresa la ruta de la imagen en "Ruta de Imagen"
+2. Ejemplo: `public/precio.png` o `public/info.png`
+3. El bot enviará el archivo junto con el mensaje
+4. Guarda los cambios
+
+#### 🔄 Inicializar Predeterminados
+**¿Para qué sirve?**
+- Crea un conjunto básico de respuestas y comandos si no tienes contenido configurado
+- Útil para empezar rápidamente o restaurar contenido básico
+- Incluye: menú principal, respuestas sobre precios, catálogo, etc.
+
+**Cómo usar:**
+1. Haz clic en "Inicializar Predeterminados"
+2. Se crearán los contenidos básicos automáticamente
+3. Puedes editarlos después según tus necesidades
+
+### Comandos Disponibles
+
+El bot reconoce los siguientes comandos (puedes personalizar sus respuestas):
+
+- `/precios` - Muestra el catálogo de productos con precios
+- `/productos` - Información sobre productos disponibles
+- `/guia` - Guía de uso del producto
+- `/contacto` - Información de contacto
+- `/pago` - Métodos de pago disponibles
+- `/tarjeta` - Información sobre pago con tarjeta
+- `/help` - Muestra ayuda y comandos disponibles
+- `/chat` - Inicia conversación con el bot
+
+**Nota**: Para personalizar la respuesta de un comando, crea un contenido con la clave `command_[nombre]`, por ejemplo: `command_precios` para personalizar `/precios`.
 
 ---
 
@@ -528,32 +639,46 @@ Cada producto se muestra en una tarjeta con:
 
 #### 🏠 General
 **¿Para qué sirve?**
-- Configuración básica del bot
+- Configuración básica del bot y comportamiento
 
 **Campos:**
-- **Nombre del Bot**: Nombre que verán los usuarios al chatear
+- **Nombre del Bot**: Nombre que verán los usuarios al chatear (ej: "MüllBlue")
 - **Emoji del Bot**: Emoji que aparecerá junto al nombre (ej: 🌱)
 - **Delay de Respuesta (ms)**: Tiempo de espera antes de responder (simula tiempo humano)
   - Ejemplo: 10000ms = 10 segundos
+  - Recomendado: Entre 5000ms (5s) y 15000ms (15s)
+  - Valores muy bajos pueden parecer robóticos
+  - Valores muy altos pueden frustrar a los usuarios
 
 **Cómo usar:**
 1. Ve a Configuración → Pestaña "General"
 2. Modifica los valores necesarios
 3. Haz clic en "Guardar Configuración"
+4. Los cambios se aplicarán inmediatamente
+
+**Nota**: El prompt del sistema y perfil de vendedor se configuran en Monitor IA, no aquí.
 
 #### 🏢 Negocio
 **¿Para qué sirve?**
 - Información de tu empresa para que el bot la comparta
+- Datos de contacto y redes sociales
 
 **Campos:**
-- **Nombre del Negocio**
-- **Descripción**
-- **Teléfono**
-- **Email**
-- **Dirección**
-- **Horarios de Atención**
-- **Redes Sociales**: Facebook, Instagram, TikTok
-- **Teléfono del Agente**: Número donde recibir notificaciones
+- **Nombre del Negocio**: Nombre oficial de tu empresa
+- **Descripción**: Descripción breve del negocio
+- **Teléfono**: Teléfono de contacto principal
+- **Email**: Email de contacto
+- **Dirección**: Dirección física (opcional)
+- **Horarios de Atención**: Horarios en que está disponible el equipo
+- **Redes Sociales**: 
+  - Facebook
+  - Instagram
+  - TikTok
+- **Teléfono del Agente**: Número donde recibir notificaciones de cambios importantes
+  - Recibirá notificaciones cuando:
+    - Se crea o elimina un producto
+    - Cambia el precio de un producto
+    - Un cliente solicita atención humana
 
 #### 💬 Mensajes
 **¿Para qué sirve?**
@@ -566,66 +691,120 @@ Cada producto se muestra en una tarjeta con:
 #### 💰 Pagos
 **¿Para qué sirve?**
 - Información de métodos de pago
+- Datos bancarios y enlaces de pago
 
 **Campos:**
 - **Información Bancaria**: Datos para transferencias
+  - Número de cuenta
+  - CLABE
+  - Nombre del titular
 - **Email de PayPal**: Para pagos por PayPal
+- **Link de Mercado Pago**: Enlace para pagos con tarjeta
+
+**Nota**: Esta información se mostrará cuando los clientes pregunten por métodos de pago.
 
 #### 📱 WhatsApp
 **¿Para qué sirve?**
 - Gestiona la conexión de WhatsApp
+- Herramientas de diagnóstico y solución de problemas
 
 **Funcionalidades:**
-- **Estado de Conexión**: Verifica si WhatsApp está conectado
-- **Método de Conexión**: 
-  - **QR Code**: Escanea el código QR con tu teléfono
-  - **Pairing Code**: Ingresa el código de 8 dígitos en WhatsApp
-- **Gestión de Instancia**:
-  - **Crear Instancia**: Crea una nueva instancia de WhatsApp
-  - **Eliminar Instancia**: Borra la instancia actual (útil si se traba)
-  - **Reiniciar Instancia**: Reinicia la conexión
-- **Contactos Pausados**: Botón "Despausar Todos" para reactivar todos los contactos
+
+**Estado de Conexión:**
+- Muestra si WhatsApp está conectado o desconectado
+- Actualiza automáticamente cada pocos segundos
+- Indicadores visuales: Verde (conectado), Rojo (desconectado)
+
+**Método de Conexión:**
+- **QR Code**: Escanea el código QR con tu teléfono
+  1. Haz clic en "Mostrar QR"
+  2. Abre WhatsApp en tu teléfono
+  3. Ve a Configuración → Dispositivos vinculados → Vincular dispositivo
+  4. Escanea el código QR
+  5. Espera a que se conecte (puede tardar unos segundos)
+  
+- **Pairing Code**: Ingresa el código de 8 dígitos en WhatsApp
+  1. Haz clic en "Generar Pairing Code"
+  2. Abre WhatsApp en tu teléfono
+  3. Ve a Configuración → Dispositivos vinculados → Vincular dispositivo
+  4. Selecciona "Vincular con código de emparejamiento"
+  5. Ingresa el código de 8 dígitos mostrado
+
+**Gestión de Instancia:**
+- **Crear Instancia**: Crea una nueva instancia de WhatsApp
+  - Útil si la instancia actual está corrupta o no funciona
+  - Nota: Tendrás que escanear el QR nuevamente
+  
+- **Eliminar Instancia**: Borra la instancia actual
+  - Útil si se traba o hay problemas de conexión
+  - Nota: Tendrás que crear una nueva instancia después
+  
+- **Reiniciar Instancia**: Reinicia la conexión sin eliminar
+  - Útil para resolver problemas temporales
+  - Mantiene la sesión activa
+
+**Contactos Pausados:**
+- **Despausar Todos**: Reactiva todos los contactos pausados
+  - Útil después de una campaña o atención masiva
+  - El bot volverá a responder automáticamente a todos
 
 **Cómo usar:**
 1. Ve a Configuración → Pestaña "WhatsApp"
 2. Si no está conectado, escanea el QR o ingresa el pairing code
 3. Verifica el estado de conexión
 4. Usa las herramientas de emergencia si hay problemas
+5. Si nada funciona, elimina la instancia y crea una nueva
+
+**Solución de Problemas:**
+- Si el QR no aparece: Espera unos segundos y recarga la página
+- Si el QR expira: Se generará uno nuevo automáticamente
+- Si no se conecta: Usa "Eliminar Instancia" y luego "Crear Instancia"
+- Si persiste: Verifica las variables de entorno `EVOLUTION_URL` y `EVOLUTION_APIKEY`
 
 #### 🔐 Seguridad
 **¿Para qué sirve?**
 - Cambiar tu contraseña personal
+- Gestionar tu cuenta de administrador
 
 **Cómo usar:**
 1. Ve a Configuración → Pestaña "Seguridad"
 2. Ingresa tu contraseña actual
-3. Ingresa la nueva contraseña dos veces
+3. Ingresa la nueva contraseña dos veces (para confirmar)
 4. Guarda los cambios
+5. La próxima vez que inicies sesión, usa la nueva contraseña
+
+**Recomendaciones de Seguridad:**
+- Usa una contraseña fuerte (mínimo 8 caracteres, con mayúsculas, minúsculas, números y símbolos)
+- No compartas tu contraseña con nadie
+- Cambia tu contraseña regularmente
+- Si sospechas que tu cuenta fue comprometida, cambia la contraseña inmediatamente
 
 ---
 
 ## 🧠 Monitor IA {#monitor-ia}
 
-**Descripción:** Monitorea el uso de tokens, costos y rendimiento de la inteligencia artificial.
+**Descripción:** Monitorea el uso de tokens, costos y rendimiento de la inteligencia artificial. Configura el modelo, prompt del sistema y perfil de vendedor.
 
 ### Secciones
 
 #### 📊 Estadísticas Generales
 **¿Para qué sirve?**
 - Vista general del rendimiento de la IA
+- Monitorea el uso y costos en tiempo real
 
 **Métricas:**
-- **Modelo Activo**: Qué modelo de IA está siendo usado actualmente
-- **Total Requests**: Total de peticiones a la IA
-- **Total Errores**: Cantidad de errores
-- **Tasa de Éxito**: Porcentaje de peticiones exitosas
+- **Modelo Activo**: Qué modelo de IA está siendo usado actualmente (Gemini, Claude, etc.)
+- **Total Requests**: Total de peticiones a la IA desde el inicio
+- **Total Errores**: Cantidad de errores encontrados
+- **Tasa de Éxito**: Porcentaje de peticiones exitosas (debe ser >95% para buen rendimiento)
 
 #### 💾 Estadísticas de Caché
 **¿Para qué sirve?**
 - Muestra cuánto estás ahorrando con el sistema de caché
+- El caché evita llamadas repetidas a la API, reduciendo costos
 
 **Métricas:**
-- **Tasa de Caché**: Porcentaje de respuestas servidas desde caché
+- **Tasa de Caché**: Porcentaje de respuestas servidas desde caché (idealmente >30%)
 - **Entradas Cache**: Cuántas respuestas están almacenadas
 - **API Calls Ahorradas**: Peticiones que no se hicieron gracias al caché
 - **Ahorro Estimado**: Dinero ahorrado en llamadas a la API
@@ -633,49 +812,88 @@ Cada producto se muestra en una tarjeta con:
 #### 📋 Estado de los Modelos
 **¿Para qué sirve?**
 - Ver el estado de cada modelo de IA configurado
+- Identificar modelos con problemas o agotados
+- Monitorear rendimiento individual de cada modelo
 
 **Información mostrada:**
-- Modelo (Gemini, GPT-4o, etc.)
-- Estado (Disponible, Agotado, Error)
-- API Key configurada
-- Requests y errores por modelo
-- Tasa de éxito
-- Tiempo de respuesta
+- **Modelo**: Nombre del modelo (Gemini 2.0 Flash, Claude, etc.)
+- **Estado**: Disponible, Agotado, Error, o Activo (marcado con ⭐)
+- **API Key**: Etiqueta de la API Key configurada (GEMINI_API_KEY, ANTHROPIC_API_KEY, etc.)
+- **Requests**: Total de peticiones realizadas con este modelo
+- **Errores**: Cantidad de errores
+- **Tasa de Éxito**: Porcentaje de éxito
+- **Tiempo Promedio**: Tiempo de respuesta promedio en milisegundos
 
 #### ⚙️ Configuración de Inteligencia Artificial
 **¿Para qué sirve?**
 - Personaliza cómo funciona la IA del bot
+- Define el comportamiento y personalidad del vendedor
+- Configura el prompt del sistema para respuestas personalizadas
 
 **Campos:**
-- **Modelo de IA**: Selecciona qué modelo usar
-  - Gemini 2.0 Flash (recomendado)
-  - GPT-4o Mini
-  - GPT-4o
-- **Prompt del Sistema**: Instrucciones personalizadas que seguirá la IA
-  - Déjalo vacío para usar el prompt predeterminado
-  - Útil para personalizar el comportamiento del bot
-- **Perfil de Vendedor**:
-  - **Personalidad**: 
-    - 🧠 Experto: Profesional y capacitado
-    - 😊 Amigable: Cercano y genera confianza
-    - 👔 Formal: Corporativo y profesional
-    - 💪 Persuasivo: Experto en técnicas de cierre
-  - **¿Puede ofrecer descuentos?**: Sí/No
-  - **Descuento Máximo (%)**: Si está habilitado, porcentaje máximo
-  - **Condiciones para Descuentos**: Reglas específicas sobre cuándo ofrecer descuentos
+
+**Modelo de IA:**
+- Selecciona qué modelo usar como primario
+- Opciones: Gemini 2.0 Flash (recomendado), GPT-4o Mini, GPT-4o, Claude
+- El sistema usará automáticamente modelos de respaldo si el primario falla
+
+**Prompt del Sistema:**
+- Instrucciones personalizadas que seguirá la IA
+- Déjalo vacío para usar el prompt predeterminado optimizado para ventas
+- Útil para personalizar el comportamiento del bot
+- **Ejemplo**: "Sé más directo y conciso" o "Enfócate en beneficios ambientales"
+
+**Perfil de Vendedor:**
+
+- **Personalidad**: 
+  - 🧠 **Experto**: Profesional y capacitado, responde con conocimiento técnico
+  - 😊 **Amigable**: Cercano y genera confianza, usa lenguaje casual
+  - 👔 **Formal**: Corporativo y profesional, lenguaje más estructurado
+  - 💪 **Persuasivo**: Experto en técnicas de cierre, enfocado en convertir
+
+- **¿Puede ofrecer descuentos?**: Sí/No
+  - Si está habilitado, el bot puede ofrecer descuentos automáticamente
+  - Si está deshabilitado, el bot nunca mencionará descuentos
+
+- **Descuento Máximo (%)**: Si los descuentos están habilitados, porcentaje máximo que puede ofrecer
+  - Ejemplo: Si es 10%, el bot puede ofrecer hasta 10% de descuento
+
+- **Condiciones para Descuentos**: Reglas específicas sobre cuándo ofrecer descuentos
+  - Ejemplo: "Solo ofrecer descuento si el cliente menciona precio alto"
+  - Ejemplo: "Ofrecer 5% en primera compra, 10% en compras mayores a $2000"
 
 **Cómo usar:**
 1. Ve a Monitor IA
-2. Modifica la configuración de IA según tus necesidades
-3. Haz clic en "Guardar Configuración de IA"
-4. Los cambios se aplicarán en las próximas respuestas del bot
+2. Revisa las estadísticas para entender el rendimiento actual
+3. Modifica la configuración de IA según tus necesidades
+4. Haz clic en "Guardar Configuración de IA"
+5. Los cambios se aplicarán en las próximas respuestas del bot
+
+**Mejores Prácticas:**
+- Monitorea la tasa de éxito regularmente (debe ser >95%)
+- Si un modelo tiene muchos errores, considera cambiarlo
+- Usa el caché para reducir costos en preguntas frecuentes
+- Personaliza el prompt según tu audiencia y producto
+- Ajusta la personalidad según tu marca y clientes objetivo
 
 #### 🔧 Herramientas
 **Botones disponibles:**
-- **Resetear Estadísticas**: Reinicia todas las métricas
-- **Probar Conexión**: Verifica que las API Keys funcionan
-- **Limpiar Caché**: Borra todas las respuestas almacenadas
+
+- **Resetear Estadísticas**: Reinicia todas las métricas (requests, errores, etc.)
+  - Útil para empezar un nuevo período de medición
+  - No afecta la configuración ni el caché
+
+- **Probar Conexión**: Verifica que las API Keys funcionan correctamente
+  - Prueba cada modelo configurado
+  - Muestra errores si hay problemas de conexión o autenticación
+
+- **Limpiar Caché**: Borra todas las respuestas almacenadas en caché
+  - Útil si quieres forzar respuestas frescas
+  - Nota: Esto aumentará temporalmente los costos de API
+
 - **Exportar Estadísticas**: Descarga un reporte en formato JSON
+  - Incluye todas las métricas y estado de modelos
+  - Útil para análisis externos o reportes
 
 ---
 
@@ -683,7 +901,13 @@ Cada producto se muestra en una tarjeta con:
 
 **Descripción:** Esta misma guía de uso completa del CRM.
 
-Muestra la documentación completa con instrucciones detalladas de cada sección.
+Muestra la documentación completa con instrucciones detalladas de cada sección del panel de administración. Puedes navegar usando el índice al inicio del documento o hacer clic en los enlaces de cada sección.
+
+**Cómo usar:**
+1. Haz clic en "Guía de Uso" en el menú lateral
+2. Navega por las secciones usando el índice
+3. O busca información específica usando Ctrl+F (Cmd+F en Mac)
+4. Puedes abrir la guía en una nueva pestaña haciendo clic en "Abrir en Nueva Pestaña"
 
 ---
 
@@ -693,29 +917,35 @@ Muestra la documentación completa con instrucciones detalladas de cada sección
 **Solución:**
 1. Ve a Contactos
 2. Haz clic en "Importar Conversaciones Antiguas"
-3. Espera a que termine la importación
-4. Los contactos deberían aparecer
+3. Espera a que termine la importación (puede tardar varios minutos)
+4. Los contactos deberían aparecer automáticamente
+
+**Nota:** La importación trae hasta 50 mensajes por chat para no sobrecargar la base de datos.
 
 ### Productos no se muestran
 **Solución:**
 1. Verifica que Google Sheets esté configurado (variables de entorno)
 2. Ve a Productos → "Sincronizar desde Google Sheets"
-3. Verifica que la hoja tenga las columnas correctas: Producto, Descripción, Precio
+3. Verifica que la hoja tenga las columnas correctas: Producto, Descripción, Precio, Precio con descuento, Imagen Link, Disponibilidad
 4. Si no funciona, crea productos manualmente con "Nuevo Producto"
+5. Verifica que los productos tengan `inStock: true` para que aparezcan
 
 ### Campañas no se envían
 **Solución:**
 1. Verifica que WhatsApp esté conectado (Configuración → WhatsApp)
 2. Revisa los logs del servidor para errores
 3. Asegúrate de que los contactos no estén pausados
-4. Verifica que la campaña esté activa
+4. Verifica que la campaña esté activa y programada correctamente
+5. Si usas envío por lotes, verifica que el tamaño del lote sea adecuado (recomendado: 10-50 contactos por lote)
 
 ### Bot no responde
 **Solución:**
 1. Verifica que Evolution API esté funcionando (Configuración → WhatsApp)
-2. Revisa que las API Keys de IA estén configuradas
-3. Ve a Monitor IA para ver si hay errores
+2. Revisa que las API Keys de IA estén configuradas (Monitor IA)
+3. Ve a Monitor IA para ver si hay errores en los modelos
 4. Verifica el "Modelo Activo" en Monitor IA
+5. Si todos los modelos están agotados, configura nuevas API Keys
+6. Verifica que el bot no esté pausado para ese contacto específico
 
 ### WhatsApp no se conecta
 **Solución:**
@@ -724,6 +954,23 @@ Muestra la documentación completa con instrucciones detalladas de cada sección
 3. Luego "Crear Instancia" para crear una nueva
 4. Escanea el nuevo QR o ingresa el pairing code
 5. Si persiste, revisa las variables de entorno `EVOLUTION_URL` y `EVOLUTION_APIKEY`
+6. Verifica que Evolution API esté corriendo y accesible
+
+### Precios no se actualizan en el bot
+**Solución:**
+1. Verifica que los productos estén actualizados en la base de datos (Productos)
+2. El bot siempre obtiene precios frescos desde la base de datos (sin caché)
+3. Si cambias un precio, el bot debería usar el nuevo precio inmediatamente
+4. Verifica que el producto tenga `inStock: true`
+5. Si el bot sigue mostrando precios antiguos, verifica el prompt del sistema (Monitor IA) - no debe tener precios hardcodeados
+
+### Contenido del bot no se actualiza
+**Solución:**
+1. Verifica que guardaste los cambios en Contenido Bot
+2. El bot usa el contenido desde la base de datos en tiempo real
+3. Si creaste un nuevo contenido, verifica que la clave (key) sea correcta
+4. Para comandos, usa el formato `command_[nombre]`, ej: `command_precios`
+5. Recarga la página y verifica que el contenido aparezca en la lista
 
 ### Verificar el Sistema Completo
 Ejecuta el health check para verificar todo:
@@ -733,11 +980,43 @@ npm run health-check
 
 Este comando verificará:
 - Variables de entorno
-- Base de datos
-- Evolution API
-- API Keys de IA
-- Google Sheets
+- Base de datos (PostgreSQL)
+- Evolution API (conexión y estado)
+- API Keys de IA (Gemini, Claude)
+- Google Sheets (si está configurado)
 - Sistemas de asesorías, productos y campañas
+
+---
+
+## 💡 Mejores Prácticas para Bots de Ventas
+
+Basado en las mejores prácticas de la industria para bots de ventas en WhatsApp (2025):
+
+### Calificación de Leads
+- **Automatiza la calificación**: El bot pregunta automáticamente sobre necesidades, presupuesto y timeline
+- **Lead Scoring**: El sistema asigna puntuaciones basadas en respuestas e interacciones
+- **Routing Inteligente**: Los leads calificados se enrutan automáticamente a asesores
+
+### Engagement y Conversión
+- **Respuesta Rápida**: WhatsApp tiene tasas de apertura del 90-98% vs 20-40% de email
+- **Personalización**: Usa variables como `{{nombre}}` en mensajes para personalizar
+- **Mensajes Contextuales**: El bot recuerda conversaciones anteriores y contexto
+
+### Automatización del Funnel
+- **Captura de Leads**: Múltiples puntos de entrada (QR codes, formularios, campañas)
+- **Nurturing Automático**: Seguimiento automático según el estado del lead
+- **Cierre de Ventas**: El bot puede procesar pedidos y enviar enlaces de pago directamente
+
+### Métricas Clave
+- **Tasa de Respuesta**: Monitorea cuántos contactos responden
+- **Tiempo de Respuesta**: El bot responde en segundos (vs horas/días de email)
+- **Tasa de Conversión**: De lead a venta
+- **Costo por Lead**: Eficiencia de tus campañas
+
+### Optimización Continua
+- **A/B Testing**: Prueba diferentes mensajes y flujos
+- **Análisis de Conversaciones**: Revisa qué funciona mejor
+- **Iteración Basada en Datos**: Mejora basada en métricas reales
 
 ---
 

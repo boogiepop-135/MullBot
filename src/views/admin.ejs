@@ -538,6 +538,21 @@
       transform: translateY(-2px);
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
+
+    /* Products/Kits tabs */
+    .products-tab.active {
+      border-bottom-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .products-tab.active i { color: var(--primary); }
+
+    .bot-content-tab.active {
+      border-bottom-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .bot-content-tab.active i { color: var(--primary); }
   </style>
 </head>
 
@@ -598,8 +613,8 @@
       <a href="#" onclick="showSection('products')" id="nav-products"
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-box w-7 text-center  transition-colors text-lg"></i>
-        <span class="ml-3">Productos</span>
-        <span class="tooltip">Catálogo de productos. Sincroniza con Google Sheets automáticamente</span>
+        <span class="ml-3">Productos y Kits</span>
+        <span class="tooltip">Catálogo de productos y kits. Sincroniza con Google Sheets automáticamente</span>
       </a>
 
       <a href="#" onclick="showSection('users')" id="nav-users"
@@ -613,7 +628,7 @@
         class="nav-item flex items-center px-4 py-3.5 rounded-xl font-medium group">
         <i class="fas fa-comment-dots w-7 text-center  transition-colors text-lg"></i>
         <span class="ml-3">Contenido Bot</span>
-        <span class="tooltip">Edita respuestas automáticas y mensajes del bot</span>
+        <span class="tooltip">Edita respuestas automáticas, comandos y mensajes del bot. Organizado por categorías</span>
       </a>
 
       <a href="#" onclick="showSection('automations')" id="nav-automations"
@@ -1246,26 +1261,39 @@
 
     <!-- Products Section -->
     <div id="products-section" class="section-content hidden p-8">
-      <div class="page-header flex justify-between items-center">
+      <div class="page-header flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Productos</h1>
-          <p class="text-gray-600 mt-1">Gestiona tu catálogo de productos</p>
+          <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Productos y Kits</h1>
+          <p class="text-gray-600 mt-1">Gestiona tu catálogo: productos individuales y kits</p>
         </div>
         <div class="flex gap-3 flex-wrap">
           <button onclick="syncProductsFromGoogleSheets()" class="btn-secondary flex items-center gap-2 whitespace-nowrap">
             <i class="fas fa-download"></i>
-            <span class="hidden sm:inline">Sincronizar desde Google Sheets</span>
+            <span class="hidden sm:inline">Desde Google Sheets</span>
             <span class="sm:hidden">Desde Sheets</span>
           </button>
           <button onclick="syncProductsToGoogleSheets()" class="btn-secondary flex items-center gap-2 whitespace-nowrap">
             <i class="fas fa-upload"></i>
-            <span class="hidden sm:inline">Sincronizar a Google Sheets</span>
+            <span class="hidden sm:inline">A Google Sheets</span>
             <span class="sm:hidden">A Sheets</span>
           </button>
           <button onclick="openCreateProductModal()" class="btn-primary whitespace-nowrap">
-            <i class="fas fa-plus mr-2"></i>Nuevo Producto
+            <i class="fas fa-plus mr-2"></i>Nuevo
           </button>
         </div>
+      </div>
+
+      <!-- Tabs: Todos | Productos | Kits -->
+      <div class="flex gap-2 mb-6 border-b border-gray-200">
+        <button type="button" id="products-tab-all" onclick="setProductsTab('all')" class="products-tab active px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:bg-gray-50 transition-colors" data-tab="all">
+          <i class="fas fa-th-large mr-2 text-gray-500"></i>Todos
+        </button>
+        <button type="button" id="products-tab-products" onclick="setProductsTab('product')" class="products-tab px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:bg-gray-50 transition-colors" data-tab="product">
+          <i class="fas fa-box mr-2 text-gray-500"></i>Productos
+        </button>
+        <button type="button" id="products-tab-kits" onclick="setProductsTab('kit')" class="products-tab px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:bg-gray-50 transition-colors" data-tab="kit">
+          <i class="fas fa-box-open mr-2 text-gray-500"></i>Kits
+        </button>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="products-container">
@@ -2045,19 +2073,36 @@
     </div>
 
     <div id="bot-content-section" class="section-content hidden p-8">
-      <div class="page-header flex justify-between items-center">
-          <div>
+      <div class="page-header flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
           <h1 class="text-3xl font-bold" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Contenido del Bot</h1>
-          <p class="text-gray-600 mt-1">Edita las respuestas automáticas y mensajes del bot</p>
-          </div>
-        <div class="flex gap-3">
+          <p class="text-gray-600 mt-1">Respuestas rápidas, comandos y mensajes del bot. Organizado por categorías para facilitar la gestión.</p>
+        </div>
+        <div class="flex gap-3 flex-wrap">
           <button onclick="initDefaultBotContent()" class="btn-secondary">
-            <i class="fas fa-magic mr-2"></i>Inicializar Predeterminados
+            <i class="fas fa-magic mr-2"></i>Inicializar
           </button>
           <button onclick="openCreateBotContentModal()" class="btn-primary">
-            <i class="fas fa-plus mr-2"></i>Nuevo Contenido
-            </button>
+            <i class="fas fa-plus mr-2"></i>Nuevo
+          </button>
         </div>
+      </div>
+
+      <!-- Tabs: Respuestas Rápidas | Comandos | Otros -->
+      <div class="flex gap-2 mb-4 border-b border-gray-200">
+        <button type="button" id="bot-content-tab-quick" onclick="setBotContentTab('quick_response')" class="bot-content-tab active px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:bg-gray-50 transition-colors" data-tab="quick_response">
+          <i class="fas fa-reply mr-2 text-gray-500"></i>Respuestas Rápidas
+        </button>
+        <button type="button" id="bot-content-tab-command" onclick="setBotContentTab('command')" class="bot-content-tab px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:bg-gray-50 transition-colors" data-tab="command">
+          <i class="fas fa-terminal mr-2 text-gray-500"></i>Comandos
+        </button>
+        <button type="button" id="bot-content-tab-other" onclick="setBotContentTab('other')" class="bot-content-tab px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 border-transparent hover:bg-gray-50 transition-colors" data-tab="other">
+          <i class="fas fa-folder mr-2 text-gray-500"></i>Otros
+        </button>
+      </div>
+
+      <div id="bot-content-commands-help" class="hidden mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-800">
+        <strong>Comandos disponibles:</strong> El bot usa <code class="bg-white px-1.5 py-0.5 rounded">/precios</code> para mostrar el catálogo. Crea un contenido con clave <code class="bg-white px-1.5 py-0.5 rounded">command_precios</code> para personalizar el mensaje cuando no hay productos en BD.
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="bot-content-container">
@@ -2251,9 +2296,14 @@
                       class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                   </div>
                   <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Categoría</label>
-                    <input type="text" id="product-category"
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Tipo</label>
+                    <select id="product-category"
                       class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
+                      <option value="Producto">Producto</option>
+                      <option value="Kit">Kit</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Kit = paquete completo (ej. Kit Completo Müllblue)</p>
                   </div>
                 </div>
                 <div>
@@ -2381,14 +2431,31 @@
           <div
             class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
             <div class="bg-white px-6 pt-6 pb-5 sm:p-8 sm:pb-6">
-              <h3 class="text-2xl leading-6 font-bold text-gray-900 mb-6" id="bot-content-modal-title">Editar Contenido</h3>
+              <h3 class="text-2xl leading-6 font-bold text-gray-900 mb-6" id="bot-content-modal-title">Nuevo Contenido</h3>
               <div class="space-y-5">
+                <div id="bot-content-template-row" class="p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Usar plantilla (opcional)</label>
+                  <select id="bot-content-template-select" onchange="applyBotContentTemplate(this.value)"
+                    class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
+                    <option value="">— Formulario vacío —</option>
+                    <optgroup label="Respuestas rápidas">
+                      <option value="main_menu">Menú principal</option>
+                      <option value="option_1_process">Opción 1: Proceso</option>
+                      <option value="option_2_price">Opción 2: Precios</option>
+                      <option value="option_8_agent">Opción 8: Hablar con asesor</option>
+                      <option value="catalogo_mullblue">Catálogo</option>
+                    </optgroup>
+                    <optgroup label="Comandos">
+                      <option value="command_precios">/precios</option>
+                    </optgroup>
+                  </select>
+                  <p class="text-xs text-gray-600 mt-2">Elige una plantilla para rellenar clave, descripción y mensaje base.</p>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Clave (ID único)</label>
                     <input type="text" id="bot-content-key-input" placeholder="main_menu"
                       class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
-                    <p class="text-xs text-gray-500 mt-2">Identificador único para este contenido</p>
                   </div>
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Categoría</label>
@@ -2402,18 +2469,17 @@
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">Descripción</label>
-                  <input type="text" id="bot-content-description-input" placeholder="Descripción de este contenido..."
+                  <input type="text" id="bot-content-description-input" placeholder="Ej: Menú que se muestra al saludar"
                     class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Contenido del Mensaje</label>
-                  <textarea id="bot-content-text-input" rows="10" placeholder="Escribe el mensaje aquí..."
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Mensaje</label>
+                  <textarea id="bot-content-text-input" rows="8" placeholder="Escribe el mensaje. Usa *negrita* para WhatsApp."
                     class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black focus:outline-none font-mono text-sm transition-all"></textarea>
-                  <p class="text-xs text-gray-500 mt-2">Puedes usar formato de WhatsApp: *negrita*, _cursiva_, ~tachado~</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">Ruta de Media (opcional)</label>
-                  <input type="text" id="bot-content-media-input" placeholder="public/images/ejemplo.jpg"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">Imagen (ruta opcional)</label>
+                  <input type="text" id="bot-content-media-input" placeholder="public/precio.png"
                     class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black transition-all">
                 </div>
               </div>
