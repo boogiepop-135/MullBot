@@ -180,11 +180,13 @@ export async function notifyAgentAboutAppointment(
 }
 
 /**
- * Notifica al agente sobre un pago recibido
+ * Notifica al agente sobre un cambio de precio en un producto
  */
-export async function notifyAgentAboutPayment(
-    phoneNumber: string,
-    contactName: string | null
+export async function notifyAgentAboutPriceChange(
+    productName: string,
+    oldPrice: number,
+    newPrice: number,
+    changedBy?: string
 ): Promise<void> {
     try {
         const botConfig = await prisma.botConfig.findFirst();
@@ -194,25 +196,81 @@ export async function notifyAgentAboutPayment(
         }
 
         const agentPhone = botConfig.humanAgentPhone.replace(/[@c.us\s\-\(\)\+]/g, '');
-        const displayName = contactName || phoneNumber;
+        const changedByText = changedBy ? `\n👤 *Modificado por:* ${changedBy}` : '';
 
-        const notificationMessage = `💰 *Posible Comprobante de Pago Recibido*
+        const priceChange = newPrice > oldPrice ? '📈 Aumentó' : '📉 Disminuyó';
+        const difference = Math.abs(newPrice - oldPrice);
+        const percentChange = ((difference / oldPrice) * 100).toFixed(1);
 
-👤 *Contacto:* ${displayName}
-📱 *Teléfono:* ${phoneNumber}
-⏰ *Hora:* ${new Date().toLocaleTimeString('es-ES')}
+        const notificationMessage = `💰 *Cambio de Precio Detectado*
 
-📸 El contacto ha enviado una imagen que podría ser un comprobante de pago.
+📦 *Producto:* ${productName}
+${priceChange}: $${oldPrice.toFixed(2)} → $${newPrice.toFixed(2)}
+💵 *Diferencia:* $${difference.toFixed(2)} (${percentChange}%)
+⏰ *Hora:* ${new Date().toLocaleString('es-ES', {
+            timeZone: 'America/Mexico_City',
+            dateStyle: 'short',
+            timeStyle: 'short'
+        })}${changedByText}
 
-✅ Verifica el comprobante y confirma el pago en el panel de administración.`;
+✅ El precio ha sido actualizado en la base de datos.
+📊 Verifica que el cambio sea correcto en el panel de administración.`;
 
         const botManager = BotManager.getInstance();
         await botManager.sendMessage(agentPhone, notificationMessage);
         await botManager.saveSentMessage(agentPhone, notificationMessage, null);
         
-        logger.info(`✅ Notificación de pago enviada al agente ${agentPhone}`);
+        logger.info(`✅ Notificación de cambio de precio enviada al agente ${agentPhone} para producto: ${productName}`);
 
     } catch (error) {
-        logger.error('Error al notificar pago al agente:', error);
+        logger.error('Error al notificar cambio de precio al agente:', error);
+    }
+}
+
+/**
+ * Notifica al agente sobre un producto creado o eliminado
+ */
+export async function notifyAgentAboutProductChange(
+    action: 'created' | 'deleted',
+    productName: string,
+    price?: number,
+    changedBy?: string
+): Promise<void> {
+    try {
+        const botConfig = await prisma.botConfig.findFirst();
+        
+        if (!botConfig?.notifyAgentOnAttention || !botConfig.humanAgentPhone) {
+            return;
+        }
+
+        const agentPhone = botConfig.humanAgentPhone.replace(/[@c.us\s\-\(\)\+]/g, '');
+        const changedByText = changedBy ? `\n👤 *Modificado por:* ${changedBy}` : '';
+        const priceText = price ? `\n💰 *Precio:* $${price.toFixed(2)}` : '';
+
+        const actionText = action === 'created' ? '✅ Producto Creado' : '🗑️ Producto Eliminado';
+        const emoji = action === 'created' ? '✨' : '⚠️';
+
+        const notificationMessage = `${emoji} *${actionText}*
+
+📦 *Producto:* ${productName}${priceText}
+⏰ *Hora:* ${new Date().toLocaleString('es-ES', {
+            timeZone: 'America/Mexico_City',
+            dateStyle: 'short',
+            timeStyle: 'short'
+        })}${changedByText}
+
+${action === 'created' 
+    ? '✅ El producto está ahora disponible en el catálogo.' 
+    : '⚠️ El producto ha sido eliminado del catálogo.'}
+📊 Revisa los cambios en el panel de administración.`;
+
+        const botManager = BotManager.getInstance();
+        await botManager.sendMessage(agentPhone, notificationMessage);
+        await botManager.saveSentMessage(agentPhone, notificationMessage, null);
+        
+        logger.info(`✅ Notificación de ${action} de producto enviada al agente ${agentPhone} para: ${productName}`);
+
+    } catch (error) {
+        logger.error(`Error al notificar ${action} de producto al agente:`, error);
     }
 }

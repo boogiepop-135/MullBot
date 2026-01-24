@@ -276,19 +276,26 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
     const isPrecioRequest = hasProductKeyword || hasProductSpecificKeyword || isNumericOption1 || isProductQuestion;
     
     if (isPrecioRequest) {
-        // Obtener catálogo desde la base de datos
+        // Obtener catálogo desde la base de datos - SIEMPRE usar productos de BD
         try {
             const prisma = (await import('../database/prisma')).default;
             const { formatProductsForWhatsApp } = await import('../utils/product-formatter.util');
             const { getCatalogResponse } = await import('../utils/quick-responses.util');
             
-            logger.info('📊 Obteniendo catálogo desde la base de datos para solicitud de productos/precios...');
+            logger.info('📊 Solicitud de precios/productos detectada - obteniendo desde BD...');
             logger.info(`📊 Query detectada: "${query}"`);
             
+            // SIEMPRE obtener productos frescos desde la BD (sin caché)
             const products = await prisma.product.findMany({
                 where: { inStock: true },
                 orderBy: { createdAt: 'desc' }
             });
+            
+            // Log detallado de productos obtenidos
+            if (products && products.length > 0) {
+                const productNames = products.map(p => `${p.name} ($${p.price})`).join(', ');
+                logger.info(`📊 Productos obtenidos desde BD (${products.length}): ${productNames}`);
+            }
             
             if (products && products.length > 0) {
                 // Primero intentar usar contenido personalizado catalogo_mullblue si existe
@@ -298,10 +305,11 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 if (customCatalog) {
                     // Si hay contenido personalizado, combinarlo con el catálogo de productos
                     catalogMessage = `${customCatalog}\n\n${formatProductsForWhatsApp(products)}`;
-                    logger.info(`✅ Usando contenido personalizado catalogo_mullblue + productos de BD`);
+                    logger.info(`✅ Usando contenido personalizado catalogo_mullblue + productos de BD (${products.length} productos) - Datos frescos`);
                 } else {
                     // Solo usar productos de la base de datos
                     catalogMessage = formatProductsForWhatsApp(products);
+                    logger.info(`✅ Usando solo productos de BD (${products.length} productos) - Datos frescos`);
                 }
                 
                 quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png', intent: 'price' };
@@ -311,14 +319,19 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 const customCatalog = await getCatalogResponse();
                 if (customCatalog) {
                     quickResponse = { message: customCatalog, mediaPath: 'public/precio.png', intent: 'price' };
-                    logger.info(`✅ Usando contenido personalizado catalogo_mullblue (sin productos en BD)`);
+                    logger.warn(`⚠️ No hay productos en BD, usando contenido personalizado catalogo_mullblue`);
                 } else {
                     logger.warn(`⚠️ No hay productos disponibles en la base de datos para query: "${query}"`);
+                    quickResponse = { 
+                        message: 'Lo siento, no hay productos disponibles en este momento. Por favor intenta más tarde.', 
+                        mediaPath: 'public/precio.png', 
+                        intent: 'price' 
+                    };
                 }
             }
         } catch (error) {
             logger.error('❌ Error obteniendo catálogo de productos:', error);
-            // Continuar con respuesta normal
+            // Continuar con respuesta normal si hay error
         }
     }
 
@@ -327,32 +340,66 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
     if (optionMatch && !quickResponse) {
         const optionNumber = parseInt(optionMatch[1]);
         if (optionNumber >= 1 && optionNumber <= 8) {
-            const response = await getOptionResponse(optionNumber);
-            if (response) {
-                // Para opción 2 (precios), combinar con productos si están disponibles
-                if (optionNumber === 2) {
-                    try {
-                        const prisma = (await import('../database/prisma')).default;
-                        const { formatProductsForWhatsApp } = await import('../utils/product-formatter.util');
-                        
-                        const products = await prisma.product.findMany({
-                            where: { inStock: true },
-                            orderBy: { createdAt: 'desc' }
-                        });
-                        
-                        if (products && products.length > 0) {
-                            const catalogMessage = formatProductsForWhatsApp(products);
-                            const combinedMessage = `${response}\n\n${catalogMessage}`;
-                            quickResponse = { message: combinedMessage, mediaPath: 'public/precio.png' };
-                            logger.info(`✅ Opción 2: usando contenido personalizado + productos de BD`);
-                        } else {
-                            quickResponse = { message: response, mediaPath: 'public/precio.png' };
-                        }
-                    } catch (error) {
-                        logger.error('Error obteniendo productos para opción 2:', error);
-                        quickResponse = { message: response, mediaPath: 'public/precio.png' };
+            // Para opción 2 (precios), SIEMPRE usar productos de la BD
+            if (optionNumber === 2) {
+                try {
+                    const prisma = (await import('../database/prisma')).default;
+                    const { formatProductsForWhatsApp } = await import('../utils/product-formatter.util');
+                    
+                    logger.info('📊 Opción 2 (precios) detectada - obteniendo productos desde BD...');
+                    
+                    // SIEMPRE obtener productos frescos desde la BD (sin caché)
+                    const products = await prisma.product.findMany({
+                        where: { inStock: true },
+                        orderBy: { createdAt: 'desc' }
+                    });
+                    
+                    // Log detallado de productos obtenidos
+                    if (products && products.length > 0) {
+                        const productNames = products.map(p => `${p.name} ($${p.price})`).join(', ');
+                        logger.info(`📊 Opción 2 - Productos obtenidos desde BD (${products.length}): ${productNames}`);
                     }
-                } else {
+                    
+                    if (products && products.length > 0) {
+                        // Obtener contenido personalizado opcional para combinar
+                        const customPriceContent = await getOptionResponse(2);
+                        let catalogMessage: string;
+                        
+                        if (customPriceContent) {
+                            // Combinar contenido personalizado con productos de BD
+                            catalogMessage = `${customPriceContent}\n\n${formatProductsForWhatsApp(products)}`;
+                            logger.info(`✅ Opción 2: contenido personalizado + productos de BD (${products.length} productos) - Datos frescos`);
+                        } else {
+                            // Solo productos de BD
+                            catalogMessage = formatProductsForWhatsApp(products);
+                            logger.info(`✅ Opción 2: solo productos de BD (${products.length} productos) - Datos frescos`);
+                        }
+                        
+                        quickResponse = { message: catalogMessage, mediaPath: 'public/precio.png' };
+                    } else {
+                        // Si no hay productos, usar contenido personalizado como fallback
+                        const customPriceContent = await getOptionResponse(2);
+                        if (customPriceContent) {
+                            quickResponse = { message: customPriceContent, mediaPath: 'public/precio.png' };
+                            logger.warn('⚠️ Opción 2: no hay productos en BD, usando contenido personalizado');
+                        } else {
+                            quickResponse = { 
+                                message: 'Lo siento, no hay productos disponibles en este momento. Por favor intenta más tarde.', 
+                                mediaPath: 'public/precio.png' 
+                            };
+                        }
+                    }
+                } catch (error) {
+                    logger.error('Error obteniendo productos para opción 2:', error);
+                    const customPriceContent = await getOptionResponse(2);
+                    if (customPriceContent) {
+                        quickResponse = { message: customPriceContent, mediaPath: 'public/precio.png' };
+                    }
+                }
+            } else {
+                // Para otras opciones, usar respuesta rápida normal
+                const response = await getOptionResponse(optionNumber);
+                if (response) {
                     quickResponse = { message: response, mediaPath: 'public/info.png' };
                 }
             }

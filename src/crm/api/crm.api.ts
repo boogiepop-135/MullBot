@@ -584,6 +584,27 @@ Tu solicitud ha sido registrada correctamente.
                 saleStatusFilter
             } = req.body;
 
+            // Validaciones profesionales
+            if (!name || name.trim().length === 0) {
+                return res.status(400).json({ error: 'El nombre de la campaña es requerido' });
+            }
+
+            if (!message || message.trim().length === 0) {
+                return res.status(400).json({ error: 'El mensaje de la campaña es requerido' });
+            }
+
+            // Validar tamaño de mensaje (WhatsApp tiene límite de 4096 caracteres)
+            if (message.length > 4096) {
+                return res.status(400).json({ error: 'El mensaje excede el límite de 4096 caracteres de WhatsApp' });
+            }
+
+            // Validar batch size si es campaña por lotes
+            if (isBatchCampaign && batchSize) {
+                if (batchSize < 1 || batchSize > 100) {
+                    return res.status(400).json({ error: 'El tamaño del lote debe estar entre 1 y 100' });
+                }
+            }
+
             // Si es campaña por lotes, calcular el total de lotes
             let totalBatches = 1;
             let actualContacts = contacts || [];
@@ -600,6 +621,11 @@ Tu solicitud ha sido registrada correctamente.
                 actualContacts = filteredContacts.map(c => c.phoneNumber);
             }
 
+            // Validar que haya contactos
+            if (!actualContacts || actualContacts.length === 0) {
+                return res.status(400).json({ error: 'Debe seleccionar al menos un contacto para la campaña' });
+            }
+
             if (isBatchCampaign && batchSize && actualContacts.length > 0) {
                 totalBatches = Math.ceil(actualContacts.length / batchSize);
             }
@@ -610,20 +636,20 @@ Tu solicitud ha sido registrada correctamente.
                 parsedScheduledAt = new Date(scheduledAt);
                 // Verificar que la fecha sea válida y futura
                 if (isNaN(parsedScheduledAt.getTime())) {
-                    return res.status(400).json({ error: 'Invalid scheduledAt date format' });
+                    return res.status(400).json({ error: 'Formato de fecha programada inválido' });
                 }
                 // Si la fecha está en el pasado, rechazar (o permitir si es muy reciente, dentro de 1 minuto)
                 const now = new Date();
                 const timeDiff = parsedScheduledAt.getTime() - now.getTime();
                 if (timeDiff < -60000) { // Más de 1 minuto en el pasado
-                    return res.status(400).json({ error: 'scheduledAt cannot be in the past' });
+                    return res.status(400).json({ error: 'La fecha programada no puede ser en el pasado' });
                 }
             }
 
             const campaign = await prisma.campaign.create({
                 data: {
-                    name,
-                    message,
+                    name: name.trim(),
+                    message: message.trim(),
                     scheduledAt: parsedScheduledAt,
                     contacts: actualContacts,
                     createdBy: req.user.userId,
@@ -641,16 +667,22 @@ Tu solicitud ha sido registrada correctamente.
                 include: { creator: true }
             });
 
+            logger.info(`✅ Campaña creada: "${campaign.name}" con ${actualContacts.length} contactos (${totalBatches} lotes) por ${req.user?.username || 'Admin'}`);
+
             // Solo enviar inmediatamente si NO hay scheduledAt (campaña draft)
             // Si hay scheduledAt, el cron job se encargará de enviarlo en el momento correcto
             if (!parsedScheduledAt) {
                 // Send immediately (first batch if it's a batch campaign)
                 await sendCampaignMessages(botManager, campaign);
+                logger.info(`📤 Campaña "${campaign.name}" enviada inmediatamente`);
             } else {
-                logger.info(`Campaign "${campaign.name}" scheduled for ${parsedScheduledAt.toISOString()}. Will be sent by cron job.`);
+                logger.info(`📅 Campaña "${campaign.name}" programada para ${parsedScheduledAt.toISOString()}`);
             }
 
             res.status(201).json({
+                message: parsedScheduledAt 
+                    ? `Campaña "${campaign.name}" programada correctamente` 
+                    : `Campaña "${campaign.name}" enviada correctamente`,
                 campaign,
                 summary: {
                     totalContacts: actualContacts.length,
@@ -658,9 +690,12 @@ Tu solicitud ha sido registrada correctamente.
                     contactsPerBatch: batchSize || actualContacts.length
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to create campaign:', error);
-            res.status(500).json({ error: 'Failed to create campaign' });
+            if (error.code === 'P2002') {
+                return res.status(409).json({ error: 'Ya existe una campaña con este nombre' });
+            }
+            res.status(500).json({ error: 'Failed to create campaign', details: error.message });
         }
     });
 
@@ -759,9 +794,12 @@ Tu solicitud ha sido registrada correctamente.
     // Products API
     router.get('/products', authenticate, authorizeAdmin, async (req, res) => {
         try {
+            // Siempre obtener productos frescos desde la base de datos (sin caché)
             const products = await prisma.product.findMany({
                 orderBy: { createdAt: 'desc' }
             });
+            
+            logger.debug(`📊 GET /products - Retornando ${products.length} productos (siempre desde BD, sin caché)`);
             res.json(products);
         } catch (error) {
             logger.error('Failed to fetch products:', error);
@@ -773,19 +811,39 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { name, description, price, sizes, promotions, imageUrl, category, inStock } = req.body;
 
+            // Validaciones profesionales
+            if (!name || name.trim().length === 0) {
+                return res.status(400).json({ error: 'El nombre del producto es requerido' });
+            }
+
+            if (price === undefined || price === null || price < 0) {
+                return res.status(400).json({ error: 'El precio es requerido y debe ser mayor o igual a 0' });
+            }
+
             const product = await prisma.product.create({
                 data: {
-                    name,
-                    description,
-                    price,
-                    sizes,
-                    promotions,
-                    imageUrl,
-                    category,
-                    inStock
+                    name: name.trim(),
+                    description: description?.trim() || null,
+                    price: parseFloat(price),
+                    sizes: sizes || [],
+                    promotions: promotions?.trim() || null,
+                    imageUrl: imageUrl?.trim() || null,
+                    category: category?.trim() || null,
+                    inStock: inStock !== undefined ? Boolean(inStock) : true
                 }
             });
 
+            // Notificar al agente sobre nuevo producto
+            try {
+                const { notifyAgentAboutProductChange } = await import('../../utils/agent-notification.util');
+                const userName = req.user?.username || 'Admin';
+                await notifyAgentAboutProductChange('created', product.name, product.price, userName);
+                logger.info(`📢 Notificación de producto creado enviada: ${product.name}`);
+            } catch (notifyError) {
+                logger.error('Error enviando notificación de producto creado:', notifyError);
+            }
+
+            logger.info(`✅ Producto creado: ${product.name} ($${product.price}) por ${req.user?.username || 'Admin'}`);
             res.status(201).json(product);
         } catch (error) {
             logger.error('Failed to create product:', error);
@@ -798,16 +856,83 @@ Tu solicitud ha sido registrada correctamente.
             const { id } = req.params;
             const updateData = req.body;
 
-            const product = await prisma.product.update({
-                where: { id },
-                data: updateData
+            // Validaciones profesionales
+            if (updateData.name !== undefined && (!updateData.name || updateData.name.trim().length === 0)) {
+                return res.status(400).json({ error: 'El nombre del producto no puede estar vacío' });
+            }
+
+            if (updateData.price !== undefined && (updateData.price === null || updateData.price < 0)) {
+                return res.status(400).json({ error: 'El precio debe ser mayor o igual a 0' });
+            }
+
+            // Obtener producto actual para comparar cambios
+            const currentProduct = await prisma.product.findUnique({
+                where: { id }
             });
 
-            if (!product) {
+            if (!currentProduct) {
                 return res.status(404).json({ error: 'Product not found' });
             }
 
-            res.json(product);
+            // Preparar datos de actualización (normalizar)
+            const normalizedUpdateData: any = {};
+            if (updateData.name !== undefined) normalizedUpdateData.name = updateData.name.trim();
+            if (updateData.description !== undefined) normalizedUpdateData.description = updateData.description?.trim() || null;
+            if (updateData.price !== undefined) normalizedUpdateData.price = parseFloat(updateData.price);
+            if (updateData.inStock !== undefined) normalizedUpdateData.inStock = Boolean(updateData.inStock);
+            if (updateData.imageUrl !== undefined) normalizedUpdateData.imageUrl = updateData.imageUrl?.trim() || null;
+            if (updateData.category !== undefined) normalizedUpdateData.category = updateData.category?.trim() || null;
+            if (updateData.sizes !== undefined) normalizedUpdateData.sizes = Array.isArray(updateData.sizes) ? updateData.sizes : [];
+            if (updateData.promotions !== undefined) normalizedUpdateData.promotions = updateData.promotions?.trim() || null;
+
+            // Log detallado de cambios
+            const changes: string[] = [];
+            if (normalizedUpdateData.name && normalizedUpdateData.name !== currentProduct.name) {
+                changes.push(`nombre: "${currentProduct.name}" → "${normalizedUpdateData.name}"`);
+            }
+            if (normalizedUpdateData.price !== undefined && normalizedUpdateData.price !== currentProduct.price) {
+                changes.push(`precio: $${currentProduct.price} → $${normalizedUpdateData.price}`);
+            }
+            if (normalizedUpdateData.inStock !== undefined && normalizedUpdateData.inStock !== currentProduct.inStock) {
+                changes.push(`disponibilidad: ${currentProduct.inStock ? 'Disponible' : 'Agotado'} → ${normalizedUpdateData.inStock ? 'Disponible' : 'Agotado'}`);
+            }
+            if (normalizedUpdateData.description !== undefined && normalizedUpdateData.description !== currentProduct.description) {
+                changes.push('descripción actualizada');
+            }
+            if (normalizedUpdateData.imageUrl !== undefined && normalizedUpdateData.imageUrl !== currentProduct.imageUrl) {
+                changes.push('imagen actualizada');
+            }
+
+            if (changes.length > 0) {
+                logger.info(`📝 Actualizando producto "${currentProduct.name}" (ID: ${id}) - Cambios: ${changes.join(', ')} por ${req.user?.username || 'Admin'}`);
+            }
+
+            // Actualizar producto
+            const updatedProduct = await prisma.product.update({
+                where: { id },
+                data: normalizedUpdateData
+            });
+
+            // Verificar si cambió el precio y notificar al agente
+            if (normalizedUpdateData.price !== undefined && normalizedUpdateData.price !== currentProduct.price) {
+                try {
+                    const { notifyAgentAboutPriceChange } = await import('../../utils/agent-notification.util');
+                    const userName = req.user?.username || 'Admin';
+                    await notifyAgentAboutPriceChange(
+                        updatedProduct.name,
+                        currentProduct.price,
+                        updatedProduct.price,
+                        userName
+                    );
+                    logger.info(`📢 Notificación de cambio de precio enviada para producto: ${updatedProduct.name} ($${currentProduct.price} → $${updatedProduct.price})`);
+                } catch (notifyError) {
+                    logger.error('Error enviando notificación de cambio de precio:', notifyError);
+                    // No fallar la actualización si la notificación falla
+                }
+            }
+
+            logger.info(`✅ Producto actualizado exitosamente: "${updatedProduct.name}" (ID: ${id})`);
+            res.json(updatedProduct);
         } catch (error) {
             logger.error('Failed to update product:', error);
             res.status(500).json({ error: 'Failed to update product' });
@@ -818,7 +943,8 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { id } = req.params;
 
-            const product = await prisma.product.delete({
+            // Obtener producto antes de eliminarlo para notificación
+            const product = await prisma.product.findUnique({
                 where: { id }
             });
 
@@ -826,7 +952,23 @@ Tu solicitud ha sido registrada correctamente.
                 return res.status(404).json({ error: 'Product not found' });
             }
 
-            res.json({ success: true });
+            // Eliminar producto
+            await prisma.product.delete({
+                where: { id }
+            });
+
+            // Notificar al agente sobre producto eliminado
+            try {
+                const { notifyAgentAboutProductChange } = await import('../../utils/agent-notification.util');
+                const userName = req.user?.username || 'Admin';
+                await notifyAgentAboutProductChange('deleted', product.name, product.price, userName);
+                logger.info(`📢 Notificación de producto eliminado enviada: ${product.name}`);
+            } catch (notifyError) {
+                logger.error('Error enviando notificación de producto eliminado:', notifyError);
+            }
+
+            logger.info(`🗑️ Producto eliminado: ${product.name} por ${req.user?.username || 'Admin'}`);
+            res.json({ success: true, message: `Producto "${product.name}" eliminado correctamente` });
         } catch (error) {
             logger.error('Failed to delete product:', error);
             res.status(500).json({ error: 'Failed to delete product' });
@@ -893,18 +1035,47 @@ Tu solicitud ha sido registrada correctamente.
                     };
 
                     if (existingProduct) {
+                        // Verificar si cambió el precio antes de actualizar
+                        const priceChanged = existingProduct.price !== sheetProduct.precio;
+                        const oldPrice = existingProduct.price;
+                        
                         // Actualizar producto existente
                         await prisma.product.update({
                             where: { id: existingProduct.id },
                             data: productData
                         });
                         updated++;
+                        
+                        // Notificar si cambió el precio
+                        if (priceChanged) {
+                            try {
+                                const { notifyAgentAboutPriceChange } = await import('../../utils/agent-notification.util');
+                                await notifyAgentAboutPriceChange(
+                                    existingProduct.name,
+                                    oldPrice,
+                                    sheetProduct.precio,
+                                    'Sincronización Google Sheets'
+                                );
+                                logger.info(`📢 Notificación de cambio de precio (sync): ${existingProduct.name}`);
+                            } catch (notifyError) {
+                                logger.error('Error enviando notificación de cambio de precio en sync:', notifyError);
+                            }
+                        }
                     } else {
                         // Crear nuevo producto
-                        await prisma.product.create({
+                        const newProduct = await prisma.product.create({
                             data: productData
                         });
                         created++;
+                        
+                        // Notificar sobre nuevo producto creado desde sync
+                        try {
+                            const { notifyAgentAboutProductChange } = await import('../../utils/agent-notification.util');
+                            await notifyAgentAboutProductChange('created', newProduct.name, newProduct.price, 'Sincronización Google Sheets');
+                            logger.info(`📢 Notificación de producto creado (sync): ${newProduct.name}`);
+                        } catch (notifyError) {
+                            logger.error('Error enviando notificación de producto creado en sync:', notifyError);
+                        }
                     }
                 } catch (error) {
                     logger.error(`Error sincronizando producto "${sheetProduct.producto}":`, error);
@@ -919,6 +1090,15 @@ Tu solicitud ha sido registrada correctamente.
                 const productNameLower = existingProduct.name.toLowerCase().trim();
                 if (!productNamesFromSheets.has(productNameLower)) {
                     try {
+                        // Notificar antes de eliminar
+                        try {
+                            const { notifyAgentAboutProductChange } = await import('../../utils/agent-notification.util');
+                            await notifyAgentAboutProductChange('deleted', existingProduct.name, existingProduct.price, 'Sincronización Google Sheets');
+                            logger.info(`📢 Notificación de producto eliminado (sync): ${existingProduct.name}`);
+                        } catch (notifyError) {
+                            logger.error('Error enviando notificación de producto eliminado en sync:', notifyError);
+                        }
+                        
                         await prisma.product.delete({
                             where: { id: existingProduct.id }
                         });
@@ -1431,28 +1611,45 @@ Tu solicitud ha sido registrada correctamente.
 
     router.put('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
         try {
+            const { key } = req.params;
             const { content, mediaPath, description, category } = req.body;
             
-            const updateData: any = { content };
-            if (mediaPath !== undefined) updateData.mediaPath = mediaPath;
-            if (description !== undefined) updateData.description = description;
+            // Validaciones profesionales
+            if (!key || key.trim().length === 0) {
+                return res.status(400).json({ error: 'La clave (key) es requerida' });
+            }
+
+            if (content !== undefined && (!content || content.trim().length === 0)) {
+                return res.status(400).json({ error: 'El contenido no puede estar vacío' });
+            }
+
+            const updateData: any = {};
+            if (content !== undefined) updateData.content = content.trim();
+            if (mediaPath !== undefined) updateData.mediaPath = mediaPath?.trim() || null;
+            if (description !== undefined) updateData.description = description?.trim() || null;
             if (category !== undefined) {
                 updateData.category = category.toUpperCase().replace('-', '_') as BotContentCategory;
             }
 
-            const botContent = await prisma.botContent.upsert({
-                where: { key: req.params.key },
-                update: updateData,
-                create: {
-                    key: req.params.key,
-                    ...updateData
-                }
+            // Verificar si existe antes de actualizar
+            const existingContent = await prisma.botContent.findUnique({ where: { key } });
+            if (!existingContent) {
+                return res.status(404).json({ error: `Contenido con clave "${key}" no encontrado` });
+            }
+
+            const botContent = await prisma.botContent.update({
+                where: { key },
+                data: updateData
             });
 
+            logger.info(`✅ BotContent actualizado: ${key} por ${req.user?.username || 'Admin'}`);
             res.json({ message: 'Content updated successfully', content: botContent });
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to update bot content:', error);
-            res.status(500).json({ error: 'Failed to update bot content' });
+            if (error.code === 'P2002') {
+                return res.status(400).json({ error: 'Ya existe un contenido con esta clave' });
+            }
+            res.status(500).json({ error: 'Failed to update bot content', details: error.message });
         }
     });
 
@@ -1460,44 +1657,68 @@ Tu solicitud ha sido registrada correctamente.
         try {
             const { key, content, mediaPath, description, category } = req.body;
             
-            if (!key || !content) {
-                return res.status(400).json({ error: 'key and content are required' });
+            // Validaciones profesionales
+            if (!key || key.trim().length === 0) {
+                return res.status(400).json({ error: 'La clave (key) es requerida' });
+            }
+
+            if (!content || content.trim().length === 0) {
+                return res.status(400).json({ error: 'El contenido es requerido y no puede estar vacío' });
+            }
+
+            // Validar formato de key (solo letras, números, guiones y guiones bajos)
+            if (!/^[a-zA-Z0-9_-]+$/.test(key)) {
+                return res.status(400).json({ error: 'La clave solo puede contener letras, números, guiones y guiones bajos' });
             }
 
             const existingContent = await prisma.botContent.findUnique({ where: { key } });
             if (existingContent) {
-                return res.status(400).json({ error: 'Content with this key already exists' });
+                return res.status(409).json({ error: `Ya existe un contenido con la clave "${key}". Usa PUT para actualizar.` });
             }
 
             const botContent = await prisma.botContent.create({
                 data: {
-                    key,
-                    content,
-                    mediaPath,
-                    description,
+                    key: key.trim(),
+                    content: content.trim(),
+                    mediaPath: mediaPath?.trim() || null,
+                    description: description?.trim() || null,
                     category: category ? (category.toUpperCase().replace('-', '_') as BotContentCategory) : BotContentCategory.OTHER
                 }
             });
 
+            logger.info(`✅ BotContent creado: ${key} por ${req.user?.username || 'Admin'}`);
             res.status(201).json({ message: 'Content created successfully', content: botContent });
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to create bot content:', error);
-            res.status(500).json({ error: 'Failed to create bot content' });
+            if (error.code === 'P2002') {
+                return res.status(409).json({ error: 'Ya existe un contenido con esta clave' });
+            }
+            res.status(500).json({ error: 'Failed to create bot content', details: error.message });
         }
     });
 
     router.delete('/bot-content/:key', authenticate, authorizeAdmin, async (req, res) => {
         try {
-            const content = await prisma.botContent.delete({
-                where: { key: req.params.key }
-            });
-            if (!content) {
-                return res.status(404).json({ error: 'Content not found' });
+            const { key } = req.params;
+
+            // Verificar que existe antes de eliminar
+            const existingContent = await prisma.botContent.findUnique({ where: { key } });
+            if (!existingContent) {
+                return res.status(404).json({ error: `Contenido con clave "${key}" no encontrado` });
             }
-            res.json({ message: 'Content deleted successfully' });
-        } catch (error) {
+
+            await prisma.botContent.delete({
+                where: { key }
+            });
+
+            logger.info(`🗑️ BotContent eliminado: ${key} por ${req.user?.username || 'Admin'}`);
+            res.json({ message: `Contenido "${key}" eliminado correctamente` });
+        } catch (error: any) {
             logger.error('Failed to delete bot content:', error);
-            res.status(500).json({ error: 'Failed to delete bot content' });
+            if (error.code === 'P2025') {
+                return res.status(404).json({ error: 'Contenido no encontrado' });
+            }
+            res.status(500).json({ error: 'Failed to delete bot content', details: error.message });
         }
     });
 

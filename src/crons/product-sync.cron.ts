@@ -62,18 +62,63 @@ export async function syncProductsFromSheets() {
                 };
 
                 if (existingProduct) {
+                    // Verificar si cambió el precio antes de actualizar
+                    const priceChanged = existingProduct.price !== sheetProduct.precio;
+                    const oldPrice = existingProduct.price;
+                    
+                    // Log detallado del cambio
+                    if (priceChanged) {
+                        logger.info(`💰 Cambio de precio detectado en sync automático: ${existingProduct.name} - $${oldPrice} → $${sheetProduct.precio}`);
+                    }
+                    
+                    // Verificar otros cambios importantes
+                    const nameChanged = existingProduct.name !== sheetProduct.producto;
+                    const stockChanged = existingProduct.inStock !== sheetProduct.disponibilidad;
+                    
+                    if (nameChanged) {
+                        logger.info(`📝 Cambio de nombre detectado: "${existingProduct.name}" → "${sheetProduct.producto}"`);
+                    }
+                    if (stockChanged) {
+                        logger.info(`📦 Cambio de disponibilidad detectado: ${existingProduct.name} - ${existingProduct.inStock ? 'Disponible' : 'Agotado'} → ${sheetProduct.disponibilidad ? 'Disponible' : 'Agotado'}`);
+                    }
+                    
                     // Actualizar producto existente
                     await prisma.product.update({
                         where: { id: existingProduct.id },
                         data: productData
                     });
                     updated++;
+                    
+                    // Notificar si cambió el precio
+                    if (priceChanged) {
+                        try {
+                            const { notifyAgentAboutPriceChange } = await import('../utils/agent-notification.util');
+                            await notifyAgentAboutPriceChange(
+                                existingProduct.name,
+                                oldPrice,
+                                sheetProduct.precio,
+                                'Sincronización Automática Google Sheets'
+                            );
+                            logger.info(`📢 Notificación de cambio de precio (sync automático) enviada: ${existingProduct.name}`);
+                        } catch (notifyError) {
+                            logger.error('Error enviando notificación de cambio de precio en sync automático:', notifyError);
+                        }
+                    }
                 } else {
                     // Crear nuevo producto
-                    await prisma.product.create({
+                    const newProduct = await prisma.product.create({
                         data: productData
                     });
                     created++;
+                    
+                    // Notificar sobre nuevo producto creado desde sync automático
+                    try {
+                        const { notifyAgentAboutProductChange } = await import('../utils/agent-notification.util');
+                        await notifyAgentAboutProductChange('created', newProduct.name, newProduct.price, 'Sincronización Automática Google Sheets');
+                        logger.info(`📢 Notificación de producto creado (sync automático) enviada: ${newProduct.name}`);
+                    } catch (notifyError) {
+                        logger.error('Error enviando notificación de producto creado en sync automático:', notifyError);
+                    }
                 }
             } catch (error: any) {
                 logger.error(`Error sincronizando producto "${sheetProduct.producto}":`, error);
@@ -86,6 +131,15 @@ export async function syncProductsFromSheets() {
             const productNameLower = existingProduct.name.toLowerCase().trim();
             if (!productNamesFromSheets.has(productNameLower)) {
                 try {
+                    // Notificar antes de eliminar
+                    try {
+                        const { notifyAgentAboutProductChange } = await import('../utils/agent-notification.util');
+                        await notifyAgentAboutProductChange('deleted', existingProduct.name, existingProduct.price, 'Sincronización Automática Google Sheets');
+                        logger.info(`📢 Notificación de producto eliminado (sync automático) enviada: ${existingProduct.name}`);
+                    } catch (notifyError) {
+                        logger.error('Error enviando notificación de producto eliminado en sync automático:', notifyError);
+                    }
+                    
                     await prisma.product.delete({
                         where: { id: existingProduct.id }
                     });

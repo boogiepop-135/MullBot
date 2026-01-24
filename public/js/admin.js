@@ -1437,14 +1437,20 @@ function renderTemplates(templates) {
 
 async function loadProducts() {
   try {
+    // Siempre obtener productos frescos desde la BD (sin caché)
     const response = await fetch('/crm/products', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      headers: { 
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Cache-Control': 'no-cache' // Forzar obtener datos frescos
+      }
     });
     if (!response.ok) throw new Error('Failed to load products');
     allProducts = await response.json();
     renderProducts(allProducts);
+    console.log(`✅ Productos cargados desde BD: ${allProducts.length} productos`);
   } catch (error) {
     console.error('Error loading products:', error);
+    alert('Error al cargar productos. Por favor, recarga la página.');
   }
 }
 
@@ -1760,14 +1766,25 @@ window.saveProduct = async function () {
       body: JSON.stringify(data)
     });
 
-    if (!response.ok) throw new Error('Failed to save product');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to save product');
+    }
 
+    const savedProduct = await response.json();
     closeProductModal();
-    loadProducts();
-    alert('Producto guardado correctamente');
+    
+    // Esperar un momento para asegurar que la BD haya procesado el cambio
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Recargar productos desde la BD (siempre datos frescos)
+    await loadProducts();
+    
+    const action = currentProductId ? 'actualizado' : 'creado';
+    alert(`✅ Producto ${action} correctamente\n\nEl bot ahora usará estos datos actualizados.`);
   } catch (error) {
     console.error('Error saving product:', error);
-    alert('Error al guardar producto');
+    alert(`❌ Error al guardar producto:\n\n${error.message || 'Error desconocido'}`);
   }
 };
 

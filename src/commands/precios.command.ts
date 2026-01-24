@@ -7,13 +7,19 @@ import { formatProductsForWhatsApp } from "../utils/product-formatter.util";
 
 export const run = async (message: Message, args: string[], userI18n: UserI18n) => {
    try {
-      // Obtener productos desde la base de datos
-      logger.info('📊 Obteniendo catálogo desde la base de datos...');
+      // SIEMPRE obtener productos frescos desde la BD (sin caché)
+      logger.info('📊 Comando /precios - Obteniendo catálogo desde la base de datos (datos frescos)...');
       
       const products = await prisma.product.findMany({
          where: { inStock: true },
          orderBy: { createdAt: 'desc' }
       });
+      
+      // Log detallado de productos obtenidos
+      if (products && products.length > 0) {
+         const productNames = products.map(p => `${p.name} ($${p.price})`).join(', ');
+         logger.info(`📊 Productos obtenidos desde BD (${products.length}): ${productNames}`);
+      }
       
       if (products && products.length > 0) {
          // Formatear catálogo para WhatsApp
@@ -23,7 +29,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
          const media = MessageMedia.fromFilePath("public/precio.png");
          await message.reply(media, null, { caption: catalogMessage });
          
-         logger.info(`✅ Catálogo de productos enviado (${products.length} productos)`);
+         logger.info(`✅ Catálogo de productos enviado (${products.length} productos) - Datos frescos desde BD`);
          return;
       } else {
          logger.warn('⚠️ No hay productos disponibles en la base de datos');

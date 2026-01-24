@@ -1,15 +1,36 @@
 import { Message, MessageMedia } from "whatsapp-web.js";
 import { AppConfig } from "../configs/app.config";
 import { UserI18n } from "../utils/i18n.util";
+import prisma from "../database/prisma";
+import logger from "../configs/logger.config";
 
 export const run = async (message: Message, args: string[], userI18n: UserI18n) => {
     const chat = await message.getChat();
+    
+    // Obtener precio desde la base de datos (producto más caro disponible o kit completo)
+    let precio = 1490; // Fallback por defecto
+    try {
+        const products = await prisma.product.findMany({
+            where: { inStock: true },
+            orderBy: { price: 'desc' },
+            take: 1
+        });
+        
+        if (products && products.length > 0) {
+            precio = Math.round(products[0].price);
+            logger.info(`✅ Precio obtenido desde BD para comando /tarjeta: $${precio}`);
+        } else {
+            logger.warn('⚠️ No hay productos en BD para /tarjeta, usando precio por defecto');
+        }
+    } catch (error) {
+        logger.error('Error obteniendo precio para /tarjeta:', error);
+    }
     
     const tarjeta = `
 💳 *PAGO CON TARJETA DE CRÉDITO* 💳
 
 *INFORMACIÓN DEL PAGO* 💰
-💵 *Monto:* $1,490 MXN
+💵 *Monto:* $${precio} MXN
 💳 *A 3 meses sin intereses*
 🔒 *Pago 100% seguro*
 📱 *Procesado por Mercado Pago*
