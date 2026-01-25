@@ -18,7 +18,7 @@ export class MessageMedia {
     constructor(filePathOrUrl: string, mimetype?: string, data?: Buffer) {
         if (filePathOrUrl.startsWith('http://') || filePathOrUrl.startsWith('https://')) {
             this.url = filePathOrUrl;
-            this.mimetype = mimetype || 'image/png';
+            this._mimetype = mimetype || 'image/png';
         } else {
             this.filePath = filePathOrUrl;
             try {
