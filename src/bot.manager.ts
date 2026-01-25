@@ -554,7 +554,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 return;
             }
 
-            // Verificar si pregunta por catálogo de productos antes de usar IA
+            // Verificar si pregunta por catálogo de productos ANTES de usar IA
             const normalizedContent = content.toLowerCase().trim();
             const catalogKeywords = [
                 'catalogo', 'catálogo', 'productos', 'producto', 'lista de productos',
@@ -574,11 +574,21 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             const hasPriceKeyword = priceKeywords.some(keyword => normalizedContent.includes(keyword));
             const hasKitKeyword = kitKeywords.some(keyword => normalizedContent.includes(keyword));
             
+            // Detectar preguntas sobre qué productos/kits tienen (mejorado)
+            const hasWhatProducts = /(que|qué|cuáles|cuáles).*(tienes?|tiene|ofreces?|vendes?|productos?|kits?|disponibles?)/i.test(content) ||
+                /(productos?|kits?).*(tienes?|tiene|ofreces?|vendes?|disponibles?)/i.test(content) ||
+                normalizedContent.includes('que kits') ||
+                normalizedContent.includes('qué kits') ||
+                normalizedContent.includes('que productos') ||
+                normalizedContent.includes('qué productos');
+            
             // Es solicitud de catálogo si:
             // 1. Tiene keywords de catálogo, O
-            // 2. Pregunta por precios (especialmente del kit)
+            // 2. Pregunta por precios (especialmente del kit), O
+            // 3. Pregunta "qué kits tiene", "qué productos tiene", etc.
             const isCatalogRequest = catalogKeywords.some(keyword => normalizedContent.includes(keyword)) ||
-                (hasPriceKeyword && (hasKitKeyword || normalizedContent.includes('tiene') || normalizedContent.includes('tienes')));
+                (hasPriceKeyword && (hasKitKeyword || normalizedContent.includes('tiene') || normalizedContent.includes('tienes'))) ||
+                hasWhatProducts;
             
             if (isCatalogRequest) {
                 logger.info(`📊 Usuario solicita catálogo de productos: ${content}`);
@@ -587,9 +597,10 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     const catalog = await ProductService.getCatalogMessage();
                     
                     if (catalog.hasProducts) {
-                        await this.evolutionAPI.sendMedia(phoneNumber, 'public/precio.png', catalog.message);
+                        // Enviar catálogo como texto (sin imagen, solo texto formateado)
+                        await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
                         await this.saveSentMessage(phoneNumber, catalog.message);
-                        logger.info(`✅ Catálogo enviado`);
+                        logger.info(`✅ Catálogo enviado como texto`);
                         return;
                     } else {
                         logger.warn('⚠️ No hay productos disponibles en la base de datos');
@@ -608,19 +619,35 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 }
             }
 
-            // Verificar si muestra interés en un producto específico
-            const interestKeywords = ['tengo interes', 'tengo interés', 'me interesa', 'quiero saber de', 'información de', 'info de', 'detalles de'];
+            // Verificar si muestra interés en un producto específico o pregunta por kits/productos específicos
+            const interestKeywords = [
+                'tengo interes', 'tengo interés', 'me interesa', 'quiero saber de', 'información de', 'info de', 'detalles de',
+                'que kits', 'qué kits', 'que kit', 'qué kit', 'más info', 'más información', 'más detalles',
+                'del kit', 'del producto', 'sobre el kit', 'sobre el producto', 'kit completo', 'producto completo'
+            ];
             const hasInterestKeyword = interestKeywords.some(keyword => normalizedContent.includes(keyword));
             
             if (hasInterestKeyword) {
-                logger.info(`🔍 Usuario muestra interés en producto: ${content}`);
+                logger.info(`🔍 Usuario muestra interés en producto/kit: ${content}`);
                 try {
                     const { ProductService } = await import('./services/product.service');
                     
                     // Extraer nombre del producto del mensaje
-                    const productName = content
-                        .replace(/tengo interes en|tengo interés en|me interesa|quiero saber de|información de|info de|detalles de/gi, '')
+                    let productName = content
+                        .replace(/tengo interes en|tengo interés en|me interesa|quiero saber de|información de|info de|detalles de|más info|más información|más detalles|sobre el|sobre la|del|de la|de el/gi, '')
                         .trim();
+                    
+                    // Si pregunta por "kits" o "kit" sin especificar, buscar productos con categoría "Kit"
+                    if ((normalizedContent.includes('kit') && !productName) || (productName && productName.toLowerCase().includes('kit'))) {
+                        const products = await ProductService.getAvailableProducts();
+                        const kitProduct = products.find(p => 
+                            p.category?.toLowerCase() === 'kit' || 
+                            p.name.toLowerCase().includes('kit')
+                        );
+                        if (kitProduct) {
+                            productName = kitProduct.name;
+                        }
+                    }
                     
                     if (productName) {
                         const product = await ProductService.findProductByName(productName);
@@ -628,11 +655,16 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                         if (product) {
                             const productDetails = ProductService.formatProductDetails(product);
                             
-                            // Si hay imagen URL, incluirla en el mensaje (el mensaje ya tiene el link)
-                            // Si no hay imagen, usar imagen por defecto
+                            // Enviar imagen del producto si existe, o imagen por defecto
                             if (product.imageUrl && product.imageUrl.startsWith('http')) {
-                                // Es una URL, solo enviar mensaje con el link incluido
-                                await this.evolutionAPI.sendMessage(phoneNumber, productDetails);
+                                // Es una URL externa, intentar enviarla como media
+                                try {
+                                    await this.evolutionAPI.sendMedia(phoneNumber, product.imageUrl, productDetails);
+                                } catch (imgError) {
+                                    // Si falla, enviar solo el mensaje con el link
+                                    logger.warn('No se pudo enviar imagen desde URL, enviando solo mensaje:', imgError);
+                                    await this.evolutionAPI.sendMessage(phoneNumber, productDetails);
+                                }
                             } else if (product.imageUrl) {
                                 // Es una ruta local
                                 await this.evolutionAPI.sendMedia(phoneNumber, product.imageUrl, productDetails);
@@ -641,8 +673,10 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                                 await this.evolutionAPI.sendMedia(phoneNumber, 'public/precio.png', productDetails);
                             }
                             await this.saveSentMessage(phoneNumber, productDetails);
-                            logger.info(`✅ Información del producto "${product.name}" enviada`);
+                            logger.info(`✅ Información del producto "${product.name}" enviada con imagen`);
                             return;
+                        } else {
+                            logger.debug(`Producto no encontrado: "${productName}"`);
                         }
                     }
                 } catch (error) {

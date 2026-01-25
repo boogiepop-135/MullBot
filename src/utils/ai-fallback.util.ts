@@ -22,11 +22,17 @@ async function buildSystemPrompt(): Promise<string> {
     const noInfo = getNoInfoMessage();
     const criticalRules = `
 ---
-REGLAS CRÍTICAS (OBLIGATORIAS):
+REGLAS CRÍTICAS DE VENTA (OBLIGATORIAS):
 1. Solo usa la información del bloque "INFORMACIÓN DEL CRM" arriba. Es tu única fuente de datos.
 2. Si el cliente pregunta algo que NO está cubierto en ese bloque, responde EXACTAMENTE esto (no inventes ni resumas):
 ${noInfo}
-3. NUNCA inventes precios, datos de contacto, productos ni ninguna información. Si no está en el CRM, usa la respuesta del punto 2.`;
+3. ⚠️ CRÍTICO - PRECIOS:
+   - NUNCA inventes precios, ni siquiera aproximados
+   - Si preguntan por precios del kit o cualquier producto, NO menciones números
+   - Responde SOLO: "Te muestro nuestros productos y precios actualizados..." y el sistema mostrará el catálogo automáticamente
+   - Si ya se mostró el catálogo en el historial, refiere a él: "Como viste en el catálogo que te envié..." o "¿Te interesa alguno en particular del catálogo?"
+4. Si preguntan por información específica de un kit/producto, el sistema buscará y enviará la imagen y datos automáticamente. NO inventes información.
+5. Como VENDEDOR: Guía hacia la compra, destaca beneficios, crea valor, pero NUNCA inventes datos.`;
 
     let custom = '';
     try {
@@ -63,16 +69,34 @@ export const aiCompletion = async (query: string, conversationHistory: Conversat
             let fullQuery = cleanQuery;
             if (conversationHistory.length > 0) {
                 const historyText = conversationHistory
-                    .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Asistente'}: ${msg.content}`)
+                    .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${msg.content}`)
                     .join('\n');
+                
+                // Verificar si ya se mostró el catálogo en el historial
+                const catalogWasShown = conversationHistory.some(msg => 
+                    msg.role === 'assistant' && (
+                        msg.content.includes('CATÁLOGO') || 
+                        msg.content.includes('CATALOGO') ||
+                        msg.content.includes('Precio: *$')
+                    )
+                );
+                
+                const catalogContext = catalogWasShown 
+                    ? '\n⚠️ IMPORTANTE: Ya se mostró el catálogo en el historial. NO inventes precios. Si preguntan por precios, refiere al catálogo que ya se mostró: "Como viste en el catálogo que te envié..." o "¿Te interesa alguno en particular del catálogo?"'
+                    : '';
+                
                 fullQuery = `HISTORIAL DE CONVERSACIÓN:
 ${historyText}
 
 MENSAJE ACTUAL DEL CLIENTE:
 ${cleanQuery}
+${catalogContext}
 
-IMPORTANTE: Responde considerando el historial. Si el cliente escribió un número, refiere a la opción que le ofreciste. Solo usa información del CRM; si no está, di que no cuentas con ella y ofrece asesor (8).`;
-                logger.debug(`📜 Contexto con ${conversationHistory.length} mensajes`);
+IMPORTANTE: 
+- Responde considerando el historial. Si el cliente escribió un número, refiere a la opción que le ofreciste.
+- Solo usa información del CRM; si no está, di que no cuentas con ella y ofrece asesor (8).
+- Si ya se mostró el catálogo, NO lo vuelvas a mencionar ni inventes precios. Enfócate en guiar hacia la compra o resolver dudas específicas.`;
+                logger.debug(`📜 Contexto con ${conversationHistory.length} mensajes${catalogWasShown ? ' (catálogo ya mostrado)' : ''}`);
             }
 
             const aiManager = AIModelManager.getInstance();

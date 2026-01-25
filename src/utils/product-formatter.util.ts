@@ -107,9 +107,20 @@ export function formatProductDetails(product: Product): string {
 
 /**
  * Busca un producto por nombre (búsqueda flexible)
+ * Si busca "kit" o "kits", prioriza productos con categoría "Kit"
  */
 export function findProductByName(products: Product[], searchTerm: string): Product | null {
     const normalizedSearch = searchTerm.toLowerCase().trim();
+    
+    // Si busca "kit" o "kits", buscar primero por categoría
+    if (normalizedSearch === 'kit' || normalizedSearch === 'kits' || normalizedSearch.includes('kit')) {
+        // Buscar productos con categoría "Kit" o que tengan "kit" en el nombre
+        let kitProduct = products.find(p => 
+            p.category?.toLowerCase() === 'kit' ||
+            p.name.toLowerCase().includes('kit')
+        );
+        if (kitProduct) return kitProduct;
+    }
     
     // Buscar coincidencia exacta primero
     let product = products.find(p => 
