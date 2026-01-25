@@ -719,12 +719,14 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             if (isJustNumber) {
                 const recentHistory = await this.getConversationHistory(phoneNumber, 5);
                 const lastBotMessage = recentHistory.filter(m => m.role === 'assistant').pop();
-                const catalogWasShown = lastBotMessage?.content.includes('CATÁLOGO') || 
-                                       lastBotMessage?.content.includes('CATALOGO') ||
-                                       lastBotMessage?.content.includes('Precio: *$');
                 
                 // Verificar si el último mensaje fue una lista de productos para seleccionar
                 const isProductList = lastBotMessage?.content.includes('Selecciona el producto');
+                
+                // Verificar si el último mensaje fue detalles de un producto específico
+                const isProductDetails = lastBotMessage?.content.includes('¿Te interesa este producto?') ||
+                                        lastBotMessage?.content.includes('Ver métodos de pago') ||
+                                        lastBotMessage?.content.includes('Información de envío');
                 
                 if (isProductList) {
                     // Usuario eligió un producto de la lista
@@ -755,34 +757,27 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                         logger.info(`✅ Información del producto "${selectedProduct.name}" enviada`);
                         return;
                     }
-                } else if (catalogWasShown) {
+                } else if (isProductDetails) {
+                    // Usuario eligió opción del menú de detalles del producto
                     const optionNumber = parseInt(content.trim());
-                    logger.info(`📋 Usuario eligió opción ${optionNumber} después del catálogo`);
+                    logger.info(`📋 Usuario eligió opción ${optionNumber} del menú de detalles del producto`);
                     
                     if (optionNumber === 1) {
-                        // Opción 1: Información detallada de un producto
-                        const { ProductService } = await import('./services/product.service');
-                        const products = await ProductService.getAvailableProducts();
-                        
-                        if (products.length > 0) {
-                            let productListMessage = '📦 *Selecciona el producto que te interesa:*\n\n';
-                            products.slice(0, 10).forEach((product, index) => {
-                                productListMessage += `*${index + 1}.* ${product.name}\n`;
-                            });
-                            productListMessage += '\nEscribe el número del producto que quieres conocer 😊';
-                            
-                            await this.evolutionAPI.sendMessage(phoneNumber, productListMessage);
-                            await this.saveSentMessage(phoneNumber, productListMessage);
-                            logger.info(`✅ Lista de productos enviada para selección`);
-                            return;
-                        }
-                    } else if (optionNumber === 2) {
-                        // Opción 2: Métodos de pago
+                        // Opción 1: Métodos de pago
                         const { getOptionResponse } = await import('./utils/quick-responses.util');
                         const paymentResponse = await getOptionResponse(2);
                         if (paymentResponse) {
                             await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
                             await this.saveSentMessage(phoneNumber, paymentResponse);
+                            return;
+                        }
+                    } else if (optionNumber === 2) {
+                        // Opción 2: Información de envío
+                        const { getOptionResponse } = await import('./utils/quick-responses.util');
+                        const shippingResponse = await getOptionResponse(6);
+                        if (shippingResponse) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, shippingResponse);
+                            await this.saveSentMessage(phoneNumber, shippingResponse);
                             return;
                         }
                     } else if (optionNumber === 3 || optionNumber === 8) {
@@ -792,6 +787,61 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                         await this.evolutionAPI.sendMessage(phoneNumber, agentResponse);
                         await this.saveSentMessage(phoneNumber, agentResponse);
                         return;
+                    } else if (optionNumber === 4) {
+                        // Opción 4: Ver otros productos (mostrar catálogo completo)
+                        const { ProductService } = await import('./services/product.service');
+                        const catalog = await ProductService.getCatalogMessage();
+                        if (catalog.hasProducts) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
+                            await this.saveSentMessage(phoneNumber, catalog.message);
+                            logger.info(`✅ Catálogo completo enviado`);
+                            return;
+                        }
+                    }
+                } else {
+                    // Verificar si fue catálogo general
+                    const catalogWasShown = lastBotMessage?.content.includes('CATÁLOGO') || 
+                                           lastBotMessage?.content.includes('CATALOGO') ||
+                                           (lastBotMessage?.content.includes('Precio: *$') && !isProductDetails);
+                    
+                    if (catalogWasShown) {
+                        const optionNumber = parseInt(content.trim());
+                        logger.info(`📋 Usuario eligió opción ${optionNumber} después del catálogo`);
+                        
+                        if (optionNumber === 1) {
+                            // Opción 1: Información detallada de un producto
+                            const { ProductService } = await import('./services/product.service');
+                            const products = await ProductService.getAvailableProducts();
+                            
+                            if (products.length > 0) {
+                                let productListMessage = '📦 *Selecciona el producto que te interesa:*\n\n';
+                                products.slice(0, 10).forEach((product, index) => {
+                                    productListMessage += `*${index + 1}.* ${product.name}\n`;
+                                });
+                                productListMessage += '\nEscribe el número del producto que quieres conocer 😊';
+                                
+                                await this.evolutionAPI.sendMessage(phoneNumber, productListMessage);
+                                await this.saveSentMessage(phoneNumber, productListMessage);
+                                logger.info(`✅ Lista de productos enviada para selección`);
+                                return;
+                            }
+                        } else if (optionNumber === 2) {
+                            // Opción 2: Métodos de pago
+                            const { getOptionResponse } = await import('./utils/quick-responses.util');
+                            const paymentResponse = await getOptionResponse(2);
+                            if (paymentResponse) {
+                                await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
+                                await this.saveSentMessage(phoneNumber, paymentResponse);
+                                return;
+                            }
+                        } else if (optionNumber === 3 || optionNumber === 8) {
+                            // Opción 3 u 8: Hablar con asesor
+                            const { getAgentResponse } = await import('./utils/quick-responses.util');
+                            const agentResponse = await getAgentResponse();
+                            await this.evolutionAPI.sendMessage(phoneNumber, agentResponse);
+                            await this.saveSentMessage(phoneNumber, agentResponse);
+                            return;
+                        }
                     }
                 }
             }
