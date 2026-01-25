@@ -1,7 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import EnvConfig from "../configs/env.config";
 import logger from "../configs/logger.config";
 import { AIModelManager } from "../services/ai-model-manager.service";
+import { buildCrmContextForAI, getNoInfoMessage } from "./crm-context.util";
+import { getBaseBehavioralPrompt } from "./mullblue-prompt.util";
 
 export type AIProvider = "gemini" | "claude";
 
@@ -15,40 +16,50 @@ export interface ConversationMessage {
     content: string;
 }
 
+async function buildSystemPrompt(): Promise<string> {
+    const base = getBaseBehavioralPrompt();
+    const crmContext = await buildCrmContextForAI();
+    const noInfo = getNoInfoMessage();
+    const criticalRules = `
+---
+REGLAS CRÍTICAS (OBLIGATORIAS):
+1. Solo usa la información del bloque "INFORMACIÓN DEL CRM" arriba. Es tu única fuente de datos.
+2. Si el cliente pregunta algo que NO está cubierto en ese bloque, responde EXACTAMENTE esto (no inventes ni resumas):
+${noInfo}
+3. NUNCA inventes precios, datos de contacto, productos ni ninguna información. Si no está en el CRM, usa la respuesta del punto 2.`;
+
+    let custom = '';
+    try {
+        const prisma = (await import('../database/prisma')).default;
+        const botConfig = await prisma.botConfig.findFirst();
+        if (botConfig?.aiSystemPrompt?.trim()) {
+            custom = `\n\n--- INSTRUCCIONES ADICIONALES DEL CRM (BotConfig) ---\n${botConfig.aiSystemPrompt.trim()}`;
+            logger.info('✅ Inyectando instrucciones adicionales desde BotConfig (CRM)');
+        }
+    } catch (e) {
+        logger.warn('Error obteniendo BotConfig para prompt:', e);
+    }
+
+    return `${base}${custom}
+
+---
+INFORMACIÓN DEL CRM (ÚNICA FUENTE DE DATOS - solo responde con esto):
+${crmContext}
+${criticalRules}`;
+}
+
 export const aiCompletion = async (query: string, conversationHistory: ConversationMessage[] = []): Promise<AIResponse> => {
-    // Limpiar y normalizar el query para evitar problemas
     const cleanQuery = query.trim();
     if (!cleanQuery || cleanQuery.length === 0) {
         throw new Error("Query vacío");
     }
 
-    // Intentar primero con Gemini usando AIModelManager (con fallback automático entre modelos)
     try {
         if (EnvConfig.GEMINI_API_KEY) {
             logger.info(`🤖 Intentando Gemini con AIModelManager para query: "${cleanQuery.substring(0, 50)}..."`);
-            
-            // Obtener prompt del sistema desde BotConfig (base de datos) o usar fallback
-            let systemPrompt: string;
-            try {
-                const prisma = (await import('../database/prisma')).default;
-                const botConfig = await prisma.botConfig.findFirst();
-                
-                if (botConfig && botConfig.aiSystemPrompt && botConfig.aiSystemPrompt.trim().length > 0) {
-                    systemPrompt = botConfig.aiSystemPrompt;
-                    logger.info('✅ Usando prompt personalizado desde BotConfig (CRM)');
-                } else {
-                    // Fallback al prompt estático
-                    const mullbluePromptModule = await import('./mullblue-prompt.util');
-                    systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
-                    logger.info('ℹ️ Usando prompt predeterminado (BotConfig.aiSystemPrompt está vacío)');
-                }
-            } catch (error) {
-                logger.warn('Error obteniendo prompt desde BotConfig, usando fallback:', error);
-                const mullbluePromptModule = await import('./mullblue-prompt.util');
-                systemPrompt = mullbluePromptModule.getFullMullbluePrompt();
-            }
+            const systemPrompt = await buildSystemPrompt();
+            logger.debug('✅ System prompt construido con contexto CRM');
 
-            // Construir prompt con historial de conversación
             let fullQuery = cleanQuery;
             if (conversationHistory.length > 0) {
                 const historyText = conversationHistory
@@ -60,110 +71,49 @@ ${historyText}
 MENSAJE ACTUAL DEL CLIENTE:
 ${cleanQuery}
 
-IMPORTANTE: Responde considerando todo el contexto de la conversación anterior. Si el cliente escribió un número, refiere a la opción que le ofreciste en tu último mensaje.`;
-                logger.debug(`📜 Contexto construido con ${conversationHistory.length} mensajes`);
+IMPORTANTE: Responde considerando el historial. Si el cliente escribió un número, refiere a la opción que le ofreciste. Solo usa información del CRM; si no está, di que no cuentas con ella y ofrece asesor (8).`;
+                logger.debug(`📜 Contexto con ${conversationHistory.length} mensajes`);
             }
 
             const aiManager = AIModelManager.getInstance();
             const result = await aiManager.generateContent(fullQuery, systemPrompt);
-            
-            if (result.text && result.text.trim().length > 0) {
-                logger.info(`✅ Gemini respondió exitosamente con ${result.modelUsed} (${result.text.length} caracteres, fallback: ${result.fallbackOccurred})`);
-                return {
-                    text: result.text,
-                    provider: "gemini"
-                };
+            if (result.text?.trim()) {
+                logger.info(`✅ Gemini respondió (${result.modelUsed}, ${result.text.length} chars)`);
+                return { text: result.text, provider: "gemini" };
             }
         } else {
             logger.warn("GEMINI_API_KEY no configurada, saltando a Claude");
         }
     } catch (error) {
-        logger.error(`❌ Todos los modelos de Gemini fallaron: ${error.message}`);
-        logger.info(`🔄 Intentando Claude como fallback final...`);
-        // Continuar con Claude si todos los modelos de Gemini fallan
+        logger.error(`❌ Gemini falló: ${(error as Error).message}`);
+        logger.info('🔄 Intentando Claude como fallback...');
     }
 
-    // Si Gemini falla completamente o no está configurada, intentar con Claude
     try {
         if (EnvConfig.ANTHROPIC_API_KEY) {
-            logger.info(`🤖 Intentando Claude (Haiku) para query: "${cleanQuery.substring(0, 50)}..."`);
-            const claudeResponse = await tryClaude(cleanQuery);
-            if (claudeResponse && claudeResponse.trim().length > 0) {
-                logger.info(`✅ Claude respondió exitosamente (${claudeResponse.length} caracteres)`);
-                return {
-                    text: claudeResponse,
-                    provider: "claude"
-                };
+            logger.info(`🤖 Intentando Claude para query: "${cleanQuery.substring(0, 50)}..."`);
+            const systemPrompt = await buildSystemPrompt();
+            const claudeResponse = await tryClaude(cleanQuery, systemPrompt);
+            if (claudeResponse?.trim()) {
+                logger.info(`✅ Claude respondió (${claudeResponse.length} caracteres)`);
+                return { text: claudeResponse, provider: "claude" };
             }
         } else {
-            logger.warn("ANTHROPIC_API_KEY no configurada - Claude fallback no disponible");
+            logger.warn("ANTHROPIC_API_KEY no configurada");
         }
     } catch (error) {
-        logger.error(`❌ Claude falló: ${error.message}`);
+        logger.error(`❌ Claude falló: ${(error as Error).message}`);
     }
 
-    // Si ambas fallan, lanzar error específico
     logger.error("❌ Todas las APIs de IA fallaron");
     throw new Error("Todas las APIs de IA están temporalmente no disponibles. Por favor intenta de nuevo más tarde.");
 };
 
-const tryGemini = async (query: string): Promise<string> => {
-    const genAI = new GoogleGenerativeAI(EnvConfig.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash-exp", // Modelo más reciente y eficiente
-        generationConfig: {
-            maxOutputTokens: 200, // Reducido para ahorrar tokens
-            temperature: 0.6, // Reducido para respuestas más consistentes
-        }
-    });
-    
-    // Prompt más corto y eficiente para ahorrar tokens
-    const systemPrompt = `Eres el Asistente Virtual de Müllblue. Responde en español. Especialista en compostaje fermentativo y productos ecológicos.
-
-IMPORTANTE:
-- Tono amigable y experto en sustentabilidad
-- Responde concisamente para optimizar ancho de banda
-- Enfócate en beneficios del compostaje sin olores ni plagas
-- NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
-
-CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
-
-ÁREAS: Cursos de software y química. Para detalles específicos de cursos, remite al soporte.`;
-
-    // Usar solo el query del usuario para reducir tokens de entrada
-    const fullQuery = `${systemPrompt}\n\nUsuario: ${query}`;
-    
-    try {
-        const result = await model.generateContent([fullQuery]);
-        const responseText = result.response.text();
-        if (!responseText || responseText.trim().length === 0) {
-            throw new Error("Empty response from Gemini");
-        }
-        return responseText;
-    } catch (error) {
-        logger.error(`Gemini API error: ${error.message}`);
-        throw error;
-    }
-};
-
-const tryClaude = async (query: string): Promise<string> => {
+async function tryClaude(query: string, systemPrompt: string): Promise<string> {
     if (!EnvConfig.ANTHROPIC_API_KEY) {
         throw new Error("ANTHROPIC_API_KEY no configurada");
     }
-    
-    // Prompt más corto para ahorrar tokens (optimizado para Claude Haiku)
-    const systemPrompt = `Eres el Asistente Virtual de Müllblue. Responde en español. Especialista en compostaje fermentativo y productos ecológicos.
-
-IMPORTANTE:
-- Tono amigable y experto en sustentabilidad
-- Responde concisamente para optimizar ancho de banda
-- Enfócate en beneficios del compostaje sin olores ni plagas
-- NO inventes datos de cursos; si no conoces detalles, remite al soporte humano
-
-CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
-
-ÁREAS: Cursos de software y química. Para detalles específicos de cursos, remite al soporte.`;
-
+    const payload = `${systemPrompt}\n\n---\nUsuario: ${query}`;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -172,28 +122,19 @@ CONTEXTO: Infraestructura modular (Evolution API + PostgreSQL)
             'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-            model: 'claude-3-haiku-20240307', // Modelo más económico de Claude (muy bajo costo)
-            max_tokens: 200, // Reducido para ahorrar tokens (~$0.00025 por 1K tokens output)
-            temperature: 0.6, // Mismo que Gemini para consistencia
-            messages: [
-                {
-                    role: 'user',
-                    content: `${systemPrompt}\n\nUsuario: ${query}`
-                }
-            ]
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 400,
+            temperature: 0.6,
+            messages: [{ role: 'user', content: payload }]
         })
     });
-
     if (!response.ok) {
-        const errorText = await response.text();
-        logger.error(`Claude API error: ${response.status} - ${errorText}`);
-        throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+        const err = await response.text();
+        logger.error(`Claude API ${response.status}: ${err}`);
+        throw new Error(`Claude API ${response.status}: ${err}`);
     }
-
     const data = await response.json();
-    const responseText = data.content?.[0]?.text;
-    if (!responseText || responseText.trim().length === 0) {
-        throw new Error("Empty response from Claude");
-    }
-    return responseText;
-};
+    const text = data.content?.[0]?.text;
+    if (!text?.trim()) throw new Error("Empty response from Claude");
+    return text;
+}

@@ -1,8 +1,10 @@
 import prisma from '../database/prisma';
 import logger from '../configs/logger.config';
+import { getNoInfoMessage } from './crm-context.util';
 
 /**
  * Respuestas rápidas predefinidas para opciones del menú
+ * Todas deben provenir del CRM (BotContent). Si no están, se usa mensaje estándar de "no info + asesor".
  */
 
 // Función para obtener respuesta del menú principal
@@ -13,31 +15,14 @@ export const getMainMenuResponse = async (): Promise<string> => {
             logger.info(`✅ BotContent 'main_menu' encontrado (${content.content.length} caracteres)`);
             return content.content;
         } else {
-            logger.warn('⚠️ BotContent "main_menu" no encontrado, usando fallback');
+            logger.warn('⚠️ BotContent "main_menu" no encontrado en CRM');
         }
     } catch (error) {
         logger.error('Error fetching main menu:', error);
     }
 
-    // Fallback si no se encuentra en la base de datos
-    return `👋 *MENÚ PRINCIPAL MÜLLBLUE*
-
-¡Hola! ¿En qué puedo ayudarte hoy? 🤔
-
-*Opciones disponibles:*
-
-*1.* Conocer el proceso de compostaje fermentativo
-*2.* Dudas sobre precios y promociones
-*3.* Métodos de pago disponibles
-*4.* ¿Qué incluye el kit?
-*5.* Dimensiones y espacio necesario
-*6.* Información sobre envío y entrega
-*7.* Preguntas frecuentes
-*8.* Hablar con un agente
-
-Escribe el *número* de la opción que te interesa o pregunta lo que necesites 🌱
-
-*💡 Tip:* Puedes escribir *menú* o *volver* en cualquier momento para ver estas opciones nuevamente`;
+    // Si no está en CRM, informar y ofrecer asesor
+    return `No tenemos el menú configurado en este momento. ${getNoInfoMessage()}`;
 };
 
 // Función para obtener respuesta de una opción específica
@@ -49,12 +34,12 @@ export const getOptionResponse = async (optionNumber: number): Promise<string | 
             logger.info(`✅ BotContent '${key}' encontrado (${content.content.length} caracteres)`);
             return content.content;
         } else {
-            logger.debug(`ℹ️ BotContent "${key}" no encontrado`);
+            logger.debug(`ℹ️ BotContent "${key}" no encontrado en CRM`);
         }
     } catch (error) {
         logger.error(`Error fetching option ${optionNumber}:`, error);
     }
-    return null;
+    return null; // Caller debe manejar (puede usar getNoInfoMessage())
 };
 
 // Helper para obtener la clave de cada opción
@@ -93,22 +78,27 @@ export const getAgentResponse = async (): Promise<string> => {
             logger.info(`✅ BotContent 'option_8_agent' encontrado (${content.content.length} caracteres)`);
             return content.content;
         } else {
-            logger.warn('⚠️ BotContent "option_8_agent" no encontrado, usando fallback');
+            logger.warn('⚠️ BotContent "option_8_agent" no encontrado en CRM');
         }
     } catch (error) {
         logger.error('Error fetching agent response:', error);
     }
     
-    // Fallback si no se encuentra en la base de datos
-    return `👤 *ATENCIÓN PERSONALIZADA*
+    // Si no está en CRM, construir mensaje mínimo desde BotConfig o usar mensaje estándar
+    try {
+        const config = await prisma.botConfig.findFirst();
+        const hours = config?.businessHours || 'No especificado';
+        return `✅ *Solicitud Recibida*
 
-Entiendo que prefieres hablar con una persona.
+Tu solicitud para hablar con un asesor ha sido registrada.
 
-Tu solicitud ha sido registrada y un asesor te contactará pronto.
+⏰ *Horario de atención:* ${hours}
 
-⏰ *Horario de atención:* Lunes a Viernes 9am - 7pm
-
-¡Gracias por tu paciencia! 🌱`;
+Un asesor se pondrá en contacto contigo pronto. ¡Gracias por tu paciencia! 🌱`;
+    } catch (e) {
+        logger.error('Error obteniendo BotConfig para respuesta de agente:', e);
+        return getNoInfoMessage();
+    }
 };
 
 // Función para obtener catálogo personalizado
@@ -124,7 +114,7 @@ export const getCatalogResponse = async (): Promise<string | null> => {
     } catch (error) {
         logger.error('Error fetching catalog response:', error);
     }
-    return null;
+    return null; // Es opcional, el catálogo se construye desde productos si no hay contenido personalizado
 };
 
 // Función para agregar el footer a cualquier mensaje

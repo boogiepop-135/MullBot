@@ -562,7 +562,23 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 'mostrar productos', 'ver productos', 'muestra productos',
                 'catálogo de productos', 'catalogo de productos'
             ];
-            const isCatalogRequest = catalogKeywords.some(keyword => normalizedContent.includes(keyword));
+            
+            // Detectar solicitudes de precios (incluyendo del kit)
+            const priceKeywords = [
+                'precio', 'precios', 'costo', 'costos', 'cuanto', 'cuánto', 'cuánta', 'cuanta',
+                'valor', 'tarifa', 'tarifas', 'pago', 'pagas', 'cuesta', 'cuestan'
+            ];
+            const kitKeywords = ['kit', 'kits', 'paquete', 'paquetes', 'completo'];
+            
+            // Detectar si pregunta por precios (con o sin mencionar kit)
+            const hasPriceKeyword = priceKeywords.some(keyword => normalizedContent.includes(keyword));
+            const hasKitKeyword = kitKeywords.some(keyword => normalizedContent.includes(keyword));
+            
+            // Es solicitud de catálogo si:
+            // 1. Tiene keywords de catálogo, O
+            // 2. Pregunta por precios (especialmente del kit)
+            const isCatalogRequest = catalogKeywords.some(keyword => normalizedContent.includes(keyword)) ||
+                (hasPriceKeyword && (hasKitKeyword || normalizedContent.includes('tiene') || normalizedContent.includes('tienes')));
             
             if (isCatalogRequest) {
                 logger.info(`📊 Usuario solicita catálogo de productos: ${content}`);
@@ -577,6 +593,15 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                         return;
                     } else {
                         logger.warn('⚠️ No hay productos disponibles en la base de datos');
+                        // Enviar mensaje informando que no hay productos disponibles
+                        const noProductsMessage = '📦 *Catálogo de Productos*\n\n' +
+                            'Actualmente no hay productos disponibles en el catálogo.\n\n' +
+                            'Por favor, contacta con un asesor para obtener información actualizada sobre nuestros productos y precios.\n\n' +
+                            '¿Te gustaría hablar con un asesor? Escribe *8* 😊';
+                        await this.evolutionAPI.sendMessage(phoneNumber, noProductsMessage);
+                        await this.saveSentMessage(phoneNumber, noProductsMessage);
+                        logger.info(`✅ Mensaje de "sin productos" enviado`);
+                        return;
                     }
                 } catch (error) {
                     logger.error('❌ Error obteniendo catálogo:', error);
