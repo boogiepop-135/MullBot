@@ -5,15 +5,20 @@
 import { Product } from '@prisma/client';
 import logger from '../configs/logger.config';
 
+export interface FormatCatalogOptions {
+    title?: string;
+}
+
 /**
  * Formatea el catálogo de productos de la base de datos para WhatsApp
  */
-export function formatProductsForWhatsApp(products: Product[]): string {
+export function formatProductsForWhatsApp(products: Product[], options?: FormatCatalogOptions): string {
     if (products.length === 0) {
         return '❌ No hay productos disponibles en el catálogo en este momento.';
     }
 
-    let message = '🌱 *CATÁLOGO DE PRODUCTOS MÜLLBLUE*\n\n';
+    const title = options?.title ?? 'CATÁLOGO DE PRODUCTOS MÜLLBLUE';
+    let message = `🌱 *${title}*\n\n`;
 
     // Filtrar solo productos disponibles
     const availableProducts = products.filter(p => p.inStock);

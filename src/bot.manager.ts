@@ -575,12 +575,15 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             const hasKitKeyword = kitKeywords.some(keyword => normalizedContent.includes(keyword));
             
             // Detectar preguntas sobre qué productos/kits tienen (mejorado)
-            const hasWhatProducts = /(que|qué|cuáles|cuáles).*(tienes?|tiene|ofreces?|vendes?|productos?|kits?|disponibles?)/i.test(content) ||
-                /(productos?|kits?).*(tienes?|tiene|ofreces?|vendes?|disponibles?)/i.test(content) ||
+            const hasWhatProducts = /(que|qué|cuáles|si).*(tienes?|tiene|tenía|ofreces?|vendes?|productos?|kits?|disponibles?)/i.test(content) ||
+                /(productos?|kits?).*(tienes?|tiene|tenía|ofreces?|vendes?|disponibles?)/i.test(content) ||
+                /(tienes?|tiene|tenía|tienen).*(kits?|productos?)/i.test(content) ||
                 normalizedContent.includes('que kits') ||
                 normalizedContent.includes('qué kits') ||
                 normalizedContent.includes('que productos') ||
-                normalizedContent.includes('qué productos');
+                normalizedContent.includes('qué productos') ||
+                normalizedContent.includes('kits no tiene') ||
+                normalizedContent.includes('no tiene kits');
             
             // Es solicitud de catálogo si:
             // 1. Tiene keywords de catálogo, O
@@ -589,31 +592,58 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             const isCatalogRequest = catalogKeywords.some(keyword => normalizedContent.includes(keyword)) ||
                 (hasPriceKeyword && (hasKitKeyword || normalizedContent.includes('tiene') || normalizedContent.includes('tienes'))) ||
                 hasWhatProducts;
-            
+
+            // Pregunta explícita solo por KITS (ej. "tienes kits?", "qué kits tiene?", "kits no tiene?")
+            const isKitOnlyRequest = isCatalogRequest && hasKitKeyword;
+
+            if (isKitOnlyRequest) {
+                logger.info(`📦 Usuario solicita solo kits: ${content}`);
+                try {
+                    const { ProductService } = await import('./services/product.service');
+                    const catalog = await ProductService.getCatalogMessage({ kitsOnly: true });
+                    if (catalog.hasProducts) {
+                        await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
+                        await this.saveSentMessage(phoneNumber, catalog.message);
+                        logger.info(`✅ Catálogo de kits enviado como texto`);
+                        return;
+                    }
+                    const noKitsMessage =
+                        '📦 *Kits*\n\n' +
+                        'En este momento no tenemos kits en el catálogo.\n\n' +
+                        '¿Te gustaría ver todos nuestros productos o hablar con un asesor?\n\n' +
+                        '*1.* Ver catálogo completo\n' +
+                        '*2.* Hablar con un asesor\n\n' +
+                        'Escribe el número 😊';
+                    await this.evolutionAPI.sendMessage(phoneNumber, noKitsMessage);
+                    await this.saveSentMessage(phoneNumber, noKitsMessage);
+                    logger.info(`✅ Mensaje "sin kits" enviado, ofreciendo catálogo completo o asesor`);
+                    return;
+                } catch (error) {
+                    logger.error('❌ Error obteniendo catálogo de kits:', error);
+                }
+            }
+
             if (isCatalogRequest) {
                 logger.info(`📊 Usuario solicita catálogo de productos: ${content}`);
                 try {
                     const { ProductService } = await import('./services/product.service');
                     const catalog = await ProductService.getCatalogMessage();
-                    
                     if (catalog.hasProducts) {
-                        // Enviar catálogo como texto (sin imagen, solo texto formateado)
                         await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
                         await this.saveSentMessage(phoneNumber, catalog.message);
                         logger.info(`✅ Catálogo enviado como texto`);
                         return;
-                    } else {
-                        logger.warn('⚠️ No hay productos disponibles en la base de datos');
-                        // Enviar mensaje informando que no hay productos disponibles
-                        const noProductsMessage = '📦 *Catálogo de Productos*\n\n' +
-                            'Actualmente no hay productos disponibles en el catálogo.\n\n' +
-                            'Por favor, contacta con un asesor para obtener información actualizada sobre nuestros productos y precios.\n\n' +
-                            '¿Te gustaría hablar con un asesor? Escribe *8* 😊';
-                        await this.evolutionAPI.sendMessage(phoneNumber, noProductsMessage);
-                        await this.saveSentMessage(phoneNumber, noProductsMessage);
-                        logger.info(`✅ Mensaje de "sin productos" enviado`);
-                        return;
                     }
+                    logger.warn('⚠️ No hay productos disponibles en la base de datos');
+                    const noProductsMessage =
+                        '📦 *Catálogo de Productos*\n\n' +
+                        'Actualmente no hay productos disponibles en el catálogo.\n\n' +
+                        'Por favor, contacta con un asesor para obtener información actualizada sobre nuestros productos y precios.\n\n' +
+                        '¿Te gustaría hablar con un asesor? Escribe *8* 😊';
+                    await this.evolutionAPI.sendMessage(phoneNumber, noProductsMessage);
+                    await this.saveSentMessage(phoneNumber, noProductsMessage);
+                    logger.info(`✅ Mensaje de "sin productos" enviado`);
+                    return;
                 } catch (error) {
                     logger.error('❌ Error obteniendo catálogo:', error);
                 }

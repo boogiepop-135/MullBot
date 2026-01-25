@@ -32,17 +32,41 @@ export class ProductService {
     }
 
     /**
-     * Obtener catálogo formateado para WhatsApp
+     * Obtener solo productos tipo kit (categoría "Kit" o nombre contiene "kit").
      */
-    static async getCatalogMessage(): Promise<{ message: string; hasProducts: boolean }> {
+    static async getKitsOnly() {
         try {
             const products = await this.getAvailableProducts();
-            
+            const kits = products.filter(
+                (p) =>
+                    p.category?.toLowerCase() === 'kit' ||
+                    p.name.toLowerCase().includes('kit')
+            );
+            if (kits.length > 0) {
+                logger.debug(`📦 Kits obtenidos (${kits.length}): ${kits.map((p) => p.name).join(', ')}`);
+            }
+            return kits;
+        } catch (error) {
+            logger.error('Error obteniendo kits:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Obtener catálogo formateado para WhatsApp.
+     * @param options.kitsOnly - Si true, solo productos tipo kit. Si no hay kits, hasProducts false.
+     */
+    static async getCatalogMessage(options?: { kitsOnly?: boolean }): Promise<{ message: string; hasProducts: boolean }> {
+        try {
+            const products = options?.kitsOnly
+                ? await this.getKitsOnly()
+                : await this.getAvailableProducts();
+
             if (products.length > 0) {
-                const catalogMessage = formatProductsForWhatsApp(products);
+                const catalogMessage = formatProductsForWhatsApp(products, options?.kitsOnly ? { title: 'CATÁLOGO DE KITS MÜLLBLUE' } : undefined);
                 return { message: catalogMessage, hasProducts: true };
             }
-            
+
             return { message: '', hasProducts: false };
         } catch (error) {
             logger.error('Error obteniendo catálogo:', error);
