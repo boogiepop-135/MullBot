@@ -438,8 +438,20 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
         const provider = result.provider;
 
         // Detectar intención y hacer seguimiento de ventas
-        const intent = SalesTracker.detectIntent(query);
-        SalesTracker.trackInteraction(message, query, chatReply, intent);
+        const intentDetection = SalesTracker.detectIntent(query);
+        const intent = intentDetection.intent;
+        
+        // Obtener número de teléfono del mensaje
+        const phoneNumber = message.from.split('@')[0];
+        
+        // Trackear interacción con el nuevo sistema
+        await SalesTracker.trackInteraction({
+            phoneNumber,
+            userMessage: query,
+            botResponse: chatReply,
+            intent: intentDetection.intent,
+            intentConfidence: intentDetection.confidence
+        });
 
         // Log del proveedor usado
         logger.info(`Respuesta generada por: ${provider}`);

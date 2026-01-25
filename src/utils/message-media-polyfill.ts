@@ -12,7 +12,7 @@ import logger from '../configs/logger.config';
 export class MessageMedia {
     private filePath: string;
     private data: Buffer | null = null;
-    private mimetype: string = 'image/png';
+    private _mimetype: string = 'image/png';
     private url: string | null = null;
 
     constructor(filePathOrUrl: string, mimetype?: string, data?: Buffer) {
@@ -41,7 +41,7 @@ export class MessageMedia {
                         '.m4a': 'audio/mp4',
                         '.pdf': 'application/pdf'
                     };
-                    this.mimetype = mimetype || mimeTypes[ext] || 'image/png';
+                    this._mimetype = mimetype || mimeTypes[ext] || 'image/png';
                 }
             } catch (error) {
                 logger.warn(`Error leyendo archivo ${filePathOrUrl}:`, error);
@@ -66,7 +66,7 @@ export class MessageMedia {
             filePath: this.filePath,
             path: this.filePath,
             data: this.data,
-            mimetype: this.mimetype,
+            mimetype: this._mimetype,
             url: this.url
         };
     }
@@ -76,6 +76,6 @@ export class MessageMedia {
     }
 
     get mimetype(): string {
-        return this.mimetype;
+        return this._mimetype;
     }
 }

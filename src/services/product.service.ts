@@ -12,15 +12,7 @@ export class ProductService {
     /**
      * Obtener todos los productos disponibles (en stock)
      */
-    static async getAvailableProducts(): Promise<Array<{
-        id: string;
-        name: string;
-        description: string | null;
-        price: number;
-        imageUrl: string | null;
-        category: string | null;
-        inStock: boolean;
-    }>> {
+    static async getAvailableProducts() {
         try {
             const products = await prisma.product.findMany({
                 where: { inStock: true },
