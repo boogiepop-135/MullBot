@@ -779,7 +779,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     } else if (optionNumber === 2) {
                         // Opción 2: Métodos de pago
                         const { getOptionResponse } = await import('./utils/quick-responses.util');
-                        const paymentResponse = await getOptionResponse(2, userI18n);
+                        const paymentResponse = await getOptionResponse(2);
                         if (paymentResponse) {
                             await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
                             await this.saveSentMessage(phoneNumber, paymentResponse);
@@ -788,7 +788,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     } else if (optionNumber === 3 || optionNumber === 8) {
                         // Opción 3 u 8: Hablar con asesor
                         const { getAgentResponse } = await import('./utils/quick-responses.util');
-                        const agentResponse = await getAgentResponse(userI18n);
+                        const agentResponse = await getAgentResponse();
                         await this.evolutionAPI.sendMessage(phoneNumber, agentResponse);
                         await this.saveSentMessage(phoneNumber, agentResponse);
                         return;
