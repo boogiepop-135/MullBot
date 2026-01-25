@@ -26,13 +26,15 @@ REGLAS CRÍTICAS DE VENTA (OBLIGATORIAS):
 1. Solo usa la información del bloque "INFORMACIÓN DEL CRM" arriba. Es tu única fuente de datos.
 2. Si el cliente pregunta algo que NO está cubierto en ese bloque, responde EXACTAMENTE esto (no inventes ni resumas):
 ${noInfo}
-3. ⚠️ CRÍTICO - PRECIOS:
+3. ⚠️ CRÍTICO - PRECIOS Y PRODUCTOS:
    - NUNCA inventes precios, ni siquiera aproximados
+   - NUNCA inventes productos que no estén en el CRM o en el catálogo mostrado
    - Si preguntan por precios del kit o cualquier producto, NO menciones números
    - Responde SOLO: "Te muestro nuestros productos y precios actualizados..." y el sistema mostrará el catálogo automáticamente
-   - Si ya se mostró el catálogo en el historial, refiere a él: "Como viste en el catálogo que te envié..." o "¿Te interesa alguno en particular del catálogo?"
+   - Si ya se mostró el catálogo en el historial, refiere SOLO a los productos que aparecieron en ese catálogo. NO inventes productos como "KIT COMPLETO MÜLLBLUE" si no apareció en el catálogo.
+   - Si el cliente escribió un número después del catálogo (ej. "1"), y es la opción "información detallada", pídele que especifique qué producto del catálogo le interesa. NO inventes un producto.
 4. Si preguntan por información específica de un kit/producto, el sistema buscará y enviará la imagen y datos automáticamente. NO inventes información.
-5. Como VENDEDOR: Guía hacia la compra, destaca beneficios, crea valor, pero NUNCA inventes datos.`;
+5. Como VENDEDOR: Guía hacia la compra, destaca beneficios, crea valor, pero NUNCA inventes datos, productos ni precios.`;
 
     let custom = '';
     try {
@@ -82,7 +84,7 @@ export const aiCompletion = async (query: string, conversationHistory: Conversat
                 );
                 
                 const catalogContext = catalogWasShown 
-                    ? '\n⚠️ IMPORTANTE: Ya se mostró el catálogo en el historial. NO inventes precios. Si preguntan por precios, refiere al catálogo que ya se mostró: "Como viste en el catálogo que te envié..." o "¿Te interesa alguno en particular del catálogo?"'
+                    ? '\n⚠️ CRÍTICO: Ya se mostró el catálogo en el historial. NUNCA inventes productos ni precios que no estén en ese catálogo. Si el cliente escribió un número (1, 2, 3), refiere a las opciones del catálogo que se mostró. Si escribió "1" y quiere información de un producto, pídele que especifique cuál producto del catálogo le interesa.'
                     : '';
                 
                 fullQuery = `HISTORIAL DE CONVERSACIÓN:
@@ -95,7 +97,8 @@ ${catalogContext}
 IMPORTANTE: 
 - Responde considerando el historial. Si el cliente escribió un número, refiere a la opción que le ofreciste.
 - Solo usa información del CRM; si no está, di que no cuentas con ella y ofrece asesor (8).
-- Si ya se mostró el catálogo, NO lo vuelvas a mencionar ni inventes precios. Enfócate en guiar hacia la compra o resolver dudas específicas.`;
+- ⚠️ NUNCA inventes productos, precios ni información que no esté en el CRM o en el catálogo mostrado.
+- Si ya se mostró el catálogo y escriben un número, NO inventes información. Refiere al catálogo real que se mostró.`;
                 logger.debug(`📜 Contexto con ${conversationHistory.length} mensajes${catalogWasShown ? ' (catálogo ya mostrado)' : ''}`);
             }
 
