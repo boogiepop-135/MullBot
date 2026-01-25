@@ -32,7 +32,10 @@ export const getOptionResponse = async (optionNumber: number): Promise<string | 
         const content = await prisma.botContent.findUnique({ where: { key } });
         if (content) {
             logger.info(`✅ BotContent '${key}' encontrado (${content.content.length} caracteres)`);
-            return content.content;
+            // Filtrar links de wa.me/c/ que no deben mostrarse
+            let filteredContent = content.content.replace(/https?:\/\/wa\.me\/c\/[^\s]+/gi, '');
+            filteredContent = filteredContent.replace(/wa\.me\/c\/[^\s]+/gi, '');
+            return filteredContent.trim() || content.content; // Si queda vacío, devolver original
         } else {
             logger.debug(`ℹ️ BotContent "${key}" no encontrado en CRM`);
         }

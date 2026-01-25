@@ -653,19 +653,50 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             const interestKeywords = [
                 'tengo interes', 'tengo interés', 'me interesa', 'quiero saber de', 'información de', 'info de', 'detalles de',
                 'que kits', 'qué kits', 'que kit', 'qué kit', 'más info', 'más información', 'más detalles',
-                'del kit', 'del producto', 'sobre el kit', 'sobre el producto', 'kit completo', 'producto completo'
+                'del kit', 'del producto', 'sobre el kit', 'sobre el producto', 'sobre el', 'sobre la',
+                'kit completo', 'producto completo', 'del vaso', 'del compactador', 'del compostero'
             ];
             const hasInterestKeyword = interestKeywords.some(keyword => normalizedContent.includes(keyword));
             
-            if (hasInterestKeyword) {
+            // Detectar patrones como "sobre el [producto]" o "del [producto]"
+            const productQueryPattern = /(sobre|del|de la|del|información|info|detalles).*(vaso|compactador|compostero|bio-catalizador|caja|kit|producto)/i;
+            const isProductQuery = productQueryPattern.test(content);
+            
+            if (hasInterestKeyword || isProductQuery) {
                 logger.info(`🔍 Usuario muestra interés en producto/kit: ${content}`);
                 try {
                     const { ProductService } = await import('./services/product.service');
                     
-                    // Extraer nombre del producto del mensaje
-                    let productName = content
-                        .replace(/tengo interes en|tengo interés en|me interesa|quiero saber de|información de|info de|detalles de|más info|más información|más detalles|sobre el|sobre la|del|de la|de el/gi, '')
-                        .trim();
+                    // Extraer nombre del producto del mensaje (mejorado)
+                    // Primero buscar nombres completos de productos conocidos
+                    const knownProducts = ['vaso medidor', 'vaso medidor 500 ml', 'compactador', 'compostero fermentador', 
+                                          'compostero fermentador 10 litros', 'bio-catalizador müllblue', 
+                                          'caja compostera 65 litros', 'caja compostera'];
+                    let productName = '';
+                    
+                    // Buscar nombres completos primero
+                    for (const knownProduct of knownProducts) {
+                        if (normalizedContent.includes(knownProduct)) {
+                            productName = knownProduct;
+                            break;
+                        }
+                    }
+                    
+                    // Si no se encontró nombre completo, extraer del mensaje
+                    if (!productName) {
+                        productName = content
+                            .replace(/tengo interes en|tengo interés en|me interesa|quiero saber de|información de|info de|detalles de|más info|más información|más detalles|sobre el|sobre la|del|de la|de el|quiero ver|ver|mostrar|quiero|sobre/gi, '')
+                            .trim();
+                        
+                        // Si queda muy corto o vacío, buscar palabras clave de productos
+                        if (!productName || productName.length < 3) {
+                            const productKeywords = ['vaso', 'compactador', 'compostero', 'bio-catalizador', 'caja', 'kit', 'fermentador'];
+                            const foundKeyword = productKeywords.find(keyword => normalizedContent.includes(keyword));
+                            if (foundKeyword) {
+                                productName = foundKeyword;
+                            }
+                        }
+                    }
                     
                     // Si pregunta por "kits" o "kit" sin especificar, buscar productos con categoría "Kit"
                     if ((normalizedContent.includes('kit') && !productName) || (productName && productName.toLowerCase().includes('kit'))) {
@@ -720,15 +751,60 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 const recentHistory = await this.getConversationHistory(phoneNumber, 5);
                 const lastBotMessage = recentHistory.filter(m => m.role === 'assistant').pop();
                 
+                // Verificar si el último mensaje fue el menú inicial
+                const isInitialMenu = lastBotMessage?.content.includes('Ver nuestros productos y precios') ||
+                                     lastBotMessage?.content.includes('Resolver mis dudas') ||
+                                     lastBotMessage?.content.includes('Conocer los beneficios') ||
+                                     (lastBotMessage?.content.includes('Escribe el número') && 
+                                      !lastBotMessage?.content.includes('CATÁLOGO') &&
+                                      !lastBotMessage?.content.includes('Selecciona'));
+                
                 // Verificar si el último mensaje fue una lista de productos para seleccionar
                 const isProductList = lastBotMessage?.content.includes('Selecciona el producto');
                 
                 // Verificar si el último mensaje fue detalles de un producto específico
                 const isProductDetails = lastBotMessage?.content.includes('¿Te interesa este producto?') ||
                                         lastBotMessage?.content.includes('Ver métodos de pago') ||
-                                        lastBotMessage?.content.includes('Información de envío');
+                                        lastBotMessage?.content.includes('Información de envío') ||
+                                        lastBotMessage?.content.includes('Ver otros productos disponibles');
                 
-                if (isProductList) {
+                // Verificar si el último mensaje fue una respuesta de la IA sobre un producto (con menú)
+                const isAIProductResponse = lastBotMessage?.content.includes('precio y métodos de pago') ||
+                                           lastBotMessage?.content.includes('Información de envío') ||
+                                           (lastBotMessage?.content.includes('Escribe el número') && 
+                                            lastBotMessage?.content.includes('producto'));
+                
+                if (isInitialMenu) {
+                    // Usuario eligió opción del menú inicial
+                    const optionNumber = parseInt(content.trim());
+                    logger.info(`📋 Usuario eligió opción ${optionNumber} del menú inicial`);
+                    
+                    if (optionNumber === 1) {
+                        // Opción 1: Ver productos y precios - mostrar catálogo completo
+                        const { ProductService } = await import('./services/product.service');
+                        const catalog = await ProductService.getCatalogMessage();
+                        if (catalog.hasProducts) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
+                            await this.saveSentMessage(phoneNumber, catalog.message);
+                            logger.info(`✅ Catálogo completo enviado desde menú inicial`);
+                            return;
+                        } else {
+                            // Fallback si no hay productos
+                            const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                            const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
+                            await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                            await this.saveSentMessage(phoneNumber, fallbackMessage);
+                            return;
+                        }
+                    } else if (optionNumber === 2) {
+                        // Opción 2: Resolver dudas - dejar que la IA responda
+                        // Continuar con el flujo normal
+                    } else if (optionNumber === 3) {
+                        // Opción 3: Conocer beneficios - dejar que la IA responda
+                        // Continuar con el flujo normal
+                    }
+                    // Si escribió otro número (4, 5, etc.) que no corresponde al menú inicial, continuar con IA
+                } else if (isProductList) {
                     // Usuario eligió un producto de la lista
                     const optionNumber = parseInt(content.trim());
                     logger.info(`📦 Usuario eligió producto #${optionNumber} de la lista`);
@@ -756,39 +832,52 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                         await this.saveSentMessage(phoneNumber, productDetails);
                         logger.info(`✅ Información del producto "${selectedProduct.name}" enviada`);
                         return;
+                    } else {
+                        // Número inválido - producto no existe en la lista
+                        const errorMessage = `Lo siento, el número ${optionNumber} no corresponde a ningún producto de la lista. Por favor, escribe un número válido 😊`;
+                        await this.evolutionAPI.sendMessage(phoneNumber, errorMessage);
+                        await this.saveSentMessage(phoneNumber, errorMessage);
+                        return;
                     }
-                } else if (isProductDetails) {
-                    // Usuario eligió opción del menú de detalles del producto
+                } else if (isProductDetails || isAIProductResponse) {
+                    // Usuario eligió opción del menú de detalles del producto o respuesta de IA sobre producto
                     const optionNumber = parseInt(content.trim());
                     logger.info(`📋 Usuario eligió opción ${optionNumber} del menú de detalles del producto`);
                     
                     if (optionNumber === 1) {
                         // Opción 1: Métodos de pago
                         const { getOptionResponse } = await import('./utils/quick-responses.util');
+                        const { getNoInfoMessage } = await import('./utils/crm-context.util');
                         const paymentResponse = await getOptionResponse(2);
                         if (paymentResponse) {
                             await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
                             await this.saveSentMessage(phoneNumber, paymentResponse);
                             return;
+                        } else {
+                            // Fallback si no hay contenido en CRM
+                            const fallbackMessage = `No tenemos información de métodos de pago disponible en este momento. ${getNoInfoMessage()}`;
+                            await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                            await this.saveSentMessage(phoneNumber, fallbackMessage);
+                            return;
                         }
                     } else if (optionNumber === 2) {
                         // Opción 2: Información de envío
                         const { getOptionResponse } = await import('./utils/quick-responses.util');
+                        const { getNoInfoMessage } = await import('./utils/crm-context.util');
                         const shippingResponse = await getOptionResponse(6);
                         if (shippingResponse) {
                             await this.evolutionAPI.sendMessage(phoneNumber, shippingResponse);
                             await this.saveSentMessage(phoneNumber, shippingResponse);
                             return;
+                        } else {
+                            // Fallback si no hay contenido en CRM
+                            const fallbackMessage = `No tenemos información de envío disponible en este momento. ${getNoInfoMessage()}`;
+                            await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                            await this.saveSentMessage(phoneNumber, fallbackMessage);
+                            return;
                         }
-                    } else if (optionNumber === 3 || optionNumber === 8) {
-                        // Opción 3 u 8: Hablar con asesor
-                        const { getAgentResponse } = await import('./utils/quick-responses.util');
-                        const agentResponse = await getAgentResponse();
-                        await this.evolutionAPI.sendMessage(phoneNumber, agentResponse);
-                        await this.saveSentMessage(phoneNumber, agentResponse);
-                        return;
-                    } else if (optionNumber === 4) {
-                        // Opción 4: Ver otros productos (mostrar catálogo completo)
+                    } else if (optionNumber === 3) {
+                        // Opción 3: Ver otros productos (mostrar catálogo completo)
                         const { ProductService } = await import('./services/product.service');
                         const catalog = await ProductService.getCatalogMessage();
                         if (catalog.hasProducts) {
@@ -796,7 +885,21 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                             await this.saveSentMessage(phoneNumber, catalog.message);
                             logger.info(`✅ Catálogo completo enviado`);
                             return;
+                        } else {
+                            // Fallback si no hay productos
+                            const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                            const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
+                            await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                            await this.saveSentMessage(phoneNumber, fallbackMessage);
+                            return;
                         }
+                    } else if (optionNumber === 8) {
+                        // Opción 8: Hablar con asesor
+                        const { getAgentResponse } = await import('./utils/quick-responses.util');
+                        const agentResponse = await getAgentResponse();
+                        await this.evolutionAPI.sendMessage(phoneNumber, agentResponse);
+                        await this.saveSentMessage(phoneNumber, agentResponse);
+                        return;
                     }
                 } else {
                     // Verificar si fue catálogo general
@@ -824,14 +927,28 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                                 await this.saveSentMessage(phoneNumber, productListMessage);
                                 logger.info(`✅ Lista de productos enviada para selección`);
                                 return;
+                            } else {
+                                // Fallback si no hay productos
+                                const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                                const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
+                                await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                                await this.saveSentMessage(phoneNumber, fallbackMessage);
+                                return;
                             }
                         } else if (optionNumber === 2) {
                             // Opción 2: Métodos de pago
                             const { getOptionResponse } = await import('./utils/quick-responses.util');
+                            const { getNoInfoMessage } = await import('./utils/crm-context.util');
                             const paymentResponse = await getOptionResponse(2);
                             if (paymentResponse) {
                                 await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
                                 await this.saveSentMessage(phoneNumber, paymentResponse);
+                                return;
+                            } else {
+                                // Fallback si no hay contenido en CRM
+                                const fallbackMessage = `No tenemos información de métodos de pago disponible en este momento. ${getNoInfoMessage()}`;
+                                await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                                await this.saveSentMessage(phoneNumber, fallbackMessage);
                                 return;
                             }
                         } else if (optionNumber === 3 || optionNumber === 8) {
@@ -842,6 +959,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                             await this.saveSentMessage(phoneNumber, agentResponse);
                             return;
                         }
+                        // Si escribió otro número que no corresponde (4, 5, etc.), continuar con IA
                     }
                 }
             }
