@@ -1781,6 +1781,27 @@ Consulta nuestros precios actualizados y promociones especiales.
 ¿Te gustaría recibir más información sobre algún producto específico?`
                 },
                 {
+                    key: 'option_3_payment',
+                    description: 'Métodos de pago: transferencia, datos bancarios, Mercado Pago',
+                    category: 'quick_response',
+                    content: `💳 *MÉTODOS DE PAGO MÜLLBLUE*
+
+*TRANSFERENCIA BANCARIA* 🏦
+🏛️ *Banco:* Banco Azteca
+📋 *Número de cuenta:* 127180013756372173
+👤 *Beneficiario:* Aldair Eduardo Rivera García
+📝 *Concepto:* [Coloca tu nombre completo]
+
+*TARJETAS DE CRÉDITO / MERCADO PAGO* 💳
+💳 A 3 meses sin intereses
+🔗 *Pagar con tarjeta:* https://mpago.li/1W2JhS5
+🔒 Pago seguro | 📱 Procesado por Mercado Pago
+
+*ENVÍO:* 🚚 A partir de $650 lo enviamos gratis a tu hogar.
+
+¿Necesitas ayuda con el proceso de pago o quieres hablar con un asesor? 🌱`
+                },
+                {
                     key: 'option_8_agent',
                     description: 'Respuesta cuando solicitan agente humano',
                     category: 'quick_response',

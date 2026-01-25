@@ -35,6 +35,8 @@ export const getOptionResponse = async (optionNumber: number): Promise<string | 
             // Filtrar links de wa.me/c/ que no deben mostrarse
             let filteredContent = content.content.replace(/https?:\/\/wa\.me\/c\/[^\s]+/gi, '');
             filteredContent = filteredContent.replace(/wa\.me\/c\/[^\s]+/gi, '');
+            // Quitar "aquí" huérfano que precedía al link (ej. "Consulta... aquí https://wa.me/...")
+            filteredContent = filteredContent.replace(/\s*aquí\s*[.,]?\s*/gi, ' ').replace(/\s{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
             return filteredContent.trim() || content.content; // Si queda vacío, devolver original
         } else {
             logger.debug(`ℹ️ BotContent "${key}" no encontrado en CRM`);

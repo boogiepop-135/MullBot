@@ -845,10 +845,10 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                     logger.info(`📋 Usuario eligió opción ${optionNumber} del menú de detalles del producto`);
                     
                     if (optionNumber === 1) {
-                        // Opción 1: Métodos de pago
+                        // Opción 1: Ver métodos de pago (transferencia, datos, Mercado Pago)
                         const { getOptionResponse } = await import('./utils/quick-responses.util');
                         const { getNoInfoMessage } = await import('./utils/crm-context.util');
-                        const paymentResponse = await getOptionResponse(2);
+                        const paymentResponse = await getOptionResponse(3);
                         if (paymentResponse) {
                             await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
                             await this.saveSentMessage(phoneNumber, paymentResponse);
@@ -936,10 +936,10 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                                 return;
                             }
                         } else if (optionNumber === 2) {
-                            // Opción 2: Métodos de pago
+                            // Opción 2: Métodos de pago (transferencia, datos, Mercado Pago)
                             const { getOptionResponse } = await import('./utils/quick-responses.util');
                             const { getNoInfoMessage } = await import('./utils/crm-context.util');
-                            const paymentResponse = await getOptionResponse(2);
+                            const paymentResponse = await getOptionResponse(3);
                             if (paymentResponse) {
                                 await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
                                 await this.saveSentMessage(phoneNumber, paymentResponse);
