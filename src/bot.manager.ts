@@ -912,7 +912,23 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                         logger.info(`📋 Usuario eligió opción ${optionNumber} después del catálogo`);
                         
                         if (optionNumber === 1) {
-                            // Opción 1: Información detallada de un producto
+                            // Opción 1: Proceder con tu compra y ayudarte con el pago (Métodos de pago)
+                            const { getOptionResponse } = await import('./utils/quick-responses.util');
+                            const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                            const paymentResponse = await getOptionResponse(3);
+                            if (paymentResponse) {
+                                await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
+                                await this.saveSentMessage(phoneNumber, paymentResponse);
+                                return;
+                            } else {
+                                // Fallback si no hay contenido en CRM
+                                const fallbackMessage = `No tenemos información de métodos de pago disponible en este momento. ${getNoInfoMessage()}`;
+                                await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                                await this.saveSentMessage(phoneNumber, fallbackMessage);
+                                return;
+                            }
+                        } else if (optionNumber === 2) {
+                            // Opción 2: Información detallada de un producto
                             const { ProductService } = await import('./services/product.service');
                             const products = await ProductService.getAvailableProducts();
                             
@@ -931,22 +947,6 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                                 // Fallback si no hay productos
                                 const { getNoInfoMessage } = await import('./utils/crm-context.util');
                                 const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
-                                await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
-                                await this.saveSentMessage(phoneNumber, fallbackMessage);
-                                return;
-                            }
-                        } else if (optionNumber === 2) {
-                            // Opción 2: Métodos de pago (transferencia, datos, Mercado Pago)
-                            const { getOptionResponse } = await import('./utils/quick-responses.util');
-                            const { getNoInfoMessage } = await import('./utils/crm-context.util');
-                            const paymentResponse = await getOptionResponse(3);
-                            if (paymentResponse) {
-                                await this.evolutionAPI.sendMessage(phoneNumber, paymentResponse);
-                                await this.saveSentMessage(phoneNumber, paymentResponse);
-                                return;
-                            } else {
-                                // Fallback si no hay contenido en CRM
-                                const fallbackMessage = `No tenemos información de métodos de pago disponible en este momento. ${getNoInfoMessage()}`;
                                 await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
                                 await this.saveSentMessage(phoneNumber, fallbackMessage);
                                 return;

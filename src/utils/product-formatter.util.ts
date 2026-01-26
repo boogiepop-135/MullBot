@@ -59,9 +59,9 @@ export function formatProductsForWhatsApp(products: Product[], options?: FormatC
 
     message += '¿Te gustaría más información sobre algún producto? 😊\n\n';
     message += '*Opciones:*\n';
-    message += '*1.* Información detallada de un producto\n';
-    message += '*2.* Métodos de pago\n';
-    message += '*3.* Hablar con un asesor';
+    message += '*1.* ✨ Proceder con tu compra y ayudarte con el pago\n';
+    message += '*2.* 📦 Información detallada de un producto\n';
+    message += '*3.* 👤 Hablar con un asesor';
 
     return message;
 }
