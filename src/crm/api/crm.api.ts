@@ -2886,5 +2886,105 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         }
     });
 
+    // Endpoint para obtener logs del sistema
+    router.get('/logs', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const { level = 'all', limit = 500, search = '' } = req.query;
+            
+            // Leer archivo de logs combinados
+            const logFile = path.join(process.cwd(), 'logs', 'combined.log');
+            
+            if (!fs.existsSync(logFile)) {
+                return res.json({ logs: [], total: 0, message: 'No hay archivo de logs disponible' });
+            }
+            
+            // Leer archivo completo
+            let logContent = fs.readFileSync(logFile, 'utf-8');
+            let lines = logContent.split('\n').filter(line => line.trim());
+            
+            // Convertir hora del servidor a México Central (UTC-6)
+            const convertToMexicoTime = (timestamp: string): string => {
+                try {
+                    // Formato: [YYYY-MM-DD HH:mm:ss] - winston guarda en hora local del servidor
+                    const match = timestamp.match(/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/);
+                    if (!match) return timestamp;
+                    
+                    // Parsear como hora local del servidor y convertir a México Central
+                    const serverDate = new Date(match[1]);
+                    const mexicoDate = new Date(serverDate.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+                    
+                    const year = mexicoDate.getFullYear();
+                    const month = String(mexicoDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(mexicoDate.getDate()).padStart(2, '0');
+                    const hours = String(mexicoDate.getHours()).padStart(2, '0');
+                    const minutes = String(mexicoDate.getMinutes()).padStart(2, '0');
+                    const seconds = String(mexicoDate.getSeconds()).padStart(2, '0');
+                    
+                    return `[${year}-${month}-${day} ${hours}:${minutes}:${seconds} CST]`;
+                } catch (e) {
+                    return timestamp;
+                }
+            };
+            
+            // Parsear logs
+            const parsedLogs = lines.map((line, index) => {
+                // Formato: [timestamp] level: message
+                const match = line.match(/\[([^\]]+)\]\s+(\w+):\s+(.+)/);
+                if (!match) {
+                    return {
+                        id: index,
+                        timestamp: '',
+                        level: 'info',
+                        message: line,
+                        raw: line
+                    };
+                }
+                
+                const [, timestamp, level, message] = match;
+                const mexicoTime = convertToMexicoTime(timestamp);
+                
+                return {
+                    id: index,
+                    timestamp: mexicoTime,
+                    level: level.toLowerCase(),
+                    message: message.trim(),
+                    raw: line
+                };
+            }).reverse(); // Más recientes primero
+            
+            // Filtrar por nivel
+            let filteredLogs = parsedLogs;
+            if (level !== 'all') {
+                filteredLogs = parsedLogs.filter(log => log.level === level.toLowerCase());
+            }
+            
+            // Filtrar por búsqueda
+            if (search && typeof search === 'string') {
+                const searchLower = search.toLowerCase();
+                filteredLogs = filteredLogs.filter(log => 
+                    log.message.toLowerCase().includes(searchLower) ||
+                    log.level.toLowerCase().includes(searchLower) ||
+                    log.timestamp.toLowerCase().includes(searchLower)
+                );
+            }
+            
+            // Limitar resultados
+            const limitedLogs = filteredLogs.slice(0, parseInt(limit as string));
+            
+            res.json({
+                logs: limitedLogs,
+                total: filteredLogs.length,
+                filtered: limitedLogs.length,
+                level: level,
+                search: search || ''
+            });
+        } catch (error) {
+            logger.error('Failed to fetch logs:', error);
+            res.status(500).json({ error: 'Failed to fetch logs', details: error.message });
+        }
+    });
+
     return router;
 }

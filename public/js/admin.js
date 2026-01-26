@@ -170,6 +170,8 @@ window.showSettingsTab = function(tabName) {
   if (tabName === 'whatsapp') {
     loadWhatsAppStatus();
     loadQRCode();
+  } else if (tabName === 'logs') {
+    loadLogs();
   }
 };
 
@@ -2350,6 +2352,7 @@ var BOT_CONTENT_TEMPLATES = {
   main_menu: { key: 'main_menu', category: 'quick_response', description: 'Menú principal al saludar', content: '👋 *MENÚ PRINCIPAL*\n\n¡Hola! ¿En qué puedo ayudarte?\n\n*1.* Proceso de compostaje\n*2.* Precios y promociones\n*3.* Métodos de pago\n*4.* Qué incluye el kit\n*5.* Dimensiones\n*6.* Envío\n*7.* Preguntas frecuentes\n*8.* Hablar con asesor\n\nEscribe el número 😊' },
   option_1_process: { key: 'option_1_process', category: 'quick_response', description: 'Opción 1: Proceso de compostaje', content: '🌱 *PROCESO DE COMPOSTAJE*\n\n1️⃣ Depositar residuos orgánicos\n2️⃣ Espolvorear biocatalizador\n3️⃣ Compactar y tapar\n4️⃣ Repetir hasta llenar\n\n✅ Sin olores • ✅ Sin plagas' },
   option_2_price: { key: 'option_2_price', category: 'quick_response', description: 'Opción 2: Precios', content: '💰 *PRECIOS Y PROMOCIONES*\n\nConsulta precios actualizados. Los productos se muestran desde el catálogo.\n\n¿Algo más?' },
+  option_3_payment: { key: 'option_3_payment', category: 'quick_response', description: 'Opción 3: Métodos de pago (transferencia, Mercado Pago)', content: '💳 *MÉTODOS DE PAGO MÜLLBLUE*\n\n*TRANSFERENCIA BANCARIA* 🏦\n🏛️ *Banco:* Banco Azteca\n📋 *Número de cuenta:* 127180013756372173\n👤 *Beneficiario:* Aldair Eduardo Rivera García\n📝 *Concepto:* [Coloca tu nombre completo]\n\n*TARJETAS DE CRÉDITO / MERCADO PAGO* 💳\n💳 A 3 meses sin intereses\n🔗 *Pagar con tarjeta:* https://mpago.li/1W2JhS5\n🔒 Pago seguro | 📱 Procesado por Mercado Pago\n\n*ENVÍO:* 🚚 A partir de $650 lo enviamos gratis a tu hogar.\n\n¿Necesitas ayuda con el proceso de pago o quieres hablar con un asesor? 🌱' },
   option_8_agent: { key: 'option_8_agent', category: 'quick_response', description: 'Opción 8: Hablar con asesor', content: '👤 *ATENCIÓN PERSONALIZADA*\n\nTu solicitud está registrada. Un asesor te contactará pronto.\n\n⏰ Lunes a Viernes 9am–7pm\n\n¡Gracias! 🌱' },
   catalogo_mullblue: { key: 'catalogo_mullblue', category: 'quick_response', description: 'Catálogo / enlace', content: 'Consulta nuestro catálogo completo aquí:\nhttps://wa.me/c/...' },
   command_precios: { key: 'command_precios', category: 'command', description: 'Comando /precios', content: 'Te muestro nuestros productos y precios actualizados.' }
@@ -4757,4 +4760,83 @@ window.showSettingsTab = function(tabName) {
       loadInstanceStatus();
     }, 500);
   }
+};
+
+// Funciones para Logs
+let logSearchTimeout = null;
+
+window.debounceSearch = function() {
+  clearTimeout(logSearchTimeout);
+  logSearchTimeout = setTimeout(() => {
+    loadLogs();
+  }, 500);
+};
+
+window.loadLogs = async function() {
+  const container = document.getElementById('logs-container');
+  const countEl = document.getElementById('log-count');
+  
+  if (!container) return;
+  
+  container.innerHTML = '<div class="text-gray-500 text-center py-8">Cargando logs...</div>';
+  
+  try {
+    const level = document.getElementById('log-level-filter')?.value || 'all';
+    const limit = document.getElementById('log-limit-filter')?.value || '500';
+    const search = document.getElementById('log-search-input')?.value || '';
+    
+    const params = new URLSearchParams({ level, limit, search });
+    const response = await fetch(`/crm/logs?${params}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to load logs');
+    
+    const data = await response.json();
+    
+    if (countEl) {
+      countEl.textContent = `Mostrando ${data.filtered} de ${data.total} logs`;
+    }
+    
+    if (!data.logs || data.logs.length === 0) {
+      container.innerHTML = '<div class="text-gray-500 text-center py-8">No hay logs disponibles</div>';
+      return;
+    }
+    
+    // Renderizar logs
+    container.innerHTML = data.logs.map(log => {
+      const levelColor = {
+        error: 'text-red-400',
+        warn: 'text-yellow-400',
+        info: 'text-blue-400',
+        debug: 'text-gray-400'
+      }[log.level] || 'text-gray-300';
+      
+      const levelBg = {
+        error: 'bg-red-900/20',
+        warn: 'bg-yellow-900/20',
+        info: 'bg-blue-900/20',
+        debug: 'bg-gray-800'
+      }[log.level] || 'bg-gray-800';
+      
+      return `
+        <div class="mb-1 px-2 py-1 rounded ${levelBg} hover:bg-opacity-30 transition-colors">
+          <span class="text-gray-500 text-xs">${log.timestamp || ''}</span>
+          <span class="${levelColor} font-semibold ml-2">${log.level.toUpperCase()}</span>
+          <span class="text-gray-300 ml-2">${escapeHtml(log.message)}</span>
+        </div>
+      `;
+    }).join('');
+    
+    // Auto-scroll al final (logs más recientes)
+    container.scrollTop = 0;
+    
+  } catch (error) {
+    console.error('Error loading logs:', error);
+    container.innerHTML = `<div class="text-red-400 text-center py-8">Error cargando logs: ${error.message}</div>`;
+  }
+};
+
+window.refreshLogs = function() {
+  loadLogs();
 };
