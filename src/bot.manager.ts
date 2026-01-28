@@ -285,11 +285,15 @@ export class BotManager {
                 logger.error('Error checking/sending admin info:', error);
             }
 
-            // Procesar mensaje (onboard y comandos)
-            await Promise.all([
-                onboardEvolution(this.evolutionAPI, phoneNumber, content, userI18n),
-                this.processMessageContentEvolution(phoneNumber, content, userI18n, messageData, pushName)
-            ]);
+            // Primero onboarding (primer mensaje = menú Müllblue + info.png). Si enviamos, no procesar más.
+            const onboardResult = await onboardEvolution(this.evolutionAPI, phoneNumber, content, userI18n);
+            if (onboardResult.sent && onboardResult.message) {
+                await this.saveSentMessage(phoneNumber, onboardResult.message);
+                return;
+            }
+
+            // Procesar mensaje (comandos, catálogo, IA, etc.)
+            await this.processMessageContentEvolution(phoneNumber, content, userI18n, messageData, pushName);
 
         } catch (error) {
             logger.error(`❌ Error procesando mensaje entrante: ${error}`);
@@ -1245,12 +1249,13 @@ async function onboardEvolution(
     phoneNumber: string,
     content: string,
     userI18n: UserI18n
-): Promise<void> {
+): Promise<{ sent: boolean; message?: string }> {
     try {
         const { onboardEvolution: onboardEvolutionUtil } = await import('./utils/onboarding-evolution.util');
-        await onboardEvolutionUtil(evolutionAPI, phoneNumber, content, userI18n, true);
+        return await onboardEvolutionUtil(evolutionAPI, phoneNumber, content, userI18n, true);
     } catch (error) {
         logger.error('Error en onboardEvolution:', error);
+        return { sent: false };
     }
 }
 

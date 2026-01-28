@@ -1,15 +1,19 @@
 /**
  * Onboarding Utility para Evolution API
- * 
- * Maneja el proceso de onboarding de nuevos usuarios usando Evolution API
+ *
+ * Primer mensaje = menú principal Müllblue (CRM) + imagen info.png.
+ * Ya no se usa video genérico ni "type !help".
  */
 
 import { EvolutionAPIv2Service } from '../services/evolution-api-v2.service';
-import { AppConfig } from '../configs/app.config';
 import { UserI18n } from './i18n.util';
 import prisma from '../database/prisma';
 import logger from '../configs/logger.config';
 import * as fs from 'fs';
+import * as path from 'path';
+
+/** Resultado del onboarding: si se envió algo y el texto (para guardar en BD). */
+export type OnboardResult = { sent: boolean; message?: string };
 
 /**
  * Verifica si un usuario ya ha sido onboarded (recibió mensaje del bot)
@@ -34,65 +38,45 @@ async function isUserOnboarded(phoneNumber: string): Promise<boolean> {
 }
 
 /**
- * Enviar video de onboarding usando Evolution API
+ * Enviar primer mensaje: menú principal Müllblue (CRM) + info.png.
+ * Retorna { sent, message } para que el handler guarde y evite duplicar con processMessage.
  */
 export async function onboardEvolution(
     evolutionAPI: EvolutionAPIv2Service,
     phoneNumber: string,
-    content: string,
-    userI18n: UserI18n,
-    autoOnboard: boolean = true,
-    filePath: string = AppConfig.instance.getOnboardingVideoPath()
-): Promise<void> {
+    _content: string,
+    _userI18n: UserI18n,
+    autoOnboard: boolean = true
+): Promise<OnboardResult> {
     try {
-        // Verificar si ya fue onboarded (solo si autoOnboard está activado)
         if (autoOnboard && await isUserOnboarded(phoneNumber)) {
             logger.debug(`Usuario ${phoneNumber} ya fue onboarded, omitiendo`);
-            return;
+            return { sent: false };
         }
 
-        // Verificar que el archivo existe
-        if (!fs.existsSync(filePath)) {
-            logger.warn(`Archivo de onboarding no encontrado: ${filePath}`);
-            // Enviar mensaje de texto como fallback
-            const caption = userI18n.t('onboardMessages.caption', { botName: AppConfig.instance.getBotName() });
-            const pleaseHelp = userI18n.t('onboardMessages.pleaseHelp', { prefix: AppConfig.instance.getBotPrefix() });
-            await evolutionAPI.sendMessage(phoneNumber, `${caption}\n\n${pleaseHelp}`);
-            return;
+        const { getMainMenuResponse } = await import('./quick-responses.util');
+        const menuText = await getMainMenuResponse();
+        const infoPath = path.join(process.cwd(), 'public', 'info.png');
+
+        if (fs.existsSync(infoPath)) {
+            await evolutionAPI.sendMedia(phoneNumber, infoPath, menuText, 'image');
+            logger.info(`✅ Onboarding enviado a ${phoneNumber}: menú Müllblue + info.png`);
+            return { sent: true, message: menuText };
         }
 
-        // Preparar caption
-        const caption = userI18n.t('onboardMessages.caption', { botName: AppConfig.instance.getBotName() });
-        const pleaseHelp = userI18n.t('onboardMessages.pleaseHelp', { prefix: AppConfig.instance.getBotPrefix() });
-        const fullCaption = `${caption}\n\n${pleaseHelp}`;
-
-        // Determinar tipo de media por extensión
-        const ext = require('path').extname(filePath).toLowerCase();
-        let mediaType: 'image' | 'video' | 'audio' | 'document' = 'video';
-        
-        if (['.mp4', '.avi', '.mov', '.webm'].includes(ext)) {
-            mediaType = 'video';
-        } else if (['.mp3', '.wav', '.ogg', '.m4a'].includes(ext)) {
-            mediaType = 'audio';
-        } else if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) {
-            mediaType = 'image';
-        } else {
-            mediaType = 'document';
-        }
-
-        // Enviar media usando Evolution API
-        await evolutionAPI.sendMedia(phoneNumber, filePath, fullCaption, mediaType);
-        
-        logger.info(`✅ Video de onboarding enviado a ${phoneNumber}`);
+        await evolutionAPI.sendMessage(phoneNumber, menuText);
+        logger.info(`✅ Onboarding enviado a ${phoneNumber}: menú Müllblue (sin imagen)`);
+        return { sent: true, message: menuText };
     } catch (error) {
         logger.error(`Error en onboarding para ${phoneNumber}:`, error);
-        // Fallback: enviar mensaje de texto
         try {
-            const caption = userI18n.t('onboardMessages.caption', { botName: AppConfig.instance.getBotName() });
-            const pleaseHelp = userI18n.t('onboardMessages.pleaseHelp', { prefix: AppConfig.instance.getBotPrefix() });
-            await evolutionAPI.sendMessage(phoneNumber, `${caption}\n\n${pleaseHelp}`);
-        } catch (fallbackError) {
-            logger.error('Error en fallback de onboarding:', fallbackError);
+            const { getNoInfoMessage } = await import('./crm-context.util');
+            const fallback = `¡Hola! Soy el asistente de Müllblue 🌱. ¿En qué puedo ayudarte? Escribe *1* para ver productos y precios, *2* para dudas, *3* para hablar con un asesor. ${getNoInfoMessage()}`;
+            await evolutionAPI.sendMessage(phoneNumber, fallback);
+            return { sent: true, message: fallback };
+        } catch (e) {
+            logger.error('Fallback onboarding falló:', e);
+            return { sent: false };
         }
     }
 }
