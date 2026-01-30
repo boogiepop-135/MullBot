@@ -1146,6 +1146,14 @@
                 <textarea name="message" id="campaign-message" rows="5" required
                   class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"
                   oninput="updateWhatsAppPreview()"></textarea>
+                <div class="flex gap-2 mt-2">
+                  <input type="text" id="campaign-test-phone" placeholder="52 1555 1234567" 
+                    class="flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 text-sm">
+                  <button type="button" onclick="testCampaignSend()" class="btn-secondary px-4 py-2 text-sm">
+                    <i class="fas fa-paper-plane mr-1"></i>Probar envío
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Envía el mensaje a un número de prueba antes de lanzar la campaña</p>
               </div>
               
               <!-- Filtro por Estado -->
@@ -1412,6 +1420,7 @@
               <button onclick="showSettingsTab('security')" id="tab-security" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Seguridad</button>
               <button onclick="showSettingsTab('logs')" id="tab-logs" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Logs</button>
               <button onclick="showSettingsTab('errors')" id="tab-errors" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Errores</button>
+              <button onclick="showSettingsTab('qa')" id="tab-qa" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">QA Bot</button>
             </nav>
             </div>
 
@@ -1806,6 +1815,24 @@
                 <div id="errors-container" class="font-mono text-sm">
                   <div class="text-gray-500 text-center py-8">Cargando errores...</div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: QA Bot - Tester de flujos -->
+          <div id="settings-qa" class="settings-panel hidden p-6">
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-lg text-gray-800 mb-1">QA Tester - Flujos del Bot</h3>
+                  <p class="text-sm text-gray-600">Prueba automática de saludos, menús, catálogo, keywords y más. Sin enviar mensajes reales.</p>
+                </div>
+                <button onclick="runQATests()" class="btn-primary px-4 py-2 text-sm">
+                  <i class="fas fa-play mr-2"></i>Ejecutar QA
+                </button>
+              </div>
+              <div id="qa-results" class="space-y-2">
+                <div class="text-gray-500 text-center py-8" id="qa-placeholder">Haz clic en "Ejecutar QA" para probar todos los flujos del bot</div>
               </div>
             </div>
           </div>

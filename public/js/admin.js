@@ -174,6 +174,8 @@ window.showSettingsTab = function(tabName) {
     loadLogs();
   } else if (tabName === 'errors') {
     if (typeof window.loadErrorLogs === 'function') window.loadErrorLogs();
+  } else if (tabName === 'qa') {
+    // QA se ejecuta al hacer clic en el botón
   }
 };
 
@@ -1021,6 +1023,67 @@ async function createCampaign() {
     alert('Error al crear campaña: ' + error.message);
   }
 }
+
+window.testCampaignSend = async function() {
+  const message = document.getElementById('campaign-message')?.value?.trim();
+  const phoneInput = document.getElementById('campaign-test-phone');
+  const phone = (phoneInput?.value || '').replace(/\D/g, '');
+  if (!message) {
+    alert('Escribe un mensaje antes de probar');
+    return;
+  }
+  if (!phone || phone.length < 10) {
+    alert('Ingresa un número de prueba (ej: 52 1555 1234567)');
+    return;
+  }
+  try {
+    const response = await fetch('/crm/campaigns/test', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message, testPhone: phone })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Error');
+    alert('Mensaje de prueba enviado a ' + data.sentTo);
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+};
+
+window.runQATests = async function() {
+  const container = document.getElementById('qa-results');
+  const placeholder = document.getElementById('qa-placeholder');
+  if (!container) return;
+  if (placeholder) placeholder.remove();
+  container.innerHTML = '<div class="text-gray-500 py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Ejecutando tests...</div>';
+  try {
+    const response = await fetch('/crm/qa/run', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    const report = await response.json();
+    if (!response.ok) throw new Error(report.error || 'Error ejecutando QA');
+    let html = `<div class="mb-4 p-4 rounded-xl ${report.failed > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}">
+      <div class="font-bold">Total: ${report.total} | Passed: ${report.passed} | Failed: ${report.failed}</div>
+      <div class="text-sm text-gray-600">Duración: ${report.durationMs}ms</div>
+    </div>`;
+    report.results.forEach(r => {
+      const icon = r.passed ? '<span class="text-green-600">✓</span>' : '<span class="text-red-600">✗</span>';
+      html += `<div class="p-3 rounded-lg border ${r.passed ? 'bg-white border-gray-200' : 'bg-red-50 border-red-200'}">
+        <div class="font-medium">${icon} ${r.name}</div>
+        <div class="text-sm text-gray-600">"${r.userMessage}"</div>
+        ${!r.passed && r.error ? `<div class="text-sm text-red-600 mt-1">${r.error}</div>` : ''}
+        ${!r.passed && r.botResponses?.length ? `<div class="text-xs text-gray-500 mt-1">Recibió: ${(r.botResponses[0] || '').slice(0, 80)}...</div>` : ''}
+      </div>`;
+    });
+    container.innerHTML = html;
+  } catch (error) {
+    container.innerHTML = `<div class="text-red-600 p-4">Error: ${error.message}</div>`;
+  }
+};
 
 // --- Automation Tab Management ---
 

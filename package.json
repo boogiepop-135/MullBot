@@ -54,6 +54,7 @@
         "dev:refresh": "npm run clean:all && npm install && npm run dev",
         "create-admin": "ts-node scripts/create-admin.ts",
         "verify": "ts-node scripts/verify-mullbot.ts",
+        "qa": "ts-node scripts/bot-qa.ts",
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",

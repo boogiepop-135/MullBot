@@ -573,13 +573,67 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 return;
             }
 
-            // Verificar si pregunta por catálogo de productos ANTES de usar IA
+            // === LÓGICA HÍBRIDA: filtros deterministas primero, IA solo como fallback ===
             const normalizedContent = content.toLowerCase().trim();
+            const kw = normalizedContent;
+            const { getOptionResponse } = await import('./utils/quick-responses.util');
+            const { getNoInfoMessage } = await import('./utils/crm-context.util');
+
+            const sendKeywordFallback = async (topic: string) => {
+                const fb = `No tenemos esa información en este momento. ${getNoInfoMessage()}`;
+                await this.evolutionAPI.sendMessage(phoneNumber, fb);
+                await this.saveSentMessage(phoneNumber, fb);
+                logger.info(`Keyword ${topic}: sin contenido CRM, fallback enviado`);
+            };
+            if ((/proceso|compostaje|fermentativo|fermentador/.test(kw) && !/producto/.test(kw)) && kw.length < 80) {
+                const r = await getOptionResponse(1);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword proceso (opcion 1)'); return; }
+                await sendKeywordFallback('proceso'); return;
+            }
+            const isPreciosPromo = /precios?\s*y\s*promociones|promociones\s*y\s*precios|qu[eé]\s+precios|precios\s+tiene/.test(kw)
+                || /cuanto\s+sale|cuanto\s+cuesta|a\s+cuanto|cuanto\s+vale|cuanto\s+es/.test(kw)
+                || (/\bprecios?\b|\bpromociones\b/.test(kw) && !/producto|productos|catalogo|lista/.test(kw) && kw.length < 50);
+            if (isPreciosPromo) {
+                const r = await getOptionResponse(2);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword precios (opcion 2)'); return; }
+                const { ProductService } = await import('./services/product.service');
+                const catalog = await ProductService.getCatalogMessage();
+                if (catalog.hasProducts) { await this.evolutionAPI.sendMessage(phoneNumber, catalog.message); await this.saveSentMessage(phoneNumber, catalog.message); return; }
+                await sendKeywordFallback('precios'); return;
+            }
+            if (/m[eé]todos?\s*de\s*pago|transferencia|como\s+pago|formas?\s*de\s*pago/.test(kw) && kw.length < 60) {
+                const r = await getOptionResponse(3);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword metodos de pago (opcion 3)'); return; }
+                await sendKeywordFallback('pago'); return;
+            }
+            if (/qu[eé]\s+incluye\s+el\s+kit|incluye\s+el\s+kit|qu[eé]\s+lleva\s+el\s+kit/.test(kw) && kw.length < 60) {
+                const r = await getOptionResponse(4);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword kit (opcion 4)'); return; }
+                await sendKeywordFallback('kit'); return;
+            }
+            if (/dimensiones|espacio\s+necesario|tamano|medidas|peso/.test(kw) && !/producto\s+[a-z]/.test(kw) && kw.length < 50) {
+                const r = await getOptionResponse(5);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword dimensiones (opcion 5)'); return; }
+                await sendKeywordFallback('dimensiones'); return;
+            }
+            if (/env[ií]o|entrega|enviar|shipping|env[ií]an/.test(kw) && kw.length < 60) {
+                const r = await getOptionResponse(6);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword envio (opcion 6)'); return; }
+                await sendKeywordFallback('envio'); return;
+            }
+            if (/preguntas?\s*frecuentes|faq|preguntas\s+comunes/.test(kw) && kw.length < 50) {
+                const r = await getOptionResponse(7);
+                if (r) { await this.evolutionAPI.sendMessage(phoneNumber, r); await this.saveSentMessage(phoneNumber, r); logger.info('Keyword FAQ (opcion 7)'); return; }
+                await sendKeywordFallback('faq'); return;
+            }
+
+            // Catálogo: productos, compra, ver oferta (determinista, sin IA)
             const catalogKeywords = [
                 'catalogo', 'catálogo', 'productos', 'producto', 'lista de productos',
                 'que tienen', 'que tienes', 'que ofreces', 'que vendes',
                 'mostrar productos', 'ver productos', 'muestra productos',
-                'catálogo de productos', 'catalogo de productos'
+                'catálogo de productos', 'catalogo de productos',
+                'quiero comprar', 'me interesa comprar', 'quiero ver', 'ver ofertas'
             ];
             
             // Detectar solicitudes de precios (incluyendo del kit)
@@ -873,26 +927,37 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 } else if (isInitialMenu) {
                     const optionNumber = parseInt(content.trim());
                     logger.info(`📋 Usuario eligió opción ${optionNumber} del menú inicial`);
-                    // Opción 1 o 2: enviar catálogo (1=productos o proceso, 2=productos o dudas; siempre mostrar catálogo si piden info)
-                    if (optionNumber === 1 || optionNumber === 2) {
+                    const { getOptionResponse, getAgentResponse } = await import('./utils/quick-responses.util');
+                    const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                    const optMap: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7 };
+                    if (optionNumber === 8) {
+                        const agent = await getAgentResponse();
+                        await this.evolutionAPI.sendMessage(phoneNumber, agent);
+                        await this.saveSentMessage(phoneNumber, agent);
+                        return;
+                    }
+                    if (optMap[optionNumber]) {
+                        const r = await getOptionResponse(optMap[optionNumber]);
+                        if (r) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, r);
+                            await this.saveSentMessage(phoneNumber, r);
+                            logger.info(`✅ Menú opción ${optionNumber} → CRM ${optMap[optionNumber]}`);
+                            return;
+                        }
+                    }
+                    if (optionNumber === 2) {
                         const { ProductService } = await import('./services/product.service');
                         const catalog = await ProductService.getCatalogMessage();
                         if (catalog.hasProducts) {
                             await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
                             await this.saveSentMessage(phoneNumber, catalog.message);
-                            logger.info(`✅ Catálogo completo enviado desde menú inicial (opción ${optionNumber})`);
                             return;
                         }
-                        const { getNoInfoMessage } = await import('./utils/crm-context.util');
-                        const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
-                        await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
-                        await this.saveSentMessage(phoneNumber, fallbackMessage);
-                        return;
                     }
-                    if (optionNumber === 3) {
-                        // Opción 3: beneficios / asesor — dejar que la IA responda
-                    }
-                    // Otro número → continuar con IA
+                    const fb = `No tenemos esa información en este momento. ${getNoInfoMessage()}`;
+                    await this.evolutionAPI.sendMessage(phoneNumber, fb);
+                    await this.saveSentMessage(phoneNumber, fb);
+                    return;
                 } else if (isProductList) {
                     // Usuario eligió un producto de la lista
                     const optionNumber = parseInt(content.trim());

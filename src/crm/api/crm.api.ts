@@ -717,6 +717,39 @@ Tu solicitud ha sido registrada correctamente.
         }
     });
 
+    // Test campaign: envía el mensaje a un solo número antes de lanzar
+    router.post('/campaigns/test', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { message, testPhone } = req.body;
+            if (!message || typeof message !== 'string') {
+                return res.status(400).json({ error: 'El mensaje es requerido' });
+            }
+            const phone = (testPhone || req.body.phone || '').toString().replace(/\D/g, '');
+            if (!phone || phone.length < 10) {
+                return res.status(400).json({ error: 'Número de prueba requerido (ej: 5215551234567)' });
+            }
+            const formattedNumber = phone.startsWith('52') ? phone : `52${phone}`;
+            await botManager.sendMessage(formattedNumber, message.trim());
+            logger.info(`Campaign test enviado a ${formattedNumber}`);
+            res.json({ success: true, message: 'Mensaje de prueba enviado', sentTo: formattedNumber });
+        } catch (error: any) {
+            logger.error('Failed to send campaign test:', error);
+            res.status(500).json({ error: 'Error enviando prueba', details: error?.message });
+        }
+    });
+
+    // QA Tester: ejecuta suite de tests del bot (sin enviar WhatsApp real)
+    router.post('/qa/run', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { runFullQASuite } = await import('../../qa/bot-qa.service');
+            const report = await runFullQASuite(botManager);
+            res.json(report);
+        } catch (error: any) {
+            logger.error('QA run failed:', error);
+            res.status(500).json({ error: 'Error ejecutando QA', details: error?.message });
+        }
+    });
+
     // Templates API
     router.get('/templates', authenticate, authorizeAdmin, async (req, res) => {
         try {
