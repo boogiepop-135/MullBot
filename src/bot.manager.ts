@@ -297,6 +297,15 @@ export class BotManager {
 
         } catch (error) {
             logger.error(`❌ Error procesando mensaje entrante: ${error}`);
+            try {
+                const num = (messageData?.key?.remoteJid && String(messageData.key.remoteJid).split('@')[0]) || null;
+                if (num) {
+                    const fallback = 'Lo siento, no pude procesar tu mensaje en este momento. Por favor, intenta de nuevo o escribe *3* para hablar con un asesor.';
+                    await this.evolutionAPI.sendMessage(num, fallback);
+                }
+            } catch (e) {
+                logger.error('Error enviando fallback en handleIncomingMessage:', e);
+            }
         }
     }
 
@@ -761,37 +770,107 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 const recentHistory = await this.getConversationHistory(phoneNumber, 5);
                 const lastBotMessage = recentHistory.filter(m => m.role === 'assistant').pop();
                 
-                // Verificar si el último mensaje fue el menú inicial (main_menu / onboarding)
-                const isInitialMenu = !!lastBotMessage?.content && (
+                // Menú producto IA (ej. Compostero: 1=proceso, 2=precios, 3=kit, 4=asesor). Priorizar sobre menú inicial.
+                const isAIProductInfoMenu = !!lastBotMessage?.content &&
+                    (lastBotMessage.content.includes('¿Qué incluye el kit?') || lastBotMessage.content.includes('Qué incluye el kit')) &&
+                    (lastBotMessage.content.includes('Conocer el proceso') || lastBotMessage.content.includes('proceso de compostaje')) &&
+                    lastBotMessage.content.includes('Escribe el número');
+
+                const isProductList = lastBotMessage?.content.includes('Selecciona el producto');
+
+                const isProductDetails = lastBotMessage?.content.includes('¿Te interesa este producto?') ||
+                                        lastBotMessage?.content.includes('Ver métodos de pago') ||
+                                        lastBotMessage?.content.includes('Información de envío') ||
+                                        lastBotMessage?.content.includes('Ver otros productos disponibles');
+
+                const isAIProductResponse = lastBotMessage?.content.includes('precio y métodos de pago') ||
+                                           lastBotMessage?.content.includes('Información de envío') ||
+                                           (lastBotMessage?.content.includes('Escribe el número') &&
+                                            lastBotMessage?.content.includes('producto'));
+
+                // Menú inicial (main_menu / onboarding). Excluir menú producto IA (Compostero, "¿Qué incluye el kit?").
+                const isInitialMenu = !!lastBotMessage?.content && !isAIProductInfoMenu && (
                     lastBotMessage.content.includes('Ver nuestros productos y precios') ||
                     lastBotMessage.content.includes('Resolver mis dudas') ||
                     lastBotMessage.content.includes('Conocer los beneficios') ||
                     lastBotMessage.content.includes('Opciones disponibles') ||
                     lastBotMessage.content.includes('En qué puedo ayudarte') ||
-                    lastBotMessage.content.includes('Conocer el proceso') ||
+                    (lastBotMessage.content.includes('Conocer el proceso') && !lastBotMessage.content.includes('¿Qué incluye el kit?')) ||
                     lastBotMessage.content.includes('productos y precios') ||
                     lastBotMessage.content.includes('Ver productos') ||
                     (lastBotMessage.content.includes('Escribe el número') &&
                         !lastBotMessage.content.includes('CATÁLOGO') &&
-                        !lastBotMessage.content.includes('Selecciona'))
+                        !lastBotMessage.content.includes('Selecciona') &&
+                        !lastBotMessage.content.includes('¿Qué incluye el kit?'))
                 );
-                
-                // Verificar si el último mensaje fue una lista de productos para seleccionar
-                const isProductList = lastBotMessage?.content.includes('Selecciona el producto');
-                
-                // Verificar si el último mensaje fue detalles de un producto específico
-                const isProductDetails = lastBotMessage?.content.includes('¿Te interesa este producto?') ||
-                                        lastBotMessage?.content.includes('Ver métodos de pago') ||
-                                        lastBotMessage?.content.includes('Información de envío') ||
-                                        lastBotMessage?.content.includes('Ver otros productos disponibles');
-                
-                // Verificar si el último mensaje fue una respuesta de la IA sobre un producto (con menú)
-                const isAIProductResponse = lastBotMessage?.content.includes('precio y métodos de pago') ||
-                                           lastBotMessage?.content.includes('Información de envío') ||
-                                           (lastBotMessage?.content.includes('Escribe el número') && 
-                                            lastBotMessage?.content.includes('producto'));
-                
-                if (isInitialMenu) {
+
+                // Menú con precios/promociones y "Escribe el número" (opción 2 = catálogo). No es lista de productos ni detalles.
+                const isPriceMenu = !!lastBotMessage?.content && !isProductList && !isProductDetails && !isAIProductInfoMenu &&
+                    (lastBotMessage.content.includes('precios') || lastBotMessage.content.includes('promociones')) &&
+                    (lastBotMessage.content.includes('Escribe el número') || lastBotMessage.content.includes('opción que te interesa'));
+
+                if (isAIProductInfoMenu) {
+                    const optionNumber = parseInt(content.trim());
+                    logger.info(`📋 Usuario eligió opción ${optionNumber} en menú producto IA (Compostero)`);
+                    const { getOptionResponse, getAgentResponse } = await import('./utils/quick-responses.util');
+                    const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                    const { ProductService } = await import('./services/product.service');
+                    if (optionNumber === 1) {
+                        const process = await getOptionResponse(1);
+                        if (process) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, process);
+                            await this.saveSentMessage(phoneNumber, process);
+                            return;
+                        }
+                        await this.evolutionAPI.sendMessage(phoneNumber, `No tenemos la información del proceso en este momento. ${getNoInfoMessage()}`);
+                        await this.saveSentMessage(phoneNumber, `No tenemos la información del proceso en este momento. ${getNoInfoMessage()}`);
+                        return;
+                    }
+                    if (optionNumber === 2) {
+                        const catalog = await ProductService.getCatalogMessage();
+                        if (catalog.hasProducts) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
+                            await this.saveSentMessage(phoneNumber, catalog.message);
+                            return;
+                        }
+                        const fb = `No hay productos disponibles. ${getNoInfoMessage()}`;
+                        await this.evolutionAPI.sendMessage(phoneNumber, fb);
+                        await this.saveSentMessage(phoneNumber, fb);
+                        return;
+                    }
+                    if (optionNumber === 3) {
+                        const kit = await getOptionResponse(4);
+                        if (kit) {
+                            await this.evolutionAPI.sendMessage(phoneNumber, kit);
+                            await this.saveSentMessage(phoneNumber, kit);
+                            return;
+                        }
+                        const fb = `No tenemos info del kit ahora. ${getNoInfoMessage()}`;
+                        await this.evolutionAPI.sendMessage(phoneNumber, fb);
+                        await this.saveSentMessage(phoneNumber, fb);
+                        return;
+                    }
+                    if (optionNumber === 4) {
+                        const agent = await getAgentResponse();
+                        await this.evolutionAPI.sendMessage(phoneNumber, agent);
+                        await this.saveSentMessage(phoneNumber, agent);
+                        return;
+                    }
+                } else if (isPriceMenu && parseInt(content.trim()) === 2) {
+                    logger.info(`📋 Usuario eligió opción 2 (precios) en menú precios → enviar catálogo`);
+                    const { ProductService } = await import('./services/product.service');
+                    const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                    const catalog = await ProductService.getCatalogMessage();
+                    if (catalog.hasProducts) {
+                        await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
+                        await this.saveSentMessage(phoneNumber, catalog.message);
+                        return;
+                    }
+                    const fb = `No hay productos disponibles. ${getNoInfoMessage()}`;
+                    await this.evolutionAPI.sendMessage(phoneNumber, fb);
+                    await this.saveSentMessage(phoneNumber, fb);
+                    return;
+                } else if (isInitialMenu) {
                     const optionNumber = parseInt(content.trim());
                     logger.info(`📋 Usuario eligió opción ${optionNumber} del menú inicial`);
                     // Opción 1 o 2: enviar catálogo (1=productos o proceso, 2=productos o dudas; siempre mostrar catálogo si piden info)
@@ -1062,6 +1141,13 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
 
         } catch (error) {
             logger.error(`Error procesando contenido del mensaje: ${error}`);
+            try {
+                const fallback = 'Lo siento, no pude procesar tu consulta en este momento. Por favor, intenta de nuevo o escribe *3* para hablar con un asesor.';
+                await this.evolutionAPI.sendMessage(phoneNumber, fallback);
+                await this.saveSentMessage(phoneNumber, fallback);
+            } catch (e) {
+                logger.error('Error enviando fallback en processMessage:', e);
+            }
         }
     }
 
