@@ -127,65 +127,53 @@ async function cleanupQAMessages(phoneNumber: string): Promise<void> {
 }
 
 /**
- * Suite de tests de alto nivel
+ * Resetea el contacto QA (isPaused, etc.) para que los tests siguientes no fallen
+ */
+async function resetQAContact(phoneNumber: string): Promise<void> {
+    try {
+        await prisma.contact.updateMany({
+            where: {
+                OR: [
+                    { phoneNumber },
+                    { phoneNumber: `${phoneNumber}@s.whatsapp.net` }
+                ]
+            },
+            data: { isPaused: false }
+        });
+    } catch (e) {
+        logger.warn('QA: Error reseteando contacto:', e);
+    }
+}
+
+const MENU_PREV = '👋 MENÚ PRINCIPAL\n*1.* Conocer el proceso\n*2.* Dudas sobre precios\n*3.* Métodos de pago\n*8.* Hablar con un agente\n\nEscribe el número 🌱';
+const CATALOG_PREV = '🌱 CATÁLOGO DE PRODUCTOS MÜLLBLUE\n\n*1.* Producto A\n💰 Precio: *$100*\n\n*2.* Producto B\n💰 Precio: *$200*\n\n¿Te gustaría más información?\n*Opciones:*\n*1.* Proceder con tu compra y ayudarte con el pago\n*2.* Información detallada de un producto\n*3.* Hablar con un asesor';
+
+/**
+ * Suite completa de tests - cubre todo el sistema del bot
  */
 export const QA_TEST_CASES: QATestCase[] = [
-    {
-        id: 'greeting',
-        name: 'Saludo → Menú principal',
-        userMessage: 'hola',
-        expectedContains: ['MENÚ', 'opción', 'Conocer el proceso']
-    },
-    {
-        id: 'menu-1',
-        name: 'Opción 1 → Proceso de compostaje',
-        userMessage: '1',
-        setupPreviousMessages: [{ fromBot: true, content: '👋 MENÚ PRINCIPAL\n1. Conocer el proceso\n2. Dudas sobre precios\n... Escribe el número' }],
-        expectedContains: ['proceso', 'compostaje', 'fermentador']
-    },
-    {
-        id: 'menu-2',
-        name: 'Opción 2 → Precios o catálogo',
-        userMessage: '2',
-        setupPreviousMessages: [{ fromBot: true, content: 'MENÚ PRINCIPAL\n1. Proceso\n2. Precios\n... Escribe el número' }],
-        expectedContains: ['precio', 'CATÁLOGO', 'producto', 'Precio']
-    },
-    {
-        id: 'keyword-precios',
-        name: 'Keyword "precios" → Contenido precios',
-        userMessage: 'que precios y promociones tiene?',
-        expectedContains: ['precio', 'CATÁLOGO', 'producto']
-    },
-    {
-        id: 'keyword-proceso',
-        name: 'Keyword "proceso" → Info proceso',
-        userMessage: 'me interesa conocer el proceso de compostaje',
-        expectedContains: ['proceso', 'compostaje']
-    },
-    {
-        id: 'keyword-pago',
-        name: 'Keyword "métodos de pago" → Info pago',
-        userMessage: 'cuales son los metodos de pago',
-        expectedContains: ['pago', 'transferencia', 'Transferencia']
-    },
-    {
-        id: 'catalog-request',
-        name: 'Solicitud catálogo → Lista productos',
-        userMessage: 'que productos tienen',
-        expectedContains: ['CATÁLOGO', 'Precio', 'producto']
-    },
-    {
-        id: 'agent-request',
-        name: 'Solicitud asesor → Mensaje asesoría',
-        userMessage: 'quiero hablar con un asesor',
-        expectedContains: ['asesor', 'registrada', 'personalizada', 'cola']
-    },
-    {
-        id: 'thanks',
-        name: 'Agradecimiento → Respuesta corta',
-        userMessage: 'gracias',
-        expectedContains: ['gusto', 'ayudarte']
-    }
+    // --- Saludos y menú inicial ---
+    { id: 'greeting', name: 'Saludo → Menú principal', userMessage: 'hola', expectedContains: ['MENÚ', 'opción', 'Conocer'] },
+    { id: 'thanks-first', name: 'Agradecimiento → Respuesta corta', userMessage: 'gracias', expectedContains: ['gusto', 'ayudarte', 'productos'] },
+    // --- Menú principal 1-8 ---
+    { id: 'menu-1', name: 'Opción 1 → Proceso', userMessage: '1', setupPreviousMessages: [{ fromBot: true, content: MENU_PREV }], expectedContains: ['proceso', 'compostaje', 'fermentador'] },
+    { id: 'menu-2', name: 'Opción 2 → Precios/catálogo', userMessage: '2', setupPreviousMessages: [{ fromBot: true, content: MENU_PREV }], expectedContains: ['precio', 'CATÁLOGO', 'producto', 'Precio'] },
+    { id: 'menu-3', name: 'Opción 3 → Métodos de pago', userMessage: '3', setupPreviousMessages: [{ fromBot: true, content: MENU_PREV }], expectedContains: ['pago', 'transferencia', 'Transferencia'] },
+    { id: 'menu-4', name: 'Opción 4 → Qué incluye kit', userMessage: '4', setupPreviousMessages: [{ fromBot: true, content: MENU_PREV }], expectedContains: ['kit', 'incluye'] },
+    { id: 'menu-8', name: 'Opción 8 → Asesor', userMessage: '8', setupPreviousMessages: [{ fromBot: true, content: MENU_PREV }], expectedContains: ['asesor', 'registrada', 'personalizada', 'cola'] },
+    // --- Keywords (texto libre) ---
+    { id: 'keyword-precios', name: 'Keyword precios', userMessage: 'que precios y promociones tiene?', expectedContains: ['precio', 'CATÁLOGO', 'producto'] },
+    { id: 'keyword-proceso', name: 'Keyword proceso', userMessage: 'me interesa conocer el proceso de compostaje', expectedContains: ['proceso', 'compostaje'] },
+    { id: 'keyword-pago', name: 'Keyword métodos de pago', userMessage: 'cuales son los metodos de pago', expectedContains: ['pago', 'transferencia'] },
+    { id: 'keyword-envio', name: 'Keyword envío', userMessage: 'como hacen el envio?', expectedContains: ['envío', 'entrega', 'Envío'] },
+    // --- Catálogo y productos ---
+    { id: 'catalog-request', name: 'Solicitud catálogo', userMessage: 'que productos tienen', expectedContains: ['CATÁLOGO', 'Precio', 'producto'] },
+    { id: 'catalog-kits', name: 'Solicitud solo kits', userMessage: 'que kits tienen', expectedContains: ['CATÁLOGO', 'kit', 'KIT', 'producto'] },
+    // --- Después del catálogo ---
+    { id: 'catalog-option-1', name: 'Catálogo → Opción 1 (pago)', userMessage: '1', setupPreviousMessages: [{ fromBot: true, content: CATALOG_PREV }], expectedContains: ['pago', 'transferencia'] },
+    { id: 'catalog-option-3', name: 'Catálogo → Opción 3 (asesor)', userMessage: '3', setupPreviousMessages: [{ fromBot: true, content: CATALOG_PREV }], expectedContains: ['asesor', 'registrada'] },
+    // --- Solicitud asesor (última para no pausar contacto) ---
+    { id: 'agent-request', name: 'Solicitud asesor (texto)', userMessage: 'quiero hablar con un asesor', expectedContains: ['asesor', 'registrada', 'personalizada', 'cola'] },
 ];
 
 /**
@@ -200,6 +188,7 @@ export async function runFullQASuite(botManager: BotManager): Promise<QAReport> 
     await cleanupQAMessages(phoneNumber);
 
     for (const tc of QA_TEST_CASES) {
+        await resetQAContact(phoneNumber);
         const responses: string[] = [];
         const api = (botManager as any).evolutionAPI;
         const originalAPI = api;
