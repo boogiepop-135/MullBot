@@ -112,15 +112,12 @@ export class AIModelManager {
             { label: "GEMINI_API_KEY_3", value: EnvConfig.GEMINI_API_KEY_3, index: 3 }
         ].filter(k => !!k.value) as any;
 
-        // Modelos preferidos (orden de fallback). Ajustable sin romper si Google agrega nuevos.
+        // Modelos preferidos (orden de fallback). flash-lite primero para ahorro de tokens.
         const preferredModels: AIModelType[] = [
-            // Preferidos actuales para generateContent (v1beta)
+            "gemini-2.5-flash-lite",  // Más económico
             "gemini-2.5-flash",
-            "gemini-2.5-flash-lite",
-            // Fallbacks clásicos
             "gemini-1.5-flash",
             "gemini-1.5-pro"
-            // Nota: modelos como "gemini-3-flash" pueden aparecer en consola pero dar 404/unsupported en v1beta.
         ];
 
         let priority = 1;

@@ -312,7 +312,7 @@ export class BotManager {
     /**
      * Obtener historial de conversación reciente para contexto
      */
-    private async getConversationHistory(phoneNumber: string, limit: number = 6): Promise<Array<{role: 'user' | 'assistant', content: string}>> {
+    private async getConversationHistory(phoneNumber: string, limit: number = 4): Promise<Array<{role: 'user' | 'assistant', content: string}>> {
         try {
             const phoneWithSuffix = `${phoneNumber}@s.whatsapp.net`;
             const messages = await prisma.message.findMany({
@@ -767,7 +767,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
             // Detectar si escribió solo un número después de mostrar el catálogo
             const isJustNumber = /^\d+$/.test(content.trim());
             if (isJustNumber) {
-                const recentHistory = await this.getConversationHistory(phoneNumber, 5);
+                const recentHistory = await this.getConversationHistory(phoneNumber, 4);
                 const lastBotMessage = recentHistory.filter(m => m.role === 'assistant').pop();
                 
                 // Menú producto IA (ej. Compostero: 1=proceso, 2=precios, 3=kit, 4=asesor). Priorizar sobre menú inicial.
@@ -1053,6 +1053,26 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 }
             }
 
+            // Respuestas deterministas (ahorro de tokens): saludos y gracias
+            const trimmed = content.trim().toLowerCase().replace(/[.!?,]+$/, '');
+            const shortGreetings = ['hola', 'hola!', 'hola 😊', 'hey', 'buenos días', 'buenas tardes', 'buenas noches', 'buen día', 'buenas'];
+            const shortThanks = ['gracias', 'gracias!', 'ok gracias', 'perfecto gracias', 'genial gracias', 'vale gracias', 'listo gracias'];
+            if (shortGreetings.includes(trimmed)) {
+                const { getMainMenuResponse } = await import('./utils/quick-responses.util');
+                const menu = await getMainMenuResponse();
+                await this.evolutionAPI.sendMessage(phoneNumber, menu);
+                await this.saveSentMessage(phoneNumber, menu);
+                logger.info(`✅ Saludo determinista → menú enviado (ahorro tokens)`);
+                return;
+            }
+            if (shortThanks.includes(trimmed) || (trimmed.includes('gracias') && trimmed.length <= 20)) {
+                const thanksMsg = '¡Con gusto! ¿Algo más en lo que pueda ayudarte? 😊 Escribe *1* para productos, *2* para dudas, *3* para asesor.';
+                await this.evolutionAPI.sendMessage(phoneNumber, thanksMsg);
+                await this.saveSentMessage(phoneNumber, thanksMsg);
+                logger.info(`✅ Agradecimiento determinista (ahorro tokens)`);
+                return;
+            }
+
             // Verificar si pregunta por estado de servicios antes de usar IA
             const { isServiceStatusQuery, generateServiceStatusResponse } = await import('./utils/service-status.util');
             
@@ -1073,7 +1093,7 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 const { aiCompletion } = await import('./utils/ai-fallback.util');
                 
                 // Obtener historial de conversación (últimos 6 mensajes)
-                const conversationHistory = await this.getConversationHistory(phoneNumber, 6);
+                const conversationHistory = await this.getConversationHistory(phoneNumber, 4);
                 logger.info(`📜 Cargando historial: ${conversationHistory.length} mensajes previos`);
                 
                 const result = await aiCompletion(content, conversationHistory);

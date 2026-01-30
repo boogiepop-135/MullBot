@@ -4,6 +4,10 @@ import { AIModelManager } from "../services/ai-model-manager.service";
 import { buildCrmContextForAI, getNoInfoMessage } from "./crm-context.util";
 import { getBaseBehavioralPrompt } from "./mullblue-prompt.util";
 
+/** Cache del system prompt (TTL 2 min) para evitar reconstruir en cada request */
+const SYSTEM_PROMPT_CACHE = { value: '' as string, ts: 0 };
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
 export type AIProvider = "gemini" | "claude";
 
 export interface AIResponse {
@@ -17,6 +21,11 @@ export interface ConversationMessage {
 }
 
 async function buildSystemPrompt(): Promise<string> {
+    const now = Date.now();
+    if (SYSTEM_PROMPT_CACHE.value && (now - SYSTEM_PROMPT_CACHE.ts) < CACHE_TTL_MS) {
+        logger.debug('💾 System prompt desde cache');
+        return SYSTEM_PROMPT_CACHE.value;
+    }
     const base = getBaseBehavioralPrompt();
     const crmContext = await buildCrmContextForAI();
     const noInfo = getNoInfoMessage();
@@ -48,12 +57,15 @@ ${noInfo}
         logger.warn('Error obteniendo BotConfig para prompt:', e);
     }
 
-    return `${base}${custom}
+    const prompt = `${base}${custom}
 
 ---
 INFORMACIÓN DEL CRM (ÚNICA FUENTE DE DATOS - solo responde con esto):
 ${crmContext}
 ${criticalRules}`;
+    SYSTEM_PROMPT_CACHE.value = prompt;
+    SYSTEM_PROMPT_CACHE.ts = now;
+    return prompt;
 }
 
 export const aiCompletion = async (query: string, conversationHistory: ConversationMessage[] = []): Promise<AIResponse> => {
@@ -70,8 +82,10 @@ export const aiCompletion = async (query: string, conversationHistory: Conversat
 
             let fullQuery = cleanQuery;
             if (conversationHistory.length > 0) {
+                const MAX_MSG_LEN = 400;
+                const trunc = (s: string) => s.length > MAX_MSG_LEN ? s.slice(0, MAX_MSG_LEN) + '...' : s;
                 const historyText = conversationHistory
-                    .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${msg.content}`)
+                    .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${trunc(msg.content)}`)
                     .join('\n');
                 
                 // Verificar si ya se mostró el catálogo en el historial
