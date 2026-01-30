@@ -305,8 +305,14 @@ export class BotManager {
      */
     private async getConversationHistory(phoneNumber: string, limit: number = 6): Promise<Array<{role: 'user' | 'assistant', content: string}>> {
         try {
+            const phoneWithSuffix = `${phoneNumber}@s.whatsapp.net`;
             const messages = await prisma.message.findMany({
-                where: { phoneNumber },
+                where: {
+                    OR: [
+                        { phoneNumber },
+                        { phoneNumber: phoneWithSuffix }
+                    ]
+                },
                 orderBy: { timestamp: 'desc' },
                 take: limit * 2, // Tomar el doble porque incluye mensajes enviados y recibidos
             });
@@ -755,13 +761,20 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                 const recentHistory = await this.getConversationHistory(phoneNumber, 5);
                 const lastBotMessage = recentHistory.filter(m => m.role === 'assistant').pop();
                 
-                // Verificar si el último mensaje fue el menú inicial
-                const isInitialMenu = lastBotMessage?.content.includes('Ver nuestros productos y precios') ||
-                                     lastBotMessage?.content.includes('Resolver mis dudas') ||
-                                     lastBotMessage?.content.includes('Conocer los beneficios') ||
-                                     (lastBotMessage?.content.includes('Escribe el número') && 
-                                      !lastBotMessage?.content.includes('CATÁLOGO') &&
-                                      !lastBotMessage?.content.includes('Selecciona'));
+                // Verificar si el último mensaje fue el menú inicial (main_menu / onboarding)
+                const isInitialMenu = !!lastBotMessage?.content && (
+                    lastBotMessage.content.includes('Ver nuestros productos y precios') ||
+                    lastBotMessage.content.includes('Resolver mis dudas') ||
+                    lastBotMessage.content.includes('Conocer los beneficios') ||
+                    lastBotMessage.content.includes('Opciones disponibles') ||
+                    lastBotMessage.content.includes('En qué puedo ayudarte') ||
+                    lastBotMessage.content.includes('Conocer el proceso') ||
+                    lastBotMessage.content.includes('productos y precios') ||
+                    lastBotMessage.content.includes('Ver productos') ||
+                    (lastBotMessage.content.includes('Escribe el número') &&
+                        !lastBotMessage.content.includes('CATÁLOGO') &&
+                        !lastBotMessage.content.includes('Selecciona'))
+                );
                 
                 // Verificar si el último mensaje fue una lista de productos para seleccionar
                 const isProductList = lastBotMessage?.content.includes('Selecciona el producto');
@@ -779,35 +792,28 @@ Mientras tanto, el bot ha sido pausado para evitar respuestas automáticas.`;
                                             lastBotMessage?.content.includes('producto'));
                 
                 if (isInitialMenu) {
-                    // Usuario eligió opción del menú inicial
                     const optionNumber = parseInt(content.trim());
                     logger.info(`📋 Usuario eligió opción ${optionNumber} del menú inicial`);
-                    
-                    if (optionNumber === 1) {
-                        // Opción 1: Ver productos y precios - mostrar catálogo completo
+                    // Opción 1 o 2: enviar catálogo (1=productos o proceso, 2=productos o dudas; siempre mostrar catálogo si piden info)
+                    if (optionNumber === 1 || optionNumber === 2) {
                         const { ProductService } = await import('./services/product.service');
                         const catalog = await ProductService.getCatalogMessage();
                         if (catalog.hasProducts) {
                             await this.evolutionAPI.sendMessage(phoneNumber, catalog.message);
                             await this.saveSentMessage(phoneNumber, catalog.message);
-                            logger.info(`✅ Catálogo completo enviado desde menú inicial`);
-                            return;
-                        } else {
-                            // Fallback si no hay productos
-                            const { getNoInfoMessage } = await import('./utils/crm-context.util');
-                            const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
-                            await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
-                            await this.saveSentMessage(phoneNumber, fallbackMessage);
+                            logger.info(`✅ Catálogo completo enviado desde menú inicial (opción ${optionNumber})`);
                             return;
                         }
-                    } else if (optionNumber === 2) {
-                        // Opción 2: Resolver dudas - dejar que la IA responda
-                        // Continuar con el flujo normal
-                    } else if (optionNumber === 3) {
-                        // Opción 3: Conocer beneficios - dejar que la IA responda
-                        // Continuar con el flujo normal
+                        const { getNoInfoMessage } = await import('./utils/crm-context.util');
+                        const fallbackMessage = `No hay productos disponibles en este momento. ${getNoInfoMessage()}`;
+                        await this.evolutionAPI.sendMessage(phoneNumber, fallbackMessage);
+                        await this.saveSentMessage(phoneNumber, fallbackMessage);
+                        return;
                     }
-                    // Si escribió otro número (4, 5, etc.) que no corresponde al menú inicial, continuar con IA
+                    if (optionNumber === 3) {
+                        // Opción 3: beneficios / asesor — dejar que la IA responda
+                    }
+                    // Otro número → continuar con IA
                 } else if (isProductList) {
                     // Usuario eligió un producto de la lista
                     const optionNumber = parseInt(content.trim());

@@ -1411,6 +1411,7 @@
               <button onclick="showSettingsTab('whatsapp')" id="tab-whatsapp" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">WhatsApp</button>
               <button onclick="showSettingsTab('security')" id="tab-security" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Seguridad</button>
               <button onclick="showSettingsTab('logs')" id="tab-logs" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Logs</button>
+              <button onclick="showSettingsTab('errors')" id="tab-errors" class="settings-tab px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">Errores</button>
             </nav>
             </div>
 
@@ -1780,6 +1781,30 @@
               <div class="bg-gray-900 rounded-xl p-4 border-2 border-gray-800" style="max-height: 600px; overflow-y: auto;">
                 <div id="logs-container" class="font-mono text-sm">
                   <div class="text-gray-500 text-center py-8">Cargando logs...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Errores (solo nivel error) -->
+          <div id="settings-errors" class="settings-panel hidden p-6">
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-lg text-gray-800 mb-1">Errores del sistema</h3>
+                  <p class="text-sm text-gray-600">Solo entradas de nivel <strong>error</strong>. Si no aparece nada aquí, puede que el error no se haya registrado en logs.</p>
+                </div>
+                <button onclick="refreshErrorLogs()" class="btn-secondary px-4 py-2 text-sm">
+                  <i class="fas fa-sync-alt mr-2"></i>Actualizar
+                </button>
+              </div>
+              <div class="flex items-center justify-between text-sm text-gray-600">
+                <span id="error-log-count">Cargando...</span>
+                <span class="text-xs">Hora: México Central (CST)</span>
+              </div>
+              <div class="bg-gray-900 rounded-xl p-4 border-2 border-red-900/50" style="max-height: 600px; overflow-y: auto;">
+                <div id="errors-container" class="font-mono text-sm">
+                  <div class="text-gray-500 text-center py-8">Cargando errores...</div>
                 </div>
               </div>
             </div>

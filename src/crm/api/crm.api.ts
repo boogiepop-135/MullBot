@@ -2891,10 +2891,10 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
         try {
             const fs = require('fs');
             const path = require('path');
-            const { level = 'all', limit = 500, search = '' } = req.query;
+            const { level = 'all', limit = 500, search = '', source = '' } = req.query;
+            const useErrorLog = String(source).toLowerCase() === 'errors';
             
-            // Leer archivo de logs combinados
-            const logFile = path.join(process.cwd(), 'logs', 'combined.log');
+            const logFile = path.join(process.cwd(), 'logs', useErrorLog ? 'error.log' : 'combined.log');
             
             if (!fs.existsSync(logFile)) {
                 return res.json({ logs: [], total: 0, message: 'No hay archivo de logs disponible' });
@@ -2954,9 +2954,9 @@ Tu solicitud ha sido registrada y un asesor te contactará pronto.
                 };
             }).reverse(); // Más recientes primero
             
-            // Filtrar por nivel
+            // Filtrar por nivel (error.log ya solo tiene errores; si source=errors usamos esos)
             let filteredLogs = parsedLogs;
-            if (level !== 'all') {
+            if (!useErrorLog && level !== 'all') {
                 filteredLogs = parsedLogs.filter(log => log.level === level.toLowerCase());
             }
             

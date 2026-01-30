@@ -172,6 +172,8 @@ window.showSettingsTab = function(tabName) {
     loadQRCode();
   } else if (tabName === 'logs') {
     loadLogs();
+  } else if (tabName === 'errors') {
+    if (typeof window.loadErrorLogs === 'function') window.loadErrorLogs();
   }
 };
 
@@ -4839,4 +4841,38 @@ window.loadLogs = async function() {
 
 window.refreshLogs = function() {
   loadLogs();
+};
+
+window.loadErrorLogs = async function() {
+  const container = document.getElementById('errors-container');
+  const countEl = document.getElementById('error-log-count');
+  if (!container) return;
+  container.innerHTML = '<div class="text-gray-500 text-center py-8">Cargando errores...</div>';
+  try {
+    const params = new URLSearchParams({ source: 'errors', limit: '300' });
+    const response = await fetch('/crm/logs?' + params, {
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+    });
+    if (!response.ok) throw new Error('Failed to load error logs');
+    const data = await response.json();
+    if (countEl) countEl.textContent = 'Mostrando ' + (data.filtered || 0) + ' de ' + (data.total || 0) + ' errores';
+    if (!data.logs || data.logs.length === 0) {
+      container.innerHTML = '<div class="text-gray-500 text-center py-8">No hay errores registrados</div>';
+      return;
+    }
+    container.innerHTML = data.logs.map(function(log) {
+      return '<div class="mb-1 px-2 py-1 rounded bg-red-900/20 hover:bg-opacity-30 transition-colors">' +
+        '<span class="text-gray-500 text-xs">' + (log.timestamp || '') + '</span> ' +
+        '<span class="text-red-400 font-semibold ml-2">' + (log.level || 'error').toUpperCase() + '</span> ' +
+        '<span class="text-gray-300 ml-2">' + (typeof escapeHtml !== 'undefined' ? escapeHtml(log.message) : (log.message || '')) + '</span></div>';
+    }).join('');
+    container.scrollTop = 0;
+  } catch (e) {
+    console.error('Error loading error logs:', e);
+    container.innerHTML = '<div class="text-red-400 text-center py-8">Error cargando errores: ' + (e.message || '') + '</div>';
+  }
+};
+
+window.refreshErrorLogs = function() {
+  if (typeof window.loadErrorLogs === 'function') window.loadErrorLogs();
 };
