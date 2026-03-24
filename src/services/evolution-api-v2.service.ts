@@ -25,7 +25,7 @@ export class EvolutionAPIv2Service {
         // --- INICIO BLOQUE BLINDADO ---
         // Valores por defecto para evitar crashes si las env vars fallan
         this.apiUrl = EnvConfig.EVOLUTION_URL || process.env.EVOLUTION_URL || 'http://localhost:8080';
-        this.apiKey = EnvConfig.EVOLUTION_APIKEY || process.env.EVOLUTION_APIKEY || '';
+        this.apiKey = EnvConfig.EVOLUTION_APIKEY || process.env.EVOLUTION_APIKEY || process.env.EVOLUTION_API_KEY || '';
         this.instanceName = EnvConfig.EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME || 'mullbot-principal';
 
         // Validación adicional para instanceName
@@ -342,10 +342,21 @@ export class EvolutionAPIv2Service {
         } catch (error: any) {
             const statusCode = error.response?.status;
             logger.error(`❌ Error fetching instances (HTTP ${statusCode}):`, error.response?.data || error.message);
+
+            // Errores de red o DNS: el servicio no es alcanzable desde este contenedor
+            if (!error.response) {
+                const networkHint = `No se pudo conectar a Evolution API en ${this.apiUrl}. Verifica EVOLUTION_URL y que el servicio esté arriba en la red interna (ej: http://evolution-api:8080).`;
+                throw new Error(networkHint);
+            }
             
             // Si es error 403, lanzar excepción para que se propague
             if (statusCode === 403) {
                 throw new Error('Error 403: La API Key no tiene permisos para listar instancias. Verifica que sea una API Key Maestra (Global).');
+            }
+
+            // Errores de gateway/servidor: suelen indicar contenedor caído o puerto incorrecto
+            if (statusCode === 502 || statusCode === 503 || statusCode === 504 || statusCode >= 500) {
+                throw new Error(`Evolution API respondió HTTP ${statusCode} en ${this.apiUrl}. Revisa el estado del contenedor de Evolution API, su puerto interno y dependencias (PostgreSQL/Redis).`);
             }
             
             return [];
